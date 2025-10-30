@@ -34,6 +34,6 @@ Implements the **A* algorithm** to compute optimal paths using data from the `Ma
 ## 🎯 Design Philosophy
 This structure emphasizes modular, object-oriented design, ensuring scalability and maintainability as game complexity increases.
 
-![WhatsApp Görsel 2025-10-30 saat 14 09 09_a09ce020](https://github.com/user-attachments/assets/2d3011ca-56fb-4f08-b9eb-f024d53d46be)
+![WhatsApp Görsel 2025-10-30 saat 14 09 09_a09ce020](https://github.com/user-attachments/assets/e562a00d-a1ba-4e04-a0b8-33c717f290e7)
 
 
