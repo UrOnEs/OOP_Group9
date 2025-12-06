@@ -1,0 +1,23 @@
+# Visual Studio
+.vs/
+out/
+.vscode/
+
+# Build folders
+Debug/
+Release/
+x64/
+x86/
+
+# Intermediate files
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.log
+
+# User-specific
+*.user
+
+# Cache
+ipch/
