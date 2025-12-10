@@ -1,0 +1,270 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Kaynak Dosyalar">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Üst Bilgi Dosyaları">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Kaynak Dosyaları">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include">
+      <UniqueIdentifier>{61fea26d-b658-4e0f-b2b8-82655cd73728}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Map">
+      <UniqueIdentifier>{5e4aa9eb-ac7a-4d55-8e70-27540ad999c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Network">
+      <UniqueIdentifier>{650cf534-43cf-4086-80f8-8866ace66e52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Systems">
+      <UniqueIdentifier>{9890013b-d8ae-4a58-ad7f-7ef917d727f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\UI">
+      <UniqueIdentifier>{6d9003c8-a4e9-4767-8106-8b57b22354ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Game">
+      <UniqueIdentifier>{e798100c-81f8-402f-9772-32b36f76862c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Entity">
+      <UniqueIdentifier>{9f794c1f-ba51-4f65-b513-1653e0c84eb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src">
+      <UniqueIdentifier>{c001c56d-2d19-4bd7-959e-e9f588cfedd2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Map">
+      <UniqueIdentifier>{d70569d5-a1f4-4286-bc73-7f41f9cf346a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Entity">
+      <UniqueIdentifier>{05c51f93-d1fa-45bf-9cb3-2dba0e73e231}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Game">
+      <UniqueIdentifier>{0af64f5a-45af-474c-a989-a5880bcc57b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\UI">
+      <UniqueIdentifier>{d98a55a0-4701-4d25-80ad-d91c477d3f8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Systems">
+      <UniqueIdentifier>{7576cda2-72f6-437e-873a-23ca284e00c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\include\Entity\Entity Types">
+      <UniqueIdentifier>{583a64b0-65d6-40cc-beec-14cd5dfbd0d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Entity\Entity types">
+      <UniqueIdentifier>{1672200f-835f-4edc-a063-bc42dc49d01b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\src\Network">
+      <UniqueIdentifier>{a504ec6e-afd5-4948-85d7-eca59bab8244}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Map\MapManager.cpp">
+      <Filter>Kaynak Dosyalar\src\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Map\PathFinder.cpp">
+      <Filter>Kaynak Dosyalar\src\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Map\TileMap.cpp">
+      <Filter>Kaynak Dosyalar\src\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Entities\Entity types\Building.cpp">
+      <Filter>Kaynak Dosyalar\src\Entity\Entity types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Entities\Entity types\Soldier.cpp">
+      <Filter>Kaynak Dosyalar\src\Entity\Entity types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Entities\Entity types\Villager.cpp">
+      <Filter>Kaynak Dosyalar\src\Entity\Entity types</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Entities\Entity.cpp">
+      <Filter>Kaynak Dosyalar\src\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Entities\EntityManager.cpp">
+      <Filter>Kaynak Dosyalar\src\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Game\Game.cpp">
+      <Filter>Kaynak Dosyalar\src\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Game\Player.cpp">
+      <Filter>Kaynak Dosyalar\src\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Game\ResourceManager.cpp">
+      <Filter>Kaynak Dosyalar\src\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\BuildSystem.cpp">
+      <Filter>Kaynak Dosyalar\src\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\CombatSystem.cpp">
+      <Filter>Kaynak Dosyalar\src\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Systems\MovementSystem.cpp">
+      <Filter>Kaynak Dosyalar\src\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\DataManager.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\HUD.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\ResourceBar.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\ResourceManager.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\SelectedObjectPanel.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\UIButton.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\UIManager.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\UI\UIPanel.cpp">
+      <Filter>Kaynak Dosyalar\src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\Connection.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\LANDiscovery.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\LobbyManager.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\NetClient.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\NetServer.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Network\NetworkManager.cpp">
+      <Filter>Kaynak Dosyalar\src\Network</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Entity System\Entity.h">
+      <Filter>Kaynak Dosyalar\include\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\EntityManager.h">
+      <Filter>Kaynak Dosyalar\include\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Building.h">
+      <Filter>Kaynak Dosyalar\include\Entity\Entity Types</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Soldier.h">
+      <Filter>Kaynak Dosyalar\include\Entity\Entity Types</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\types.h">
+      <Filter>Kaynak Dosyalar\include\Entity\Entity Types</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Unit.h">
+      <Filter>Kaynak Dosyalar\include\Entity\Entity Types</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Villager.h">
+      <Filter>Kaynak Dosyalar\include\Entity\Entity Types</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\Game.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\GameRules.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\GameState.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\GameStateManager.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\Player.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\ResourceManager.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\TeamColors.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Game\WinLoseManager.h">
+      <Filter>Kaynak Dosyalar\include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Map\MapManager.h">
+      <Filter>Kaynak Dosyalar\include\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Map\PathFinder.h">
+      <Filter>Kaynak Dosyalar\include\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Map\Point.h">
+      <Filter>Kaynak Dosyalar\include\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Map\TileMap.h">
+      <Filter>Kaynak Dosyalar\include\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\Connection.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\LANDiscovery.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\LobbyManager.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\NetClient.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\NetCommands.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\NetServer.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Network\NetworkManager.h">
+      <Filter>Kaynak Dosyalar\include\Network</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\BuildSystem.h">
+      <Filter>Kaynak Dosyalar\include\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\CombatSystem.h">
+      <Filter>Kaynak Dosyalar\include\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\MovementSystem.h">
+      <Filter>Kaynak Dosyalar\include\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\ProductionSystem.h">
+      <Filter>Kaynak Dosyalar\include\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\DataManager.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\HUD.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\ResourceBar.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\ResourceManager.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\SelectedObjectPanel.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\UIButton.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\UIManager.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\UIPanel.h">
+      <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

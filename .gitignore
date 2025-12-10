@@ -1,0 +1,63 @@
+# ---------------------------------
+# Visual Studio & C++ build files
+# ---------------------------------
+.vs/
+out/
+build/
+*.obj
+*.pch
+*.pdb
+*.ipch
+*.tlog
+*.idb
+*.ilk
+*.suo
+*.user
+*.opendb
+*.db
+
+# ---------------------------------
+# Build folders
+# ---------------------------------
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+
+# ---------------------------------
+# Binary outputs (ignore by default)
+# ---------------------------------
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+
+# ---------------------------------
+# SFML / Dependencies (ALLOW)
+# ---------------------------------
+!Dependencies/**
+!Dependencies/**.dll
+!Dependencies/**.lib
+
+# Eğer DLL'leri proje köküne koyarsan:
+!/*.dll
+
+# ---------------------------------
+# Assets (ALLOW)
+# ---------------------------------
+!*.png
+!*.jpg
+!*.jpeg
+!*.wav
+!*.ogg
+!*.ttf
+!*.otf
+
+# ---------------------------------
+# Windows junk
+# ---------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
