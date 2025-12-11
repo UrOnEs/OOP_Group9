@@ -1,4 +1,4 @@
-#include "UIPanel.h"
+#include "UI/UIPanel.h"
 
 UIPanel::UIPanel(const sf::Vector2f& size, const sf::Vector2f& position) {
     background.setSize(size);

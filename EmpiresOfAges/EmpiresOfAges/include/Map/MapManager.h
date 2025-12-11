@@ -1,10 +1,9 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include "Building.h"
+#include "Entity System\Entity Type\Building.h"
 #include <vector>
 #include <memory> // unique_ptr icin
 #include "TileMap.h"
-#include "Building.h"
 
 // ResourceManager'i tanitiyoruz (Forward Declaration)
 class ResourceManager;

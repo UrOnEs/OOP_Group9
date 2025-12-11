@@ -1,11 +1,11 @@
 ﻿// NetServer.cpp
 
-#include "NetServer.h"
+#include "Network/NetServer.h"
 #include <iostream>
 #include <sstream>
-#include "NetworkManager.h"
-#include "NetServer.h"  // E0833 ve C2027 hatalar�n� ��zer
-#include "NetClient.h"
+#include "Network/NetworkManager.h"
+#include "Network/NetServer.h"  // E0833 ve C2027 hatalar�n� ��zer
+#include "Network/NetClient.h"
 
 // --- Kurucu ve Y�k�c� ---
 

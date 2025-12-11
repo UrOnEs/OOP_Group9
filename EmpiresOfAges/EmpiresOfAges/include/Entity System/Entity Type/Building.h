@@ -1,7 +1,7 @@
 #ifndef BUILDING_H
 #define BUILDING_H
 
-#include "Entity System/Entity.h"
+#include "Entity System\Entity.h"
 #include "types.h"
 #include "Soldier.h"
 

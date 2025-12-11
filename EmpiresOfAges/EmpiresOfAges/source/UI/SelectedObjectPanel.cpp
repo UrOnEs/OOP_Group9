@@ -1,4 +1,4 @@
-#include "SelectedObjectPanel.h"
+#include "UI/SelectedObjectPanel.h"
 
 SelectedObjectPanel::SelectedObjectPanel() {
     font.loadFromFile("assets/fonts/arial.ttf");

@@ -1,4 +1,4 @@
-#include "ResourceBar.h"
+#include "UI/ResourceBar.h"
 
 ResourceBar::ResourceBar() {
     font.loadFromFile("assets/fonts/arial.ttf");

@@ -1,9 +1,9 @@
 ﻿// NetworkManager.cpp
 
-#include "NetworkManager.h"
-#include "NetServer.h" 
-#include "NetClient.h" 
-#include "LANDiscovery.h" 
+#include "Network/NetworkManager.h"
+#include "Network/NetServer.h" 
+#include "Network/NetClient.h" 
+#include "Network/LANDiscovery.h" 
 #include <iostream>
 
 NetworkManager::NetworkManager()

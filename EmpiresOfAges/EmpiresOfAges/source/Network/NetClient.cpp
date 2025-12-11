@@ -1,6 +1,6 @@
 ﻿// NetClient.cpp
 
-#include "NetClient.h"
+#include "Network/NetClient.h"
 #include <iostream>
 #include <thread>
 #include <chrono>

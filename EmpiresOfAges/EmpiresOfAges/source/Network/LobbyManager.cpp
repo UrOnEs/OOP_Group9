@@ -1,9 +1,9 @@
 ﻿// LobbyManager.cpp
 
-#include "LobbyManager.h"
-#include "NetworkManager.h"
-#include "NetServer.h"
-#include "NetClient.h"
+#include "Network/LobbyManager.h"
+#include "Network/NetworkManager.h"
+#include "Network/NetServer.h"
+#include "Network/NetClient.h"
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>

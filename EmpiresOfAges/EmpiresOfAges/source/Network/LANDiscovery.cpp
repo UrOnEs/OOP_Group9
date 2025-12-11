@@ -1,4 +1,4 @@
-﻿#include "LANDiscovery.h"
+﻿#include "Network/LANDiscovery.h"
 #include <iostream>
 
 LANDiscovery::LANDiscovery()

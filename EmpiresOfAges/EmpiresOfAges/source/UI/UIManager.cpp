@@ -1,4 +1,4 @@
-#include "UIManager.h"
+#include "UI/UIManager.h"
 
 void UIManager::addPanel(const UIPanel& panel) {
     panels.push_back(panel);

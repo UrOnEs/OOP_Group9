@@ -1,6 +1,6 @@
 ﻿// Connection.cpp - SFML UDP/Packet
 
-#include "Connection.h"
+#include "Network/Connection.h"
 
 // --- Kurucu ---
 

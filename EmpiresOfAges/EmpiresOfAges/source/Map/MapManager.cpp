@@ -1,5 +1,5 @@
-#include "MapManager.h"
-#include "ResourceManager.h"
+#include "Map/MapManager.h"
+#include "Map/ResourceManager.h"
 
 // YENÝ: Alt sýnýflarýn baþlýk dosyalarýný ekliyoruz
 #include "House.h"

@@ -1,4 +1,4 @@
-#include "ResourceManager.h"
+#include "UI/ResourceManager.h"
 
 std::map<std::string, sf::Texture> ResourceManager::textures;
 std::map<std::string, sf::Font> ResourceManager::fonts;

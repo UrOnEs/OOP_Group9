@@ -1,4 +1,4 @@
-#include "HUD.h"
+#include "UI/HUD.h"
 
 HUD::HUD() {}
 
