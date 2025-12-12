@@ -1,24 +1,25 @@
-#ifndef BUILDING_H
-#define BUILDING_H
-
-#include "Entity System\Entity.h"
+#pragma once
+#include "Entity System/Entity.h"
 #include "types.h"
-#include "Soldier.h"
 
 class Building : public Entity {
-private:
-	static int IDcounter;
-	static int counter; // belli bir sayýyý geçmediðinden emin olmalýyýz
 public:
-	BuildTypes buildingType;
+    BuildTypes buildingType;
 
+    Building() {
+        health = 500.f;
+    }
 
-	Building(); //Binayý dikiyoz - Veriler GameRules'da
+    virtual ~Building() = default;
 
-	~Building(); // zaten biliyon
+    // --- BURAYI DEÐÝÞTÝRÝYORUZ ---
 
-	bool produce();
-	bool produce(SoldierTypes& Sproduct);
+    // Entity'den gelen borcu burada ödüyoruz.
+    // Artýk Farm veya House tekrar stats() yazmak zorunda kalmayacak.
+    std::string stats() override {
+        return getInfo(); // stats istendiðinde getInfo'yu çaðýrýp döndürsün.
+    }
+
+    // Alt sýnýflar bunu doldurmak ZORUNDA (Bunu zaten yapýyorlar, sorun yok)
+    virtual std::string getInfo() = 0;
 };
-
-#endif // !BUILDING_H

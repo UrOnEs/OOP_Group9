@@ -11,6 +11,7 @@ private:
 	
 	bool isBusy = false;
 public:
+	std::string stats() override;
 
 	Villager();//Köylü oluþturcaz - Veriler GameRules'da
 

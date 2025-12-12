@@ -8,9 +8,13 @@ public:
     HUD();
     void draw(sf::RenderWindow& window);
     void update();
-
-private:
+    
+    
+    // Bu ikisini public yaptým normalde private dý haberiniz olsun(Game.cpp kýsmýnda ihtiyacým vardý(Satýr 102))
     ResourceBar resourceBar;
     SelectedObjectPanel selectedPanel;
+
+private:
+
 };
 

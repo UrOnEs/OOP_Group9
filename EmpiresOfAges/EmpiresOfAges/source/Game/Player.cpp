@@ -1,27 +1,36 @@
 #include "Game/Player.h"
-#include "Game/ResourceManager.h"
-#include <vector>
 #include <iostream>
 
 Player::Player() {
-    // Oyuncuya baþlangýç kaynaðý verelim
+    // Baþlangýç kaynaklarý
     playerResources.add(ResourceType::Wood, 200);
     playerResources.add(ResourceType::Food, 200);
+    playerResources.add(ResourceType::Gold, 100);
+    playerResources.add(ResourceType::Stone, 0);
 
-    // networkID = ... (LAN entegrasyonunda burasý deðiþecek)
+    // Limitler
+    unitLimit = 10;
+    buildLimit = 5;
 }
 
 Player::~Player() {
     entities.clear();
 }
 
+// --- KAYNAK YÖNETÝMÝ ---
 std::vector<int> Player::getResources() {
+    // ResourceManager'dan verileri çekip vektör olarak döndür
     return {
         playerResources.getAmount(ResourceType::Wood),
         playerResources.getAmount(ResourceType::Gold),
         playerResources.getAmount(ResourceType::Stone),
         playerResources.getAmount(ResourceType::Food)
     };
+}
+
+// --- ENTITY YÖNETÝMÝ ---
+std::vector<std::shared_ptr<Entity>> Player::getEntities() {
+    return entities;
 }
 
 void Player::renderEntities(sf::RenderWindow& window) {
@@ -32,42 +41,61 @@ void Player::renderEntities(sf::RenderWindow& window) {
     }
 }
 
+// --- LÝMÝT VE SAYIM FONKSÝYONLARI (Eksik olanlar bunlardý) ---
+int Player::getUnitLimit() {
+    return unitLimit;
+}
+
+int Player::getUnitCount() {
+    // Canlý olan entity sayýsýný (veya sadece asker sayýsýný) döndür
+    int count = 0;
+    for (auto& e : entities) {
+        if (e->getIsAlive()) count++;
+    }
+    return count;
+}
+
+bool Player::addUnitLimit(int amount) {
+    unitLimit += amount;
+    return true;
+}
+
+bool Player::setUnitLimit(int amount) {
+    unitLimit = amount;
+    return true;
+}
+
+// --- BÝNA VE ÜRETÝM SÝSTEMLERÝ ÝÇÝN YARDIMCI FONKSÝYONLAR ---
+// Header'da inline (süslü parantez içinde) tanýmladýysan burada tekrar yazmana gerek yok.
+// Ama hata alýyorsan, header'dakini silip buraya ekleyebilirsin.
+// Þimdilik Player.h içinde tanýmlý olduklarýný varsayýyorum.
+// Eðer "addWood already defined" derse buraya dokunma.
+// Eðer "addWood unresolved" derse aþaðýdakileri yorumdan çýkar:
+
+/*
+void Player::addWood(int amount) { playerResources.add(ResourceType::Wood, amount); }
+void Player::addGold(int amount) { playerResources.add(ResourceType::Gold, amount); }
+void Player::addFood(int amount) { playerResources.add(ResourceType::Food, amount); }
+void Player::addStone(int amount) { playerResources.add(ResourceType::Stone, amount); }
+void Player::addEntity(std::shared_ptr<Entity> entity) { entities.push_back(entity); }
+*/
+
+// --- SEÇÝM SÝSTEMÝ ---
 std::vector<std::shared_ptr<Entity>> Player::selectUnit(sf::RenderWindow& window) {
-
-    // 1. Mouse'un sol tuþuna basýldý mý kontrol et
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-
-        // 2. Önceki seçimleri temizle (Çoklu seçim yapmýyorsak - Shift tuþu hariç)
         selected_entities.clear();
-
-        // 3. Mouse'un ekran üzerindeki koordinatýný al
         sf::Vector2i mousePosPixel = sf::Mouse::getPosition(window);
-
-        // 4. Bu koordinatý "Dünya Koordinatýna" çevir
-        // (Bu çok önemli! Kamera hareket edince bozulmamasý için bunu yapmalýyýz)
         sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel);
 
-        // 5. Tüm askerleri (entities) döngüye sokup kontrol et
         for (auto& entity : entities) {
-
-            // Eðer ünite hayattaysa ve Mouse'un olduðu yer ünitenin sýnýrlarý içindeyse
             if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
-
-                // Seçilenlere ekle
                 selected_entities.push_back(entity);
-
-                // Görsel olarak seçildiðini belli et (Entity içine yazdýðýmýz varsayýlan metod)
                 entity->setSelected(true);
-
-                // Tekli seçim istiyorsak ilk bulduðumuzda döngüyü kýrabiliriz
-                // break; 
             }
             else {
-                // Týklanmayanlarýn seçimini kaldýr
                 entity->setSelected(false);
             }
         }
     }
-
     return selected_entities;
 }

@@ -1,23 +1,19 @@
-#include <SFML/Graphics.hpp>
 
-int main()
-{
-    sf::RenderWindow window(sf::VideoMode(200, 200), "SFML Calisiyor!");
-    sf::CircleShape shape(100.f);
-    shape.setFillColor(sf::Color::Green);
+// main.cpp
+#include "Game/Game.h"
+#include <iostream>
 
-    while (window.isOpen())
-    {
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-                window.close();
-        }
+int main() {
+    try {
+        std::cout << "Empires of Ages baslatiliyor..." << std::endl;
 
-        window.clear();
-        window.draw(shape);
-        window.display();
+        Game game;
+        game.run();
+
+    }
+    catch (const std::exception& e) {
+        std::cerr << "KRITIK HATA: " << e.what() << std::endl;
+        return -1;
     }
 
     return 0;

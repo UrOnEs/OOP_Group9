@@ -146,6 +146,7 @@
     <ClCompile Include="source\Entities\Entity.cpp" />
     <ClCompile Include="source\Entities\EntityManager.cpp" />
     <ClCompile Include="source\Game\Game.cpp" />
+    <ClCompile Include="source\Game\GameStateManager.cpp" />
     <ClCompile Include="source\Game\Player.cpp" />
     <ClCompile Include="source\Game\ResourceManager.cpp" />
     <ClCompile Include="source\Map\MapManager.cpp" />
@@ -160,6 +161,7 @@
     <ClCompile Include="source\Systems\BuildSystem.cpp" />
     <ClCompile Include="source\Systems\CombatSystem.cpp" />
     <ClCompile Include="source\Systems\MovementSystem.cpp" />
+    <ClCompile Include="source\Systems\ProductionSystem.cpp" />
     <ClCompile Include="source\UI\DataManager.cpp" />
     <ClCompile Include="source\UI\HUD.cpp" />
     <ClCompile Include="source\UI\ResourceBar.cpp" />
@@ -170,8 +172,13 @@
     <ClCompile Include="source\UI\UIPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
     <ClInclude Include="include\Entity System\Entity Type\Building.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Farm.h" />
+    <ClInclude Include="include\Entity System\Entity Type\House.h" />
+    <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h" />
     <ClInclude Include="include\Entity System\Entity Type\Soldier.h" />
+    <ClInclude Include="include\Entity System\Entity Type\StoneMine.h" />
     <ClInclude Include="include\Entity System\Entity Type\types.h" />
     <ClInclude Include="include\Entity System\Entity Type\Unit.h" />
     <ClInclude Include="include\Entity System\Entity Type\Villager.h" />
@@ -199,7 +206,9 @@
     <ClInclude Include="include\Systems\BuildSystem.h" />
     <ClInclude Include="include\Systems\CombatSystem.h" />
     <ClInclude Include="include\Systems\MovementSystem.h" />
+    <ClInclude Include="include\Systems\PopulationSystem.h" />
     <ClInclude Include="include\Systems\ProductionSystem.h" />
+    <ClInclude Include="include\Systems\ResourceSystem.h" />
     <ClInclude Include="include\UI\DataManager.h" />
     <ClInclude Include="include\UI\HUD.h" />
     <ClInclude Include="include\UI\ResourceBar.h" />

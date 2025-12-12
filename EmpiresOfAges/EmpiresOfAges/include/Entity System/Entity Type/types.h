@@ -6,7 +6,8 @@ enum class BuildTypes {
 	Barrack,
 	Farm,
 	WoodPlace,
-	StoneMines
+	StoneMines,
+	House
 };
 
 enum class SoldierTypes {

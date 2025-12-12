@@ -9,6 +9,8 @@ private:
     static int IDcounter;
     static int counter;
 public:
+    std::string stats() override;
+
     SoldierTypes soldierType;
 
     Soldier(); // Constructor (GameRules verilerini buradan yüklicez)

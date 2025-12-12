@@ -150,6 +150,12 @@
     <ClCompile Include="source\Network\NetworkManager.cpp">
       <Filter>Kaynak Dosyalar\src\Network</Filter>
     </ClCompile>
+    <ClCompile Include="source\Systems\ProductionSystem.cpp">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Game\GameStateManager.cpp">
+      <Filter>Kaynak Dosyalar</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Entity System\Entity.h">
@@ -265,6 +271,27 @@
     </ClInclude>
     <ClInclude Include="include\UI\UIPanel.h">
       <Filter>Kaynak Dosyalar\include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Barracks.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\House.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Farm.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\StoneMine.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\ResourceSystem.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Systems\PopulationSystem.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

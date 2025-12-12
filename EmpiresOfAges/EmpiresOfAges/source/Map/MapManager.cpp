@@ -1,12 +1,162 @@
 #include "Map/MapManager.h"
-#include "Map/ResourceManager.h"
+#include "Game/ResourceManager.h" // YOLU DÜZELTTÝK
+#include "Entity System/Entity Type/types.h" 
 
-// YENÝ: Alt sýnýflarýn baþlýk dosyalarýný ekliyoruz
-#include "House.h"
-#include "LumberCamp.h"
-#include "StoneMine.h"
-#include "GoldMine.h"
-#include "Farm.h"
+// ALT SINIFLARI EKLÝYORUZ (Yollar senin projene göre)
+#include "Entity System/Entity Type/House.h"
+// #include "LumberCamp.h" -> Eðer dosyan yoksa yorum satýrý yap
+#include "Entity System/Entity Type/StoneMine.h"
+// #include "GoldMine.h" -> Dosya yoksa yorum satýrý yap
+#include "Entity System/Entity Type/Farm.h"
+#include "Entity System/Entity Type/Barracks.h" // Barracks ekledim
+
+#include <iostream>
+#include <ctime>
+
+MapManager::MapManager(int width, int height, int tileSize)
+    : m_width(width), m_height(height), m_tileSize(tileSize) {
+    m_level.resize(m_width * m_height, 0);
+}
+
+void MapManager::initialize() {
+    createTilesetFile();
+    if (!m_tilesetTexture.loadFromFile("tileset.png")) {
+        std::cerr << "HATA: tileset.png yuklenemedi!" << std::endl;
+    }
+
+    // Rastgele Duvarlar
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
+    for (int i = 0; i < (m_width * m_height) / 10; i++) { // %10 duvar olsun
+        int rx = std::rand() % m_width;
+        int ry = std::rand() % m_height;
+        m_level[rx + ry * m_width] = 1;
+    }
+
+    if (!m_map.load("tileset.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
+        std::cerr << "MapManager load hatasi!" << std::endl;
+    }
+}
+
+// --- BÝNA YERLEÞTÝRME (ENTÝTY SÝSTEMÝNE UYARLANDI) ---
+bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManager& resMgr) {
+    // 1. Sýnýr Kontrolü
+    if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return false;
+
+    // 2. Alan Dolu mu?
+    int indices[4] = {
+        tx + ty * m_width, (tx + 1) + ty * m_width,
+        tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width
+    };
+
+    for (int idx : indices) {
+        if (m_level[idx] != 0) return false; // Doluysa iptal et
+    }
+
+    // 3. Bina Oluþturma (Factory Pattern)
+    std::shared_ptr<Building> newBuilding = nullptr;
+
+    // NOT: Player kaynak kontrolünü Game.cpp veya BuildSystem yapmalý.
+    // MapManager sadece "Mekanik olarak koyabilir miyim" diye bakar.
+
+    if (type == BuildTypes::House) {
+        newBuilding = std::make_shared<House>();
+    }
+    else if (type == BuildTypes::Farm) {
+        newBuilding = std::make_shared<Farm>();
+    }
+    else if (type == BuildTypes::StoneMines) {
+        newBuilding = std::make_shared<StoneMine>();
+    }
+    else if (type == BuildTypes::Barrack) {
+        newBuilding = std::make_shared<Barracks>();
+    }
+
+    if (newBuilding) {
+        // Pozisyonu ayarla (Tile koordinatýndan Dünya koordinatýna)
+        newBuilding->setPosition(sf::Vector2f(tx * m_tileSize, ty * m_tileSize));
+        newBuilding->setTexture(m_tilesetTexture); // Geçici texture
+
+        m_buildings.push_back(newBuilding);
+
+        // Haritada alaný iþaretle (Duvar yap)
+        for (int idx : indices) {
+            m_level[idx] = 1;
+            updateTile(tx, ty, 1); // Görseli güncelle
+            updateTile(tx + 1, ty, 1);
+            updateTile(tx, ty + 1, 1);
+            updateTile(tx + 1, ty + 1, 1);
+        }
+        return true;
+    }
+    return false;
+}
+
+void MapManager::removeBuilding(int tx, int ty) {
+    // Coordinate Conversion: Mouse Grid -> World Check
+    sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16); // Merkeze bak
+
+    for (auto it = m_buildings.begin(); it != m_buildings.end(); ) {
+        // Arkadaþýnýn getGridBounds() kodunu senin getBounds() koduna çevirdik
+        if ((*it)->getBounds().contains(checkPos)) {
+
+            // Alaný temizle
+            sf::Vector2f pos = (*it)->getPosition();
+            int bx = static_cast<int>(pos.x / m_tileSize);
+            int by = static_cast<int>(pos.y / m_tileSize);
+
+            // 2x2 alaný temizle
+            updateTile(bx, by, 0);
+            updateTile(bx + 1, by, 0);
+            updateTile(bx, by + 1, 0);
+            updateTile(bx + 1, by + 1, 0);
+
+            it = m_buildings.erase(it);
+            return;
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
+Building* MapManager::getBuildingAt(int tx, int ty) {
+    sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
+    for (auto& b : m_buildings) {
+        if (b->getBounds().contains(checkPos)) return b.get();
+    }
+    return nullptr;
+}
+
+void MapManager::draw(sf::RenderWindow& window) {
+    window.draw(m_map);
+    // Binalarý Game.cpp içindeki Player::renderEntities çizebilir 
+    // veya burada test amaçlý çizebilirsin:
+    for (auto& b : m_buildings) {
+        b->render(window);
+    }
+}
+
+void MapManager::updateTile(int tx, int ty, int id) {
+    if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
+        m_level[tx + ty * m_width] = id;
+        m_map.updateTile(tx, ty, id, "tileset.png");
+    }
+}
+
+void MapManager::createTilesetFile() {
+    // ... (Eski kodundaki createTilesetFile içeriði ayný kalabilir) ...
+    // Hata vermemesi için burayý boþ býrakýyorum, eski kodundan kopyala.
+}
+
+/*
+#include "Map/MapManager.h"
+#include "Game/ResourceManager.h" // "Map/ResourceManager.h" yerine bunu yaz
+
+// Alt klasör yollarýný tam veriyoruz:
+#include "Entity System/Entity Type/House.h"
+#include "Entity System/Entity Type/StoneMine.h"
+#include "Entity System/Entity Type/Farm.h"
+#include "Entity System/Entity Type/types.h" // BuildingType sorunu için bu þart!
 
 #include <iostream>
 #include <ctime>
@@ -293,3 +443,4 @@ void MapManager::updateBuildings(sf::Time dt, ResourceManager& resMgr) {
         building->update(dt, resMgr);
     }
 }
+*/
