@@ -117,7 +117,7 @@
     <ClCompile Include="source\UI\ResourceBar.cpp">
       <Filter>Kaynak Dosyalar\src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="source\UI\ResourceManager.cpp">
+    <ClCompile Include="source\UI\AssetManager.cpp">
       <Filter>Kaynak Dosyalar\src\UI</Filter>
     </ClCompile>
     <ClCompile Include="source\UI\SelectedObjectPanel.cpp">
@@ -257,7 +257,7 @@
     <ClInclude Include="include\UI\ResourceBar.h">
       <Filter>Kaynak Dosyalar\include\UI</Filter>
     </ClInclude>
-    <ClInclude Include="include\UI\ResourceManager.h">
+    <ClInclude Include="include\UI\AssetManager.h">
       <Filter>Kaynak Dosyalar\include\UI</Filter>
     </ClInclude>
     <ClInclude Include="include\UI\SelectedObjectPanel.h">
@@ -291,6 +291,9 @@
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
     <ClInclude Include="include\Systems\PopulationSystem.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\GoldMine.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
   </ItemGroup>

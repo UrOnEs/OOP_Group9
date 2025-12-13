@@ -12,7 +12,9 @@ private:
 public:
     Barracks() {
         buildingType = BuildTypes::Barrack;
-        // Kýþla resmi yükle vs.
+        
+        // Kýþla daha saðlamdýr
+        health = GameRules::HP_Barracks;
     }
 
     // Üretimi Baþlat

@@ -5,7 +5,7 @@
 bool BuildSystem::build(Player& player, Villager& worker, Building& building, const sf::Vector2f& pos) {
 
     // 1. Maliyet Kontrolü (Basitçe Wood varsayýyorum, tipe göre deðiþebilir)
-    int cost = GameRules::SoldierCost_Wood; // Örnek, bina cost'u GameRules'a eklenebilir
+    int cost = GameRules::Cost_House_Wood; // Örnek, bina cost'u GameRules'a eklenebilir
 
     // Oyuncunun kaynaklarýný kontrol etmek için Player.h'a getResources fonksiyonuna index ile eriþiyoruz
     // (Daha temiz olmasý için Player'a 'getWood()' eklemek iyi olabilir ama þimdilik vector ile:)

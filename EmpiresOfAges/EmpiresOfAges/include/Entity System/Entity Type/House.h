@@ -1,14 +1,22 @@
 #pragma once
 #include "Building.h"
+#include "Game/GameRules.h" // GameRules eklendi
 
 class House : public Building {
 public:
-    int populationBonus; // Bu ev kaç kiþilik yer açýyor?
+    int populationBonus;
 
     House() {
-        buildingType = BuildTypes::House; // GameRules'a House eklemeyi unutma
-        populationBonus = 5; // Her ev +5 limit
+        buildingType = BuildTypes::House;
+
+        // GameRules'dan deðerleri çekiyoruz:
+        health = GameRules::HP_House;
+
+        populationBonus = 5;
+
+        // Boyut/Alan bilgisi (Çarpýþma için ileride lazým olur)
+        // setSize(GameRules::Size_House); 
     }
 
-    std::string getInfo() override { return "House: +5 Nufus Limiti"; }
+    std::string getInfo() override { return "House: +5 Nufus"; }
 };

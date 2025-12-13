@@ -9,6 +9,9 @@ private:
     static int IDcounter;
     static int counter;
 public:
+
+    void setType(SoldierTypes type);
+
     std::string stats() override;
 
     SoldierTypes soldierType;

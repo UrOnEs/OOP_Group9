@@ -11,53 +11,66 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
         return false;
     }
 
-    // 2. Nüfus Limiti Kontrolü (Player.h'a getUnitCount eklediðini varsayýyorum)
-    // Eðer yoksa: player.getEntities().size() kullanýlabilir.
+    // 2. Nüfus Limiti Kontrolü
     if (player.getUnitCount() >= player.getUnitLimit()) {
         std::cout << "[INFO] Nufus limiti dolu! Ev insa etmelisin.\n";
         return false;
     }
 
-    // 3. Maliyet ve Süre Belirleme
+    // 3. Maliyet ve Süre Belirleme (GameRules'dan çekiyoruz)
     int woodCost = 0;
+    int foodCost = 0;
     int goldCost = 0;
     float buildTime = 0.0f;
 
     switch (unitType) {
     case SoldierTypes::Barbarian:
-        woodCost = GameRules::SoldierCost_Wood;
-        buildTime = 2.0f; // 2 saniye
+        // Barbar: Yemek + Altýn
+        foodCost = GameRules::Cost_Barbarian_Food;
+        goldCost = GameRules::Cost_Barbarian_Gold;
+        buildTime = GameRules::Time_Build_Soldier;
         break;
+
     case SoldierTypes::Archer:
-        woodCost = 150; // GameRules'a ekleyebilirsin: ArcherCost_Wood
-        goldCost = 50;
-        buildTime = 3.0f;
+        // Okçu: Odun + Altýn
+        woodCost = GameRules::Cost_Archer_Wood;
+        goldCost = GameRules::Cost_Archer_Gold;
+        buildTime = GameRules::Time_Build_Soldier;
         break;
+
     case SoldierTypes::catapult:
-        woodCost = 300;
-        goldCost = 100;
-        buildTime = 5.0f;
+        // Mancýnýk: Çok Odun + Çok Altýn + Uzun Süre
+        woodCost = GameRules::Cost_Catapult_Wood;
+        goldCost = GameRules::Cost_Catapult_Gold;
+        buildTime = GameRules::Time_Build_Soldier * 2.0f; // Mancýnýk 2 kat uzun sürsün
         break;
     }
 
     // 4. Kaynak Kontrolü
-    // Player kaynaklarýný vector olarak çekiyoruz: [0] Wood, [1] Gold
+    // Player.cpp getResources sýrasý: { Wood, Gold, Stone, Food }
+    // Index: 0=Wood, 1=Gold, 2=Stone, 3=Food
     std::vector<int> resources = player.getResources();
 
-    if (resources[0] >= woodCost && resources[1] >= goldCost) {
+    bool hasWood = resources[0] >= woodCost;
+    bool hasGold = resources[1] >= goldCost;
+    bool hasFood = resources[3] >= foodCost;
 
-        // Ödeme Yap
-        player.addWood(-woodCost);
-        player.addGold(-goldCost);
+    if (hasWood && hasGold && hasFood) {
+
+        // Ödeme Yap (Negatif ekleme yaparak harcama yapýyoruz)
+        if (woodCost > 0) player.addWood(-woodCost);
+        if (goldCost > 0) player.addGold(-goldCost);
+        if (foodCost > 0) player.addFood(-foodCost);
 
         // Kýþlada üretimi baþlat
         barracks.startTraining(unitType, buildTime);
 
-        std::cout << "[BASARILI] Uretim basladi. Maliyet: " << woodCost << " Odun, " << goldCost << " Altin.\n";
+        std::cout << "[BASARILI] Uretim basladi. Tur: " << (int)unitType << "\n";
         return true;
     }
 
-    std::cout << "[HATA] Yetersiz Kaynak!\n";
+    std::cout << "[HATA] Yetersiz Kaynak! (Gereken: "
+        << woodCost << " Odun, " << foodCost << " Yemek, " << goldCost << " Altin)\n";
     return false;
 }
 
@@ -76,24 +89,31 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt) {
 
         // 2. Yeni Asker Nesnesini Oluþtur
         std::shared_ptr<Soldier> newSoldier = std::make_shared<Soldier>();
-        newSoldier->soldierType = type;
+
+        // --- KRÝTÝK DEÐÝÞÝKLÝK ---
+        // Eskisi: newSoldier->soldierType = type; (Sadece etiketi deðiþtiriyordu)
+        // Yenisi: setType fonksiyonu can, hasar ve hýzý da ayarlar!
+        newSoldier->setType(type);
 
         // 3. Konumlandýrma (Kýþlanýn kapýsýnda doðsun)
-        // Binanýn pozisyonunu alýp biraz sað-altýna koyuyoruz ki binanýn içinde kalmasýn
         sf::Vector2f spawnPos = barracks.getPosition();
-        spawnPos.x += 50.0f;
-        spawnPos.y += 50.0f;
+        // Binanýn biraz saðýna ve aþaðýsýna koy (TileSize kadar)
+        spawnPos.x += GameRules::TileSize * 1.5f;
+        spawnPos.y += GameRules::TileSize * 1.5f;
         newSoldier->setPosition(spawnPos);
 
-        // 4. Oyuncuya Özel Temayý Giydir (Texture)
-        // Player sýnýfýndaki texture pointerlarýný kullanarak askere giydiriyoruz.
-        // NOT: Player.h'a "assignThemeTo(Entity&)" fonksiyonu eklersen daha temiz olur.
-        // Þimdilik varsayýlan texture veya Player içindeki bir helper ile yapýlabilir.
+        // 4. Texture Atama (Geçici olarak Player üzerinden veya AssetManager'dan)
+        // Eðer Player'da texturelar varsa: 
+        // newSoldier->setTexture(player.playerResources.getTexture("Soldier"));
+
+        // Veya texture yoksa belli olsun diye renk verelim (Test için)
+        if (type == SoldierTypes::Barbarian) newSoldier->getModel().setColor(sf::Color::Red);
+        else if (type == SoldierTypes::Archer) newSoldier->getModel().setColor(sf::Color::Green);
+        else newSoldier->getModel().setColor(sf::Color::Magenta);
 
         // 5. Oyuncunun ordusuna ekle
-        // Player.h içinde 'addEntity' fonksiyonu olmasý lazým!
         player.addEntity(newSoldier);
 
-        std::cout << "[INFO] Asker sahaya indi!\n";
+        std::cout << "[INFO] Asker sahaya indi! Stats: " << newSoldier->stats() << "\n";
     }
 }

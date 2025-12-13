@@ -165,7 +165,7 @@
     <ClCompile Include="source\UI\DataManager.cpp" />
     <ClCompile Include="source\UI\HUD.cpp" />
     <ClCompile Include="source\UI\ResourceBar.cpp" />
-    <ClCompile Include="source\UI\ResourceManager.cpp" />
+    <ClCompile Include="source\UI\AssetManager.cpp" />
     <ClCompile Include="source\UI\SelectedObjectPanel.cpp" />
     <ClCompile Include="source\UI\UIButton.cpp" />
     <ClCompile Include="source\UI\UIManager.cpp" />
@@ -175,6 +175,7 @@
     <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
     <ClInclude Include="include\Entity System\Entity Type\Building.h" />
     <ClInclude Include="include\Entity System\Entity Type\Farm.h" />
+    <ClInclude Include="include\Entity System\Entity Type\GoldMine.h" />
     <ClInclude Include="include\Entity System\Entity Type\House.h" />
     <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h" />
     <ClInclude Include="include\Entity System\Entity Type\Soldier.h" />
@@ -212,7 +213,7 @@
     <ClInclude Include="include\UI\DataManager.h" />
     <ClInclude Include="include\UI\HUD.h" />
     <ClInclude Include="include\UI\ResourceBar.h" />
-    <ClInclude Include="include\UI\ResourceManager.h" />
+    <ClInclude Include="include\UI\AssetManager.h" />
     <ClInclude Include="include\UI\SelectedObjectPanel.h" />
     <ClInclude Include="include\UI\UIButton.h" />
     <ClInclude Include="include\UI\UIManager.h" />

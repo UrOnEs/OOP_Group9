@@ -9,7 +9,7 @@ bool CombatSystem::attack(Soldier& attacker, Entity& target) {
 
     if (distance <= attacker.getRange()) {
         // Hasar ver
-        target.takeDamage(GameRules::SoldierDamage); // Þimdilik sabit hasar
+        target.takeDamage(GameRules::Dmg_Barbarian); // Þimdilik sabit hasar
         return true;
     }
     return false; // Menzil dýþý

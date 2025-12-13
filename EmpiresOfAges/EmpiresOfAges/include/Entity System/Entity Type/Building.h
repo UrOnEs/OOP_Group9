@@ -1,25 +1,24 @@
 #pragma once
 #include "Entity System/Entity.h"
 #include "types.h"
+#include "Game/GameRules.h" // GameRules eklendi
 
 class Building : public Entity {
 public:
     BuildTypes buildingType;
 
     Building() {
-        health = 500.f;
+        // health = 500.f;  <-- BUNU SÝLÝYORUZ. 
+        // Artýk varsayýlan can yok, alt sýnýflar atayacak.
+        // Ama güvenlik için yine de bir baþlangýç deðeri verelim:
+        health = GameRules::BuildingHealth;
     }
 
     virtual ~Building() = default;
 
-    // --- BURAYI DEÐÝÞTÝRÝYORUZ ---
-
-    // Entity'den gelen borcu burada ödüyoruz.
-    // Artýk Farm veya House tekrar stats() yazmak zorunda kalmayacak.
     std::string stats() override {
-        return getInfo(); // stats istendiðinde getInfo'yu çaðýrýp döndürsün.
+        return getInfo();
     }
 
-    // Alt sýnýflar bunu doldurmak ZORUNDA (Bunu zaten yapýyorlar, sorun yok)
     virtual std::string getInfo() = 0;
 };

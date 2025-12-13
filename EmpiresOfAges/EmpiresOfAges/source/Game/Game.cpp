@@ -17,6 +17,7 @@ Game::Game()
 
     initUI();
     initNetwork();
+    stateManager.setState(GameState::Playing);
 
     // Haritayý oluþtur
     mapManager.initialize();

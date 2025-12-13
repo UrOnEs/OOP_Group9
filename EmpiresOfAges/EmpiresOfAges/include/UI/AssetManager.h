@@ -3,7 +3,7 @@
 #include <map>
 #include <string>
 
-class ResourceManager {
+class AssetManager{
 public:
     static sf::Texture& getTexture(const std::string& filename);
     static sf::Font& getFont(const std::string& filename);

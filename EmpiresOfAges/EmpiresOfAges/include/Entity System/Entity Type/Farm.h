@@ -1,11 +1,15 @@
+#pragma once
 #include "ResourceGenerator.h"
+#include "Game/GameRules.h"
 
 class Farm : public ResourceGenerator {
 public:
     Farm() {
         buildingType = BuildTypes::Farm;
-        interval = 5.0f; // Tarla biraz daha yavaþ olsun
-        amountPerTick = 20; // Ama çok yemek versin
+        health = GameRules::HP_Farm; // Caný az
+
+        interval = GameRules::Time_Harvest_Tick * 2.0f; // Tarla biraz daha yavaþ olsun (Örn: 2 saniye)
+        amountPerTick = 20;
     }
 
     std::string getInfo() override { return "Farm: Yemek Uretir"; }

@@ -1,14 +1,14 @@
 #include "Map/MapManager.h"
-#include "Game/ResourceManager.h" // YOLU DÜZELTTÝK
-#include "Entity System/Entity Type/types.h" 
+#include "Game/ResourceManager.h"
+#include "Entity System/Entity Type/types.h"
 
-// ALT SINIFLARI EKLÝYORUZ (Yollar senin projene göre)
+// Alt Sýnýflar
 #include "Entity System/Entity Type/House.h"
-// #include "LumberCamp.h" -> Eðer dosyan yoksa yorum satýrý yap
 #include "Entity System/Entity Type/StoneMine.h"
-// #include "GoldMine.h" -> Dosya yoksa yorum satýrý yap
 #include "Entity System/Entity Type/Farm.h"
-#include "Entity System/Entity Type/Barracks.h" // Barracks ekledim
+#include "Entity System/Entity Type/Barracks.h"
+// #include "Entity System/Entity Type/LumberCamp.h" // Dosya yoksa kapalý kalsýn
+// #include "Entity System/Entity Type/GoldMine.h"   // Dosya yoksa kapalý kalsýn
 
 #include <iostream>
 #include <ctime>
@@ -19,69 +19,68 @@ MapManager::MapManager(int width, int height, int tileSize)
 }
 
 void MapManager::initialize() {
-    createTilesetFile();
+    createTilesetFile(); // PNG oluþtur
+
     if (!m_tilesetTexture.loadFromFile("tileset.png")) {
         std::cerr << "HATA: tileset.png yuklenemedi!" << std::endl;
     }
 
-    // Rastgele Duvarlar
+    // Rastgele Duvarlar (%10 oranýnda)
     std::srand(static_cast<unsigned>(std::time(nullptr)));
-    for (int i = 0; i < (m_width * m_height) / 10; i++) { // %10 duvar olsun
+    for (int i = 0; i < (m_width * m_height) / 10; i++) {
         int rx = std::rand() % m_width;
         int ry = std::rand() % m_height;
         m_level[rx + ry * m_width] = 1;
     }
 
+    // TileMap yükle
     if (!m_map.load("tileset.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
         std::cerr << "MapManager load hatasi!" << std::endl;
     }
 }
 
-// --- BÝNA YERLEÞTÝRME (ENTÝTY SÝSTEMÝNE UYARLANDI) ---
+void MapManager::createTilesetFile() {
+    sf::Image tileset;
+    tileset.create(704, 32, sf::Color::Black);
+
+    // 0: Çimen (Yeþil)
+    for (unsigned int x = 0; x < 32; ++x) {
+        for (unsigned int y = 0; y < 32; ++y) {
+            if (x == 0 || y == 0 || x == 31 || y == 31) tileset.setPixel(x, y, sf::Color(34, 139, 34));
+            else tileset.setPixel(x, y, sf::Color(50, 205, 50));
+        }
+    }
+    // 1: Duvar (Gri)
+    for (unsigned int x = 32; x < 64; ++x) {
+        for (unsigned int y = 0; y < 32; ++y) {
+            tileset.setPixel(x, y, sf::Color(105, 105, 105));
+            if ((x - 32) == y || (x - 32) == (31 - y)) tileset.setPixel(x, y, sf::Color::Black);
+        }
+    }
+    tileset.saveToFile("tileset.png");
+}
+
 bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManager& resMgr) {
-    // 1. Sýnýr Kontrolü
     if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return false;
 
-    // 2. Alan Dolu mu?
-    int indices[4] = {
-        tx + ty * m_width, (tx + 1) + ty * m_width,
-        tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width
-    };
+    int indices[4] = { tx + ty * m_width, (tx + 1) + ty * m_width, tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width };
+    for (int idx : indices) if (m_level[idx] != 0) return false;
 
-    for (int idx : indices) {
-        if (m_level[idx] != 0) return false; // Doluysa iptal et
-    }
-
-    // 3. Bina Oluþturma (Factory Pattern)
     std::shared_ptr<Building> newBuilding = nullptr;
 
-    // NOT: Player kaynak kontrolünü Game.cpp veya BuildSystem yapmalý.
-    // MapManager sadece "Mekanik olarak koyabilir miyim" diye bakar.
-
-    if (type == BuildTypes::House) {
-        newBuilding = std::make_shared<House>();
-    }
-    else if (type == BuildTypes::Farm) {
-        newBuilding = std::make_shared<Farm>();
-    }
-    else if (type == BuildTypes::StoneMines) {
-        newBuilding = std::make_shared<StoneMine>();
-    }
-    else if (type == BuildTypes::Barrack) {
-        newBuilding = std::make_shared<Barracks>();
-    }
+    if (type == BuildTypes::House) newBuilding = std::make_shared<House>();
+    else if (type == BuildTypes::Farm) newBuilding = std::make_shared<Farm>();
+    else if (type == BuildTypes::StoneMine) newBuilding = std::make_shared<StoneMine>();
+    else if (type == BuildTypes::Barrack) newBuilding = std::make_shared<Barracks>();
 
     if (newBuilding) {
-        // Pozisyonu ayarla (Tile koordinatýndan Dünya koordinatýna)
         newBuilding->setPosition(sf::Vector2f(tx * m_tileSize, ty * m_tileSize));
-        newBuilding->setTexture(m_tilesetTexture); // Geçici texture
-
+        newBuilding->setTexture(m_tilesetTexture);
         m_buildings.push_back(newBuilding);
 
-        // Haritada alaný iþaretle (Duvar yap)
         for (int idx : indices) {
             m_level[idx] = 1;
-            updateTile(tx, ty, 1); // Görseli güncelle
+            updateTile(tx, ty, 1);
             updateTile(tx + 1, ty, 1);
             updateTile(tx, ty + 1, 1);
             updateTile(tx + 1, ty + 1, 1);
@@ -92,24 +91,14 @@ bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManag
 }
 
 void MapManager::removeBuilding(int tx, int ty) {
-    // Coordinate Conversion: Mouse Grid -> World Check
-    sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16); // Merkeze bak
-
+    sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
     for (auto it = m_buildings.begin(); it != m_buildings.end(); ) {
-        // Arkadaþýnýn getGridBounds() kodunu senin getBounds() koduna çevirdik
         if ((*it)->getBounds().contains(checkPos)) {
-
-            // Alaný temizle
             sf::Vector2f pos = (*it)->getPosition();
             int bx = static_cast<int>(pos.x / m_tileSize);
             int by = static_cast<int>(pos.y / m_tileSize);
-
-            // 2x2 alaný temizle
-            updateTile(bx, by, 0);
-            updateTile(bx + 1, by, 0);
-            updateTile(bx, by + 1, 0);
-            updateTile(bx + 1, by + 1, 0);
-
+            updateTile(bx, by, 0); updateTile(bx + 1, by, 0);
+            updateTile(bx, by + 1, 0); updateTile(bx + 1, by + 1, 0);
             it = m_buildings.erase(it);
             return;
         }
@@ -119,6 +108,21 @@ void MapManager::removeBuilding(int tx, int ty) {
     }
 }
 
+void MapManager::draw(sf::RenderWindow& window) {
+    window.draw(m_map);
+    for (auto& b : m_buildings) b->render(window);
+}
+
+void MapManager::updateTile(int tx, int ty, int id) {
+    if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
+        m_level[tx + ty * m_width] = id;
+        m_map.updateTile(tx, ty, id, "tileset.png");
+    }
+}
+
+// Getterlar ve Yardýmcýlar
+const std::vector<int>& MapManager::getLevelData() const { return m_level; }
+
 Building* MapManager::getBuildingAt(int tx, int ty) {
     sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
     for (auto& b : m_buildings) {
@@ -127,320 +131,10 @@ Building* MapManager::getBuildingAt(int tx, int ty) {
     return nullptr;
 }
 
-void MapManager::draw(sf::RenderWindow& window) {
-    window.draw(m_map);
-    // Binalarý Game.cpp içindeki Player::renderEntities çizebilir 
-    // veya burada test amaçlý çizebilirsin:
-    for (auto& b : m_buildings) {
-        b->render(window);
-    }
+void MapManager::updateBuildings(float dt) {
+    // ResourceManager'a ihtiyaç varsa parametre olarak alýnmalý
 }
 
-void MapManager::updateTile(int tx, int ty, int id) {
-    if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
-        m_level[tx + ty * m_width] = id;
-        m_map.updateTile(tx, ty, id, "tileset.png");
-    }
-}
-
-void MapManager::createTilesetFile() {
-    // ... (Eski kodundaki createTilesetFile içeriði ayný kalabilir) ...
-    // Hata vermemesi için burayý boþ býrakýyorum, eski kodundan kopyala.
-}
-
-/*
-#include "Map/MapManager.h"
-#include "Game/ResourceManager.h" // "Map/ResourceManager.h" yerine bunu yaz
-
-// Alt klasör yollarýný tam veriyoruz:
-#include "Entity System/Entity Type/House.h"
-#include "Entity System/Entity Type/StoneMine.h"
-#include "Entity System/Entity Type/Farm.h"
-#include "Entity System/Entity Type/types.h" // BuildingType sorunu için bu þart!
-
-#include <iostream>
-#include <ctime>
-#include <algorithm>
-
-// --- CONSTRUCTOR ---
-MapManager::MapManager(int width, int height, int tileSize)
-    : m_width(width), m_height(height), m_tileSize(tileSize) {
-    m_level.resize(m_width * m_height, 0);
-}
-
-// --- INITIALIZE ---
-void MapManager::initialize() {
-    // 1. Tileset dosyasýný oluþtur (Yeni renklerle)
-    createTilesetFile();
-
-    // 2. Texture'ý yükle (Binalarýn çizimi için gerekli)
-    if (!m_tilesetTexture.loadFromFile("tileset.png")) {
-        std::cerr << "HATA: tileset.png texture yuklenemedi!" << std::endl;
-    }
-
-    // 3. Rastgele Duvarlar (Harita boþ kalmasýn)
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
-    for (int i = 0; i < 5000; i++) {
-        int rx = std::rand() % m_width;
-        int ry = std::rand() % m_height;
-        m_level[rx + ry * m_width] = 1;
-    }
-
-    // 4. TileMap Görselini Yükle
-    if (!m_map.load("tileset.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
-        std::cerr << "MapManager tileset hatasi!" << std::endl;
-    }
-}
-
-// --- TILESET OLUÞTURUCU (Tüm Binalar Ýçin) ---
-void MapManager::createTilesetFile() {
-    sf::Image tileset;
-    // Geniþliði artýrýyoruz: 22 kare * 32 = 704 piksel (ID 0'dan 21'e kadar)
-    // 0-1 (Zemin/Duvar) + 4 Bina * 4 Parça = 18 ID.
-    // +4 Parça Farm için = 22 ID eder.
-    tileset.create(704, 32, sf::Color::Black);
-
-    // 0: Çimen
-    for (unsigned int x = 0; x < 32; ++x) {
-        for (unsigned int y = 0; y < 32; ++y) {
-            if (x == 0 || y == 0 || x == 31 || y == 31) tileset.setPixel(x, y, sf::Color(34, 139, 34));
-            else tileset.setPixel(x, y, sf::Color(50, 205, 50));
-        }
-    }
-    // 1: Duvar
-    for (unsigned int x = 32; x < 64; ++x) {
-        for (unsigned int y = 0; y < 32; ++y) {
-            tileset.setPixel(x, y, sf::Color(105, 105, 105));
-            if ((x - 32) == y || (x - 32) == (31 - y)) tileset.setPixel(x, y, sf::Color(0, 0, 0));
-        }
-    }
-
-    struct BuildColor { int startID; sf::Color main; sf::Color border; };
-    std::vector<BuildColor> colors = {
-        {2, sf::Color(139, 69, 19), sf::Color(101, 67, 33)},    // House
-        {6, sf::Color(34, 100, 34), sf::Color(0, 60, 0)},       // Lumber
-        {10, sf::Color(120, 120, 140), sf::Color(80, 80, 100)}, // Stone
-        {14, sf::Color(218, 165, 32), sf::Color(184, 134, 11)}, // Gold
-        {18, sf::Color(240, 230, 140), sf::Color(189, 183, 107)} // FARM
-    };
-
-    for (const auto& c : colors) {
-        for (unsigned int i = 0; i < 4; ++i) { // Her bina 4 parça
-            int currentID = c.startID + i;
-            unsigned int startX = currentID * 32;
-
-            for (unsigned int x = startX; x < startX + 32; ++x) {
-                for (unsigned int y = 0; y < 32; ++y) {
-                    tileset.setPixel(x, y, c.main);
-
-                    int localX = x - startX;
-                    // Kenarlýk Çizimi (Binanýn bütün görünmesi için)
-                    bool border = false;
-                    if (i == 0 && (y == 0 || localX == 0)) border = true; // Sol-Üst
-                    if (i == 1 && (y == 0 || localX == 31)) border = true;// Sað-Üst
-                    if (i == 2 && (y == 31 || localX == 0)) border = true;// Sol-Alt
-                    if (i == 3 && (y == 31 || localX == 31)) border = true;// Sað-Alt
-
-                    if (border) tileset.setPixel(x, y, c.border);
-                    if ((localX + y) % 8 == 0) tileset.setPixel(x, y, c.border); // Desen
-                }
-            }
-        }
-    }
-    tileset.saveToFile("tileset.png");
-}
-
-// --- INPUT YÖNETÝMÝ ---
-void MapManager::handleInput(sf::RenderWindow& window, const sf::View& camera, ResourceManager& resMgr) {
-    if (window.hasFocus() && sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-        // Tuþlar
-        bool keyQ = sf::Keyboard::isKeyPressed(sf::Keyboard::Q); // Duvar
-        bool keyW = sf::Keyboard::isKeyPressed(sf::Keyboard::W); // HOUSE
-        bool keyE = sf::Keyboard::isKeyPressed(sf::Keyboard::E); // LUMBER
-        bool keyR = sf::Keyboard::isKeyPressed(sf::Keyboard::R); // STONE
-        bool keyT = sf::Keyboard::isKeyPressed(sf::Keyboard::T); // GOLD
-        bool keyF = sf::Keyboard::isKeyPressed(sf::Keyboard::F); // FARM
-        bool keyShift = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift); // SÝLME
-
-        if (keyQ || keyW || keyE || keyR || keyT || keyShift || keyF) {
-            sf::Vector2f mousePosWorld = window.mapPixelToCoords(sf::Mouse::getPosition(window), camera);
-            int tx = static_cast<int>(mousePosWorld.x / m_tileSize);
-            int ty = static_cast<int>(mousePosWorld.y / m_tileSize);
-
-            if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
-                int index = tx + ty * m_width;
-
-                // --- SÝLME (SHIFT) ---
-                if (keyShift) {
-                    // Önce bina var mý diye bak (Pointer ile kontrol)
-                    if (isBuildingAt(tx, ty)) {
-                        removeBuilding(tx, ty);
-                    }
-                    // Yoksa ve o kare duvarsa duvarý sil
-                    else if (m_level[index] == 1) {
-                        updateTile(tx, ty, 0);
-                    }
-                }
-                // --- DUVAR (Q) ---
-                else if (keyQ) {
-                    // Sadece boþsa duvar koy
-                    if (m_level[index] == 0 && !isBuildingAt(tx, ty)) {
-                        updateTile(tx, ty, 1);
-                    }
-                }
-                // --- BÝNA ÝNÞAATI ---
-                else if (keyW) addBuilding(tx, ty, BuildingType::House, resMgr);
-                else if (keyE) addBuilding(tx, ty, BuildingType::LumberCamp, resMgr);
-                else if (keyR) addBuilding(tx, ty, BuildingType::StoneMine, resMgr);
-                else if (keyT) addBuilding(tx, ty, BuildingType::GoldMine, resMgr);
-                else if (keyF) addBuilding(tx, ty, BuildingType::Farm, resMgr);
-            }
-        }
-    }
-}
-
-// --- BÝNA EKLEME (Polimorfizm ve Kaynak Kontrolü ile) ---
-void MapManager::addBuilding(int tx, int ty, BuildingType type, ResourceManager& resMgr) {
-    // 1. Sýnýr Kontrolü
-    if (tx + 1 >= m_width || ty + 1 >= m_height) return;
-
-    // 2. Alan Boþluk Kontrolü
-    int indices[4] = {
-        tx + ty * m_width, (tx + 1) + ty * m_width,
-        tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width
-    };
-
-    bool areaClear = true;
-    for (int idx : indices) if (m_level[idx] != 0) areaClear = false;
-
-    if (areaClear) {
-        bool built = false;
-        std::unique_ptr<Building> newBuilding;
-
-        // Her binanýn maliyeti ve sýnýfý farklý
-        if (type == BuildingType::House) {
-            if (resMgr.spendResources(100, 0, 0, 0)) { // 100 Odun
-                newBuilding = std::make_unique<House>(tx, ty, m_tilesetTexture);
-                built = true;
-                std::cout << "House Insa Edildi (-100 Odun)\n";
-            }
-        }
-        else if (type == BuildingType::LumberCamp) {
-            if (resMgr.spendResources(50, 0, 0, 0)) { // 50 Odun
-                newBuilding = std::make_unique<LumberCamp>(tx, ty, m_tilesetTexture);
-                built = true;
-                std::cout << "LumberCamp Insa Edildi (-50 Odun)\n";
-            }
-        }
-        else if (type == BuildingType::StoneMine) {
-            if (resMgr.spendResources(150, 0, 0, 0)) { // 150 Odun
-                newBuilding = std::make_unique<StoneMine>(tx, ty, m_tilesetTexture);
-                built = true;
-                std::cout << "StoneMine Insa Edildi (-150 Odun)\n";
-            }
-        }
-        else if (type == BuildingType::GoldMine) {
-            if (resMgr.spendResources(200, 50, 0, 0)) { // 200 Odun, 50 Taþ
-                newBuilding = std::make_unique<GoldMine>(tx, ty, m_tilesetTexture);
-                built = true;
-                std::cout << "GoldMine Insa Edildi (-200 Odun, -50 Tas)\n";
-            }
-        }
-        else if (type == BuildingType::Farm) { // Maliyet: 100 Odun
-            if (resMgr.spendResources(100, 0, 0, 0)) {
-                newBuilding = std::make_unique<Farm>(tx, ty, m_tilesetTexture);
-                built = true;
-                std::cout << "Farm Insa Edildi (-100 Odun)\n";
-            }
-        }
-
-        // Eðer kaynak yetti ve bina oluþturulduysa listeye ekle
-        if (built && newBuilding) {
-            m_buildings.push_back(std::move(newBuilding)); // Listeye taþý (move)
-
-            // Harita verisini güncelle (Duvar yap ki içinden geçilmesin)
-            for (int idx : indices) m_level[idx] = 1;
-        }
-        else if (!built) {
-            std::cout << "Yetersiz Kaynak!\n";
-        }
-    }
-}
-
-// --- BÝNA SÝLME ---
-void MapManager::removeBuilding(int tx, int ty) {
-    for (auto it = m_buildings.begin(); it != m_buildings.end(); ) {
-        // (*it) -> unique_ptr olduðu için pointer'a eriþim saðlar
-        // ->getGridBounds() -> Nesnenin metoduna eriþir
-        if ((*it)->getGridBounds().contains(tx, ty)) {
-
-            // Binanýn olduðu alaný temizle (0 yap)
-            int bx = (*it)->getX();
-            int by = (*it)->getY();
-
-            m_level[bx + by * m_width] = 0;
-            m_level[(bx + 1) + by * m_width] = 0;
-            m_level[bx + (by + 1) * m_width] = 0;
-            m_level[(bx + 1) + (by + 1) * m_width] = 0;
-
-            // Listeden sil
-            it = m_buildings.erase(it);
-            return; // Tek seferde bir bina sil
-        }
-        else {
-            ++it;
-        }
-    }
-}
-
-// --- TILE GÜNCELLEME (Duvarlar için) ---
-void MapManager::updateTile(int tx, int ty, int id) {
-    if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
-        m_level[tx + ty * m_width] = id;
-        m_map.updateTile(tx, ty, id, "tileset.png");
-    }
-}
-
-// --- HELPER: BÝNANIN POINTERINI DÖNDÜR ---
-Building* MapManager::getBuildingAt(int tx, int ty) {
-    for (const auto& b : m_buildings) {
-        if (b->getGridBounds().contains(tx, ty)) return b.get(); // Raw pointer döndür
-    }
-    return nullptr;
-}
-
-// --- HELPER: BURADA BÝNA VAR MI? ---
 bool MapManager::isBuildingAt(int tx, int ty) {
-    for (const auto& b : m_buildings) {
-        if (b->getGridBounds().contains(tx, ty)) {
-            return true;
-        }
-    }
-    return false;
+    return (getBuildingAt(tx, ty) != nullptr);
 }
-
-// --- ÇÝZÝM ---
-void MapManager::draw(sf::RenderWindow& window) {
-    // 1. Önce zemini ve duvarlarý çiz
-    window.draw(m_map);
-
-    // 2. Üzerine binalarý çiz
-    for (const auto& b : m_buildings) {
-        window.draw(*b);
-    }
-}
-
-// --- GETTERLAR ---
-const std::vector<int>& MapManager::getLevelData() const { return m_level; }
-int MapManager::getWidth() const { return m_width; }
-int MapManager::getHeight() const { return m_height; }
-sf::Vector2u MapManager::getTileSize() const {
-    return sf::Vector2u(static_cast<unsigned int>(m_tileSize), static_cast<unsigned int>(m_tileSize));
-}
-
-void MapManager::updateBuildings(sf::Time dt, ResourceManager& resMgr) {
-    for (auto& building : m_buildings) {
-        building->update(dt, resMgr);
-    }
-}
-*/
