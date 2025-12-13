@@ -12,6 +12,11 @@ Soldier::Soldier() {
     this->isSelected = false;
     this->entityID = ++IDcounter;
     counter++;
+
+    shape.setSize(sf::Vector2f(32.f, 32.f)); // 32x32 kare
+    shape.setOrigin(16.f, 16.f);             // Merkezi ortasý olsun
+    shape.setFillColor(sf::Color::Red);      // Varsayýlan kýrmýzý olsun
+    shape.setPosition(0.f, 0.f);
 }
 
 Soldier::~Soldier() {
@@ -44,6 +49,18 @@ void Soldier::setType(SoldierTypes type) {
         this->range = GameRules::Range_Catapult; // Çok uzun menzil
         break;
     }
+}
+
+void Soldier::render(sf::RenderWindow& window) {
+    // Eðer seçiliyse etrafýna yeþil çizgi çek (Belli olsun)
+    if (isSelected) {
+        shape.setOutlineThickness(2.0f);
+        shape.setOutlineColor(sf::Color::Green);
+    }
+    else {
+        shape.setOutlineThickness(0.0f);
+    }
+    window.draw(shape); // Þekli çiz!
 }
 
 std::string Soldier::stats() {

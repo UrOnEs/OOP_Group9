@@ -20,6 +20,7 @@ public:
 
     ~Soldier();
 
+    void render(sf::RenderWindow& window) override;
 };
 
 #endif // !SOLDIER_H

@@ -10,14 +10,6 @@
 
 class Entity {
 protected:
-    float health;
-    float damage;
-    float range;
-
-    int entityID;
-
-    bool isAlive;
-    bool isSelected;
 
     //ait olduðu takým renkleri (bunun sayesinde kim kime saldýrabilir falan görücez)
     TeamColors Color;
@@ -25,12 +17,25 @@ protected:
     // oyun içi görüntüsü
     sf::Sprite model;
 
+    sf::RectangleShape shape;
+
     // arayüzdeki sembol
     sf::Sprite icon;
 
     sf::Vector2f position; // Custom Vector2 yerine sf::Vector2f
 
 public:
+    int entityID;
+    float health;
+    float damage;
+    float range;
+    bool isAlive;
+    bool isSelected;
+
+    void move(const sf::Vector2f& offset) {
+        setPosition(getPosition() + offset);
+    }
+
     virtual std::string stats() = 0;
 
     virtual ~Entity() = default;
