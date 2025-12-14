@@ -4,25 +4,17 @@
 #include <string>
 #include <iostream>
 #include <memory>
-#include <SFML/System/Vector2.hpp>
-#include "Game/TeamColors.h"
 #include <SFML/Graphics.hpp>
+#include "Game/TeamColors.h"
 
 class Entity {
 protected:
+    // 1. ASIL OYUNCU: Sprite (Resim varsa bu çizilecek)
+    sf::Sprite sprite;
+    bool hasTexture = false;
 
-    //ait olduðu takým renkleri (bunun sayesinde kim kime saldýrabilir falan görücez)
-    TeamColors Color;
-
-    // oyun içi görüntüsü
-    sf::Sprite model;
-
-    sf::RectangleShape shape;
-
-    // arayüzdeki sembol
-    sf::Sprite icon;
-
-    sf::Vector2f position; // Custom Vector2 yerine sf::Vector2f
+    // 2. YEDEK OYUNCU: Yuvarlak (Resim yoksa bu çizilecek)
+    sf::CircleShape shape;
 
 public:
     int entityID;
@@ -32,64 +24,92 @@ public:
     bool isAlive;
     bool isSelected;
 
-    void move(const sf::Vector2f& offset) {
-        setPosition(getPosition() + offset);
-    }
+    Entity() {
+        isAlive = true;
+        isSelected = false;
+        hasTexture = false;
 
-    virtual std::string stats() = 0;
+        // Varsayýlan Yuvarlak Ayarlarý
+        shape.setRadius(15.f);
+        shape.setOrigin(15.f, 15.f);
+        shape.setPointCount(30);
+        shape.setFillColor(sf::Color::White); // Varsayýlan renk
+    }
 
     virtual ~Entity() = default;
 
-    // --- GETTER & SETTER (Sistemlerin veriyi okumasý için þart) ---
-    sf::Vector2f getPosition() const { return position; }
-
-
-    void setPosition(const sf::Vector2f& newPos) {
-        position = newPos;      // Mantýksal konumu güncelle
-        model.setPosition(newPos); // Görsel konumu güncelle (Ekranda hareket etmesi için þart)
+    // --- HAREKET ---
+    void move(const sf::Vector2f& offset) {
+        if (hasTexture) sprite.move(offset);
+        shape.move(offset);
     }
 
+    virtual void setPosition(const sf::Vector2f& newPos) {
+        if (hasTexture) sprite.setPosition(newPos);
+        shape.setPosition(newPos);
+    }
 
-    float getRange() const { return range; } // Saldýrý sistemi için lazým olacak
+    virtual sf::Vector2f getPosition() const {
+        return hasTexture ? sprite.getPosition() : shape.getPosition();
+    }
 
-    // Saðlýk sistemi için
+    // --- GÖRÜNÜM ---
+    void setTexture(const sf::Texture& texture) {
+        sprite.setTexture(texture);
+        sf::Vector2u size = texture.getSize();
+        sprite.setOrigin(size.x / 2.f, size.y / 2.f);
+        hasTexture = true;
+    }
+
+    // "getModel" hatasý için (Eski kodlar shape'e model diyordu)
+    sf::CircleShape& getShape() { return shape; }
+
+    // "getRange" hatasý için
+    float getRange() const { return range; }
+
+    // --- ÇÝZÝM (Render) ---
+    // Bunu .h içinde tanýmladýðýmýz için .cpp'de tekrar yazma!
+    virtual void render(sf::RenderWindow& window) {
+        if (!isAlive) return;
+
+        // Seçim Halkasý
+        if (isSelected) {
+            shape.setOutlineThickness(2.0f);
+            shape.setOutlineColor(sf::Color::Green);
+        }
+        else {
+            shape.setOutlineThickness(0.0f);
+        }
+
+        if (hasTexture) {
+            window.draw(sprite);
+            if (isSelected) window.draw(shape); // Seçiliyse halkayý da çiz
+        }
+        else {
+            window.draw(shape);
+        }
+    }
+
+    // --- DURUM YÖNETÝMÝ (Eksik olanlar buradaydý) ---
+
+    // "getIsAlive" hatasý için
+    bool getIsAlive() const { return isAlive; }
+
+    // "setSelected" hatasý için
+    void setSelected(bool status) { isSelected = status; }
+
+    // "takeDamage" hatasý için
     void takeDamage(float amount) {
         health -= amount;
         if (health <= 0) isAlive = false;
     }
-    bool getIsAlive() const { return isAlive; }
 
-
-    // Modelin kendisine ulaþmak için (Çizim yaparken lazým olacak)
-    sf::Sprite& getModel() { return model; }
-
-    // Ýkonun kendisine ulaþmak için (UI)
-    sf::Sprite& getIcon() { return icon; }
-
-    // Dýþarýdan texture atamak için 
-    void setTexture(const sf::Texture& texture) {
-        model.setTexture(texture);
-        // Resim yüklendiðinde merkezini ortalamak iyi bir taktiktir:
-        model.setOrigin(texture.getSize().x / 2.f, texture.getSize().y / 2.f);
+    // Týklama Alaný
+    sf::FloatRect getBounds() const {
+        return hasTexture ? sprite.getGlobalBounds() : shape.getGlobalBounds();
     }
 
-
-    void setIconTexture(const sf::Texture& texture) {
-        icon.setTexture(texture);
-    }
-
-    virtual void render(sf::RenderWindow& window);
-
-    sf::FloatRect getBounds() {
-        return model.getGlobalBounds(); // Sprite'ýn kapladýðý alan
-    }
-
-    //Seçildiðini görselleþtirmek için:
-    void setSelected(bool status) {
-        isSelected = status;
-        if (isSelected) model.setColor(sf::Color::Green); // Seçilince yeþil olsun
-        else model.setColor(sf::Color::White); // Normale dönsün
-    }
+    virtual std::string stats() = 0;
 };
 
 #endif

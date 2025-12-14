@@ -2,25 +2,24 @@
 #define SOLDIER_H
 
 #include "Entity System/Entity Type/types.h"
-#include "Unit.h"
+#include "Entity System/Entity Type/Unit.h"
 
 class Soldier : public Unit {
 private:
     static int IDcounter;
     static int counter;
-public:
-
-    void setType(SoldierTypes type);
-
-    std::string stats() override;
-
     SoldierTypes soldierType;
 
-    Soldier(); // Constructor (GameRules verilerini buradan yüklicez)
-
+public:
+    Soldier();
     ~Soldier();
 
-    void render(sf::RenderWindow& window) override;
+    void setType(SoldierTypes type);
+    std::string stats() override;
+
+    // --- ESKÝ KODLARIN ÇALIÞMASI ÝÇÝN YÖNLENDÝRME ---
+    // Game.cpp "getModel()" diye sorarsa, babasýndaki "getShape()"i versin.
+    sf::CircleShape& getModel() { return getShape(); }
 };
 
-#endif // !SOLDIER_H
+#endif

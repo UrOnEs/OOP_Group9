@@ -1,28 +1,37 @@
 #pragma once
-
 #include "Entity System/Entity.h"
+#include <SFML/Graphics.hpp>
 #include <vector>
+#include "Map/Point.h"
 
-class Unit : public Entity
-{
-protected:
-    float travelSpeed;
-    float attackSpeed;
-
-    bool isMoving;
-
+class Unit : public Entity {
 public:
-    // Hýz deðerine sistemlerin ulaþmasý lazým
+    // Soldier sýnýfý "Soldier()" dediðinde arka planda "Unit()" çaðrýlýr.
+    // Bu olmazsa "uygun varsayýlan oluþturucu yok" hatasý alýrsýn.
+    Unit();
+    Unit(int startGridX, int startGridY, int tileSize);
+
+    // Update fonksiyonu (Harita verisiyle)
+    void update(float dt, const std::vector<int>& mapData, int mapWidth, int mapHeight);
+
+    void render(sf::RenderWindow& window) override;
+
+    // --- HAREKET SÝSTEMÝ ---
+    void moveTo(sf::Vector2f targetWorldPos);
+    Point getGridPoint() const;
+
+    // Getterlar (Eski kodlarýn çalýþmasý için)
     float getSpeed() const { return travelSpeed; }
 
-    std::vector<sf::Vector2f> path;
+protected:
+    float travelSpeed;
 
-    void setGridPosition(int tx, int ty) {
-        // 32, senin TileSize deðerin. Bunu GameRules'dan çekmek daha iyi olur ama þimdilik 32 yazalým.
-        float pixelX = tx * 32.0f;
-        float pixelY = ty * 32.0f;
+    // Hareket Deðiþkenleri
+    bool m_isMoving;
+    sf::Vector2f m_targetPos;
+    int m_tileSize;
 
-        // Tam karenin ortasýnda dursun istiyorsan +16 eklersin
-        setPosition(sf::Vector2f(pixelX, pixelY));
-    }
+private:
+    // Çarpýþma Kontrolü
+    bool checkCollision(const sf::Vector2f& newPos, const std::vector<int>& mapData, int width, int height);
 };

@@ -142,6 +142,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="source\Entities\Entity types\Building.cpp" />
     <ClCompile Include="source\Entities\Entity types\Soldier.cpp" />
+    <ClCompile Include="source\Entities\Entity types\Unit.cpp" />
     <ClCompile Include="source\Entities\Entity types\Villager.cpp" />
     <ClCompile Include="source\Entities\Entity.cpp" />
     <ClCompile Include="source\Entities\EntityManager.cpp" />

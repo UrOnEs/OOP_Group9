@@ -5,7 +5,7 @@
 int Villager::IDcounter = 0;
 int Villager::counter = 0;
 
-Villager::Villager() {
+Villager::Villager() : Unit(){
     // GameRules'dan verileri çek
     this->health = GameRules::HP_Villager;
     this->damage = GameRules::Dmg_Villager;

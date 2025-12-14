@@ -1,25 +1,37 @@
-#include "Systems/MovementSystem.h"
-#include <cmath> // sqrt ve hypot için
 
-bool MovementSystem::move(Unit& unit, const sf::Vector2f& target, float deltaTime) {
+/*"Systems/MovementSystem.h"
+#include <cmath>
+#include <iostream>
+
+bool MovementSystem::move(Unit& unit, const sf::Vector2f& ignoredTarget, float deltaTime) {
+    // NOT: ignoredTarget parametresini kullanmýyoruz çünkü unit.path listesini takip edeceðiz.
+
+    // Eðer gidecek yol yoksa dur.
+    if (unit.path.empty()) return true; // Hedefe vardý
+
+    // Sýradaki hedef (Listenin baþý)
+    sf::Vector2f nextWaypoint = unit.path[0];
     sf::Vector2f currentPos = unit.getPosition();
-    sf::Vector2f direction = target - currentPos;
+    sf::Vector2f direction = nextWaypoint - currentPos;
 
-    // Uzaklýk hesapla (Magnitude)
+    // Uzaklýk hesapla
     float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
-    // Hedefe çok yakýnsa durdur (titremeyi önler)
-    if (distance < 1.0f) {
-        unit.setPosition(target);
-        return true; // Hedefe vardý
+    // Bir sonraki kareye çok yaklaþtýysa (Örn: 2 piksel)
+    if (distance < 2.0f) {
+        unit.setPosition(nextWaypoint); // Tam oturt
+        unit.path.erase(unit.path.begin()); // O noktayý listeden sil (Sýradakine geç)
+
+        // Eðer yol bittiyse durdu demektir
+        return unit.path.empty();
     }
 
-    // Vektörü normalize et (Birim vektör yap)
+    // --- HAREKET ---
     sf::Vector2f normalizedDir = direction / distance;
+    sf::Vector2f moveAmount = normalizedDir * unit.getSpeed() * deltaTime;
 
-    // Yeni pozisyon = Eski Pozisyon + (Yön * Hýz * Zaman)
-    sf::Vector2f newPos = currentPos + (normalizedDir * unit.getSpeed() * deltaTime);
+    unit.move(moveAmount);
 
-    unit.setPosition(newPos);
-    return false; // Hala hareket ediyor
+    return false; // Hala yolda
 }
+*/

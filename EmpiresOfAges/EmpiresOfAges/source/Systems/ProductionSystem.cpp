@@ -107,9 +107,9 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt) {
         // newSoldier->setTexture(player.playerResources.getTexture("Soldier"));
 
         // Veya texture yoksa belli olsun diye renk verelim (Test için)
-        if (type == SoldierTypes::Barbarian) newSoldier->getModel().setColor(sf::Color::Red);
-        else if (type == SoldierTypes::Archer) newSoldier->getModel().setColor(sf::Color::Green);
-        else newSoldier->getModel().setColor(sf::Color::Magenta);
+        if (type == SoldierTypes::Barbarian) newSoldier->getModel().setFillColor(sf::Color::Red);
+        else if (type == SoldierTypes::Archer) newSoldier->getModel().setFillColor(sf::Color::Green);
+        else newSoldier->getModel().setFillColor(sf::Color::Magenta);
 
         // 5. Oyuncunun ordusuna ekle
         player.addEntity(newSoldier);
