@@ -40,9 +40,11 @@ public:
 	int getUnitCount();
 
 	bool setUnitLimit(int);
+	
+	ResourceManager playerResources; // --------------------------- bunu private yap getter kullan
 
 private:
-	ResourceManager playerResources;
+	
 	
 	bool hasBase = true;
 

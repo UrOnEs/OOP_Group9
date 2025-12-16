@@ -11,6 +11,8 @@
 #include "Map/Point.h"
 #include <set> 
 
+#include "UI/AssetManager.h"
+
 Game::Game()
     : mapManager(50, 50, 32)
 {
@@ -36,6 +38,12 @@ Game::Game()
     localPlayer.addEntity(testSoldier);
 
     std::cout << "[SISTEM] Test askeri (Kirmizi) olusturuldu.\n";
+
+    ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150)); // Yarý saydam beyaz
+    ghostGridRect.setSize(sf::Vector2f(32, 32)); // TileSize
+    ghostGridRect.setFillColor(sf::Color::Transparent);
+    ghostGridRect.setOutlineThickness(1);
+    ghostGridRect.setOutlineColor(sf::Color::White);
 }
 
 void Game::initNetwork() {
@@ -106,95 +114,143 @@ void Game::processEvents() {
     sf::Event event;
     while (window.pollEvent(event)) {
 
-        // --- YENÝ EVENT SÝSTEMÝ ENTEGRASYONU ---
         uiManager.handleEvent(event);
-        hud.handleEvent(event); // Panel týklamalarý burada iþleniyor
+        hud.handleEvent(event);
 
         if (event.type == sf::Event::Closed)
             window.close();
 
+        // --- ÝNÞAAT MODU TUÞ KONTROLLERÝ ---
         if (stateManager.getState() == GameState::Playing) {
+
+            // Klavye Kýsayollarý
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::H) {
+                    // H tuþuna basýnca Ev yapma moduna geç
+                    // Texture yoksa bile çalýþýr (Beyaz kare çýkar)
+                    enterBuildMode(BuildTypes::House, "assets/icons/house_icon.jpg");
+                }
+                if (event.key.code == sf::Keyboard::Escape) {
+                    cancelBuildMode();
+                }
+            }
+
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
 
             // UI Korumasý: Mouse panelin üzerindeyse haritaya týklama
-            // (Panel koordinatý 600 varsayýldý, HUD.cpp ile ayný olmalý)
             bool isMouseOnPanel = (pixelPos.y > 600);
             bool isMouseOnTopBar = (pixelPos.y < 50);
 
+            // Eðer UI üzerindeysek ve týklýyorsak, harita kodlarýný çalýþtýrma
             if ((event.type == sf::Event::MouseButtonPressed) && (isMouseOnTopBar || isMouseOnPanel)) {
                 continue;
             }
 
-            // Harita Kontrolleri
             sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
 
-            // --------------------- SOL TIK: SEÇÝM -----------------------------------------------
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                localPlayer.selectUnit(window, camera);
-            }
+            // Grid Koordinatlarýný Hesapla
+            int gridX = static_cast<int>(worldPos.x / mapManager.getTileSize());
+            int gridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
-            // ------------------------------------- SAÐ TIK: HAREKET ------------------------------------------
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
+            // --- TIKLAMA ÝÞLEMLERÝ ---
+            if (event.type == sf::Event::MouseButtonPressed) {
 
-                // Týklanan grid karesini bul
-                int targetGridX = static_cast<int>(worldPos.x / mapManager.getTileSize());
-                int targetGridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
+                // --- SAÐ TIK (ÝPTAL VEYA HAREKET) ---
+                if (event.mouseButton.button == sf::Mouse::Right) {
+                    if (isInBuildMode) {
+                        cancelBuildMode(); // Ýnþaat modundaysak iptal et
+                    }
+                    else {
+                        // --- MEVCUT HAREKET KODLARI (Aynen koruyoruz) ---
+                        if (gridX >= 0 && gridX < mapManager.getWidth() &&
+                            gridY >= 0 && gridY < mapManager.getHeight()) {
 
-                // Harita sýnýrlarý içinde mi?
-                if (targetGridX >= 0 && targetGridX < mapManager.getWidth() &&
-                    targetGridY >= 0 && targetGridY < mapManager.getHeight()) {
+                            Point baseTarget = { gridX, gridY };
+                            std::set<Point> reservedTiles;
+                            const auto& levelData = mapManager.getLevelData();
 
-                    Point baseTarget = { targetGridX, targetGridY };
-                    std::set<Point> reservedTiles; // Dolu koltuklar
-                    const auto& levelData = mapManager.getLevelData();
+                            // 1. Yer Kaplayanlarý Bul
+                            for (const auto& entity : localPlayer.getEntities()) {
+                                if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
+                                    if (!u->isSelected) {
+                                        reservedTiles.insert(u->getGridPoint());
+                                    }
+                                }
+                            }
 
-                    // 1. Yer Kaplayanlarý Bul (Diðer askerler)
-                    for (const auto& entity : localPlayer.getEntities()) {
-                        if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
-                            if (!u->isSelected) {
-                                reservedTiles.insert(u->getGridPoint());
+                            // 2. Seçili askerlere hedef daðýt
+                            for (auto& entity : localPlayer.selected_entities) {
+                                if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
+                                    Point specificGridTarget = PathFinder::findClosestFreeTile(
+                                        baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
+                                    );
+                                    reservedTiles.insert(specificGridTarget);
+
+                                    // A* Yol Bulma
+                                    std::vector<Point> gridPath = PathFinder::findPath(
+                                        unit->getGridPoint(), specificGridTarget, levelData, mapManager.getWidth(), mapManager.getHeight()
+                                    );
+
+                                    // Grid -> Pixel Çevirme
+                                    std::vector<sf::Vector2f> worldPath;
+                                    for (const auto& p : gridPath) {
+                                        float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                        float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                        worldPath.push_back(sf::Vector2f(px, py));
+                                    }
+                                    unit->setPath(worldPath);
+                                }
                             }
                         }
                     }
+                }
 
-                    // 2. Seçili askerlere hedef daðýt
-                    for (auto& entity : localPlayer.selected_entities) {
-                        if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
+                // --- SOL TIK (SEÇÝM VEYA ÝNÞAAT) ---
+                else if (event.mouseButton.button == sf::Mouse::Left) {
+                    if (isInBuildMode) {
+                        // --- ÝNÞAAT YAP ---
+                        int cost = GameRules::Cost_House_Wood;
 
-                            // Formasyon için en yakýn boþ kareyi bul
-                            Point specificGridTarget = PathFinder::findClosestFreeTile(
-                                baseTarget,
-                                levelData,
-                                mapManager.getWidth(),
-                                mapManager.getHeight(),
-                                reservedTiles
-                            );
+                        // Kaynak Yeterli mi?
+                        if (localPlayer.getResources()[0] >= cost) {
 
-                            reservedTiles.insert(specificGridTarget); // Orayý kaptýk
+                            // ResourceManager parametresini sildik (Geçici olarak)
+                            // mapManager.tryPlaceBuilding fonksiyonu son halinde resMgr istiyor mu kontrol etmeliyiz.
+                            // Eðer istiyorsa ve Player'dan eriþemiyorsak, þimdilik o parametreyi MapManager.h/cpp'den kaldýr veya dummy gönder.
+                            // Aþaðýdaki kod MapManager'ýn parametre istemeyen haline göredir:
 
-                            // --- YENÝ KISIM: YOL HESAPLAMA (A*) ---
+                            // NOT: Eðer MapManager::tryPlaceBuilding hata verirse parametreleri kontrol et.
+                            // Þimdilik kaynak düþme iþini burada yapýyoruz:
 
-                            // 1. Grid üzerinde yolu bul
-                            std::vector<Point> gridPath = PathFinder::findPath(
-                                unit->getGridPoint(),
-                                specificGridTarget,
-                                levelData,
-                                mapManager.getWidth(),
-                                mapManager.getHeight()
-                            );
+                            // (MapManager'da tryPlaceBuilding fonksiyonunu çaðýrýrken ResourceManager istiyorsa orayý düzeltmemiz lazým, 
+                            // þimdilik parametresiz varsayýyorum veya dummy bir çözüm üretebiliriz)
 
-                            // 2. Grid koordinatlarýný Dünya (Pixel) koordinatlarýna çevir
-                            std::vector<sf::Vector2f> worldPath;
-                            for (const auto& p : gridPath) {
-                                // Her karenin tam ortasýný hedefle
-                                float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                                float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                                worldPath.push_back(sf::Vector2f(px, py));
+                            // Geçici Çözüm: ResourceManager referansý yerine kaynak kontrolünü burada yaptýk.
+                            // MapManager.cpp'deki tryPlaceBuilding'den "ResourceManager& resMgr" parametresini silmeni öneririm 
+                            // çünkü kaynak düþümünü zaten Game.cpp'de yapýyoruz.
+
+                            // Eðer tryPlaceBuilding parametre istiyorsa hatayý düzeltmek için MapManager.cpp'ye git ve o parametreyi sil.
+                            if (mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType, localPlayer.playerResources)) {
+
+                                localPlayer.addWood(-cost);
+                                std::cout << "[GAME] Bina insa edildi!\n";
+
+                                if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) {
+                                    cancelBuildMode();
+                                }
                             }
-
-                            // 3. Askere rotayý ver
-                            unit->setPath(worldPath);
+                            else {
+                                std::cout << "[GAME] Buraya insa edilemez!\n";
+                            }
                         }
+                        else {
+                            std::cout << "[GAME] Yetersiz Kaynak!\n";
+                            cancelBuildMode(); // Parasý yoksa modu kapat
+                        }
+                    }
+                    else {
+                        // --- ASKER SEÇÝMÝ ---
+                        localPlayer.selectUnit(window, camera);
                     }
                 }
             }
@@ -233,6 +289,33 @@ void Game::render() {
     if (stateManager.getState() == GameState::Playing) {
         mapManager.draw(window);
         localPlayer.renderEntities(window);
+
+        // --- ÝNÞAAT MODU GÖRSELÝ ---
+        if (isInBuildMode) {
+            // Mouse pozisyonunu al
+            sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
+            sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
+
+            // Grid'e yapýþtýr (Snap to Grid)
+            int gx = static_cast<int>(worldPos.x / mapManager.getTileSize());
+            int gy = static_cast<int>(worldPos.y / mapManager.getTileSize());
+
+            float snapX = gx * mapManager.getTileSize();
+            float snapY = gy * mapManager.getTileSize();
+
+            ghostBuildingSprite.setPosition(snapX, snapY);
+            ghostGridRect.setPosition(snapX, snapY);
+
+            // Harita sýnýrlarýnda mý?
+            bool isValid = (gx >= 0 && gx < mapManager.getWidth() && gy >= 0 && gy < mapManager.getHeight());
+            // Buraya mapManager.isBuildingAt(gx, gy) kontrolü de eklenebilir
+
+            if (isValid) ghostBuildingSprite.setColor(sf::Color(0, 255, 0, 150)); // Yeþil
+            else ghostBuildingSprite.setColor(sf::Color(255, 0, 0, 150)); // Kýrmýzý
+
+            window.draw(ghostBuildingSprite);
+            window.draw(ghostGridRect);
+        }
     }
 
     // 2. UI
@@ -249,4 +332,26 @@ void Game::handleInput(float dt) {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) camera.move(speed, 0);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) camera.move(0, -speed);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) camera.move(0, speed);
+}
+
+void Game::enterBuildMode(BuildTypes type, const std::string& textureName) {
+    isInBuildMode = true;
+    pendingBuildingType = type;
+
+    // Texture'ý ResourceManager veya AssetManager'dan almalýsýn. 
+    // Þimdilik test için AssetManager kullanýyoruz ama normalde Player resources'dan almalý.
+    ghostBuildingSprite.setTexture(AssetManager::getTexture(textureName)); // "tileset.png" veya özel bina resmi
+
+    // Texture'ýn boyutuyla oynayabiliriz veya tileset kullanýyorsak TextureRect ayarlamalýyýz.
+    // Þimdilik basit tutalým, tileset'in tamamýný deðil, ilgili kýsmýný göstermeli ama 
+    // senin sisteminde binalar ayrý class olduðu için þimdilik varsayýlan bir ikon koyalým.
+    // EÐER tileset kullanýyorsan ve bina oradaysa:
+    // ghostBuildingSprite.setTextureRect(...); 
+
+    std::cout << "[GAME] Insaat modu aktif: " << (int)type << "\n";
+}
+
+void Game::cancelBuildMode() {
+    isInBuildMode = false;
+    std::cout << "[GAME] Insaat modu iptal.\n";
 }

@@ -13,6 +13,7 @@
 
 // --- ENTITIES ---
 #include "Game/Player.h"
+#include "Entity System/Entity Type/types.h" 
 
 class Game {
 public:
@@ -26,23 +27,31 @@ private:
 
     // --- TEMEL BÝLEÞENLER ---
     sf::RenderWindow window;
-    sf::View camera; // Haritada gezmek için kamera þart!
+    sf::View camera;
 
     // --- YÖNETÝCÝLER (MANAGERS) ---
-    // Bu sýnýflarý Game'in içinde tutmalýsýn ki oyun boyunca yaþasýnlar
     NetworkManager networkManager;
-    std::unique_ptr<LobbyManager> lobbyManager; // NetworkManager baþlatýlýnca oluþturulacak
+    std::unique_ptr<LobbyManager> lobbyManager;
     MapManager mapManager;
     UIManager uiManager;
     GameStateManager stateManager;
 
     // --- OYUN NESNELERÝ ---
-    Player localPlayer; // Bizim yönettiðimiz oyuncu
-    HUD hud; // Arayüz göstergesi
+    Player localPlayer;
+    HUD hud;
+
+    // --- ÝNÞAAT SÝSTEMÝ DEÐÝÞKENLERÝ (YENÝ) ---
+    bool isInBuildMode = false;          // Þu an bina yerleþtirmeye çalýþýyor muyuz?
+    BuildTypes pendingBuildingType;      // Hangi binayý yerleþtireceðiz?
+    sf::Sprite ghostBuildingSprite;      // Mouse ucundaki yarý saydam bina görseli
+    sf::RectangleShape ghostGridRect;    // Izgarayý göstermek için kare (Opsiyonel ama þýk durur)
 
     // --- YARDIMCI FONKSÝYONLAR ---
-    void initNetwork(); // Aðý baþlatma iþlemleri
-    void initUI();      // Butonlarý ve panelleri oluþturma
-    void handleInput(float dt); // Kamera ve týklama kontrolleri
-};
+    void initNetwork();
+    void initUI();
+    void handleInput(float dt);
 
+    // Ýnþaat modunu açýp kapatan yardýmcý fonksiyon
+    void enterBuildMode(BuildTypes type, const std::string& textureName);
+    void cancelBuildMode();
+};
