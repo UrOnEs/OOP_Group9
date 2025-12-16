@@ -174,3 +174,4 @@ Point PathFinder::findClosestFreeTile(Point target, const std::vector<int>& mapD
     }
     return target;
 }
+

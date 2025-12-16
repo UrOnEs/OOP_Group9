@@ -128,23 +128,27 @@ void Game::processEvents() {
             // Harita Kontrolleri
             sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
 
-            // SOL TIK: SEÇÝM
+            // --------------------- SOL TIK: SEÇÝM -----------------------------------------------
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                localPlayer.selectUnit(window);
+                localPlayer.selectUnit(window, camera);
             }
 
-            // SAÐ TIK: HAREKET
+            // ------------------------------------- SAÐ TIK: HAREKET ------------------------------------------
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
+
+                // Týklanan grid karesini bul
                 int targetGridX = static_cast<int>(worldPos.x / mapManager.getTileSize());
                 int targetGridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
+                // Harita sýnýrlarý içinde mi?
                 if (targetGridX >= 0 && targetGridX < mapManager.getWidth() &&
                     targetGridY >= 0 && targetGridY < mapManager.getHeight()) {
 
                     Point baseTarget = { targetGridX, targetGridY };
-                    std::set<Point> reservedTiles;
+                    std::set<Point> reservedTiles; // Dolu koltuklar
                     const auto& levelData = mapManager.getLevelData();
 
+                    // 1. Yer Kaplayanlarý Bul (Diðer askerler)
                     for (const auto& entity : localPlayer.getEntities()) {
                         if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
                             if (!u->isSelected) {
@@ -153,16 +157,43 @@ void Game::processEvents() {
                         }
                     }
 
+                    // 2. Seçili askerlere hedef daðýt
                     for (auto& entity : localPlayer.selected_entities) {
                         if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
-                            Point specificGridTarget = PathFinder::findClosestFreeTile(
-                                baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
-                            );
-                            reservedTiles.insert(specificGridTarget);
 
-                            float pixelX = specificGridTarget.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                            float pixelY = specificGridTarget.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                            unit->moveTo(sf::Vector2f(pixelX, pixelY));
+                            // Formasyon için en yakýn boþ kareyi bul
+                            Point specificGridTarget = PathFinder::findClosestFreeTile(
+                                baseTarget,
+                                levelData,
+                                mapManager.getWidth(),
+                                mapManager.getHeight(),
+                                reservedTiles
+                            );
+
+                            reservedTiles.insert(specificGridTarget); // Orayý kaptýk
+
+                            // --- YENÝ KISIM: YOL HESAPLAMA (A*) ---
+
+                            // 1. Grid üzerinde yolu bul
+                            std::vector<Point> gridPath = PathFinder::findPath(
+                                unit->getGridPoint(),
+                                specificGridTarget,
+                                levelData,
+                                mapManager.getWidth(),
+                                mapManager.getHeight()
+                            );
+
+                            // 2. Grid koordinatlarýný Dünya (Pixel) koordinatlarýna çevir
+                            std::vector<sf::Vector2f> worldPath;
+                            for (const auto& p : gridPath) {
+                                // Her karenin tam ortasýný hedefle
+                                float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                worldPath.push_back(sf::Vector2f(px, py));
+                            }
+
+                            // 3. Askere rotayý ver
+                            unit->setPath(worldPath);
                         }
                     }
                 }

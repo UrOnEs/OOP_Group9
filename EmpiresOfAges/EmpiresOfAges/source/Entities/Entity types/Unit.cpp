@@ -26,54 +26,54 @@ void Unit::moveTo(sf::Vector2f targetWorldPos) {
     m_isMoving = true;
 }
 
-// --- FÝZÝKSEL HAREKET VE KAYMA (WALL SLIDING) ---
+// ------------------- FÝZÝKSEL HAREKET ---------------------
 void Unit::update(float dt, const std::vector<int>& mapData, int width, int height) {
-    if (!m_isMoving) return;
+    // Hareket etmiyor veya yol bittiyse dur
+    if (!m_isMoving || m_path.empty()) return;
 
     sf::Vector2f currentPos = shape.getPosition();
     sf::Vector2f direction = m_targetPos - currentPos;
     float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
-    if (distance < 2.0f) {
-        shape.setPosition(m_targetPos);
-        m_isMoving = false;
+    // Hedefe çok yaklaþtýk mý? (Tolerans 4 piksel)
+    if (distance < 4.0f) {
+        shape.setPosition(m_targetPos); // Tam noktaya otur
+
+        // Bu duraðý listeden sil (Çünkü vardýk)
+        m_path.erase(m_path.begin());
+
+        // Baþka durak kaldý mý?
+        if (m_path.empty()) {
+            m_isMoving = false; // Yol bitti
+        }
+        else {
+            m_targetPos = m_path[0]; // Sýradaki duraðý hedefle
+        }
         return;
     }
 
-    // Yönü normalize et
+    // --- HAREKET MANTIÐI ---
     sf::Vector2f normalizedDir = direction / distance;
-
-    // Hýzý hesapla
     sf::Vector2f velocity = normalizedDir * travelSpeed * dt;
 
-    // --- X EKSENÝ KONTROLÜ ---
+    // X Ekseninde Dene
     sf::Vector2f nextPosX = currentPos;
     nextPosX.x += velocity.x;
 
+    // Basit çarpýþma kontrolü (Güvenlik için kalsýn)
     if (checkCollision(nextPosX, mapData, width, height)) {
-        // X'te duvara çarptýk! 
-        // X'i iptal et ama Y'yi hýzlandýr (Duvar boyunca tam gaz kaymasý için)
-        // Eðer Y yönünde hareket varsa, Y hýzýný 'travelSpeed' yap.
-        if (velocity.y != 0) {
-            velocity.y = (velocity.y > 0 ? 1.f : -1.f) * travelSpeed * dt;
-        }
+        // Eðer duvara sürterse kaymaya devam etsin
+        if (velocity.y != 0) velocity.y = (velocity.y > 0 ? 1.f : -1.f) * travelSpeed * dt;
     }
     else {
-        // Çarpma yoksa X hareketini onayla
         currentPos.x = nextPosX.x;
     }
 
-    // --- Y EKSENÝ KONTROLÜ ---
+    // Y Ekseninde Dene
     sf::Vector2f nextPosY = currentPos;
-    nextPosY.y += velocity.y; // Güncellenmiþ velocity.y'yi kullanýyoruz
+    nextPosY.y += velocity.y;
 
-    if (checkCollision(nextPosY, mapData, width, height)) {
-        // Y'de duvara çarptýk!
-        // Y'yi iptal et ama X'i hýzlandýr (Eðer X hareketi zaten onaylandýysa, tekrar artýrmýyoruz, sadece Y'yi kesiyoruz)
-        // Ancak bu adýmda X çoktan oynatýldýðý için geriye dönük hýzlandýrma yapmýyoruz, sadece Y'yi durduruyoruz.
-    }
-    else {
-        // Çarpma yoksa Y hareketini onayla
+    if (!checkCollision(nextPosY, mapData, width, height)) {
         currentPos.y = nextPosY.y;
     }
 
@@ -116,4 +116,18 @@ void Unit::render(sf::RenderWindow& window) {
 Point Unit::getGridPoint() const {
     return { static_cast<int>(shape.getPosition().x / m_tileSize),
              static_cast<int>(shape.getPosition().y / m_tileSize) };
+}
+
+//-------------Rota Atama Fonksiyonu-----------------------------
+void Unit::setPath(const std::vector<sf::Vector2f>& pathPoints) {
+    m_path = pathPoints; // Listeyi kaydet
+
+    // Eðer liste doluysa ilk duraða doðru yola çýk
+    if (!m_path.empty()) {
+        m_isMoving = true;
+        m_targetPos = m_path[0];
+    }
+    else {
+        m_isMoving = false;
+    }
 }

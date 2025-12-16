@@ -10,7 +10,7 @@ class Player {
 public:
 	Player(); // Oyun Baþlayýnca ortaya çýkacak
 
-	std::vector<std::shared_ptr<Entity>> selectUnit(sf::RenderWindow& window); // karakterleri seçme fonksiyonu
+	std::vector<std::shared_ptr<Entity>> selectUnit(sf::RenderWindow& window, const sf::View& camera); // karakterleri seçme fonksiyonu
 
 	void renderEntities(sf::RenderWindow& window);
 

@@ -81,18 +81,24 @@ void Player::addEntity(std::shared_ptr<Entity> entity) { entities.push_back(enti
 */
 
 // --- SEÇÝM SÝSTEMÝ ---
-std::vector<std::shared_ptr<Entity>> Player::selectUnit(sf::RenderWindow& window) {
+std::vector<std::shared_ptr<Entity>> Player::selectUnit(sf::RenderWindow& window, const sf::View& camera) {
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
         selected_entities.clear();
         sf::Vector2i mousePosPixel = sf::Mouse::getPosition(window);
-        sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel);
+
+        // --- DÜZELTME BURADA ---
+        // Eskiden: window.mapPixelToCoords(mousePosPixel); 
+        // Þimdi kamerayý (view) parametre olarak veriyoruz:
+        sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel, camera);
 
         for (auto& entity : entities) {
+            // entity->getBounds() zaten dünya koordinatlarýnda olduðu için artýk eþleþecekler.
             if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
                 selected_entities.push_back(entity);
                 entity->setSelected(true);
             }
             else {
+                // Çoklu seçim (Shift tuþu vs.) yoksa diðerlerini iptal et
                 entity->setSelected(false);
             }
         }

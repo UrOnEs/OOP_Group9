@@ -16,6 +16,8 @@ public:
 
     void render(sf::RenderWindow& window) override;
 
+    void setPath(const std::vector<sf::Vector2f>& pathPoints);// Askerin yeni rotasýný belirleyen fonksiyon
+
     // --- HAREKET SÝSTEMÝ ---
     void moveTo(sf::Vector2f targetWorldPos);
     Point getGridPoint() const;
@@ -30,6 +32,8 @@ protected:
     bool m_isMoving;
     sf::Vector2f m_targetPos;
     int m_tileSize;
+
+    std::vector<sf::Vector2f> m_path; // Rota listesi
 
 private:
     // Çarpýþma Kontrolü
