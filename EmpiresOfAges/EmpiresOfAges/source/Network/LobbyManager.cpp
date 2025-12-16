@@ -8,18 +8,18 @@
 #include <algorithm>
 #include <stdexcept>
 
-// --- Yap�c� ---
+// --- Yapıcı ---
 LobbyManager::LobbyManager(NetworkManager* netManager, bool isHost)
-    : m_netManager(netManager), m_isHost(isHost), m_selfId(0) {} // <-- m_selfId ba�lat�ld�
+    : m_netManager(netManager), m_isHost(isHost), m_selfId(0) {}
 
-// --- D�� Fonksiyonlar ---
+// --- Dış Fonksiyonlar ---
 
 void LobbyManager::start(uint64_t selfId, const std::string& name) {
     m_selfId = selfId;
     addPlayer(selfId, name, false);
 
     if (!m_isHost) {
-        // �stemci: JoinRequest g�nder
+        // İstemci: JoinRequest gönder
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::JoinRequest)
             << name;
@@ -36,12 +36,12 @@ void LobbyManager::start(uint64_t selfId, const std::string& name) {
 
 void LobbyManager::toggleReady(bool isReady) {
     if (m_isHost) {
-        // Host: Kendi durumunu yerelde de�i�tir ve herkese senkronize et
+        // Host: Kendi durumunu yerelde değiştir ve herkese senkronize et
         setReady(m_selfId, isReady);
         syncLobbyToClients();
     }
     else {
-        // �stemci: Sunucuya Ready durumunu de�i�tirme iste�i g�nder
+        // İstemci: Sunucuya Ready durumunu değiştirme isteği gönder
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::ToggleReady)
             << isReady;
@@ -55,7 +55,7 @@ void LobbyManager::toggleReady(bool isReady) {
 void LobbyManager::startGame() {
     if (!m_isHost || !canStartGame() || m_isGameStarted) return;
 
-    // Bayra�� hemen true yap�yoruz
+    // Bayrağı hemen true yapıyoruz
     m_isGameStarted = true;
 
     sf::Packet pkt;
@@ -75,7 +75,7 @@ bool LobbyManager::canStartGame() const {
     return true;
 }
 
-// --- Callback Ayarlar� ---
+// --- Callback Ayarları ---
 
 void LobbyManager::setOnPlayerChange(PlayerChangeCallback cb) {
     m_onChange = std::move(cb);
@@ -85,7 +85,7 @@ void LobbyManager::setOnGameStart(GameStartCallback cb) {
     m_onGameStart = std::move(cb);
 }
 
-// --- Paket ��leme ---
+// --- Paket İşleme ---
 
 void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
     sf::Int32 cmdInt;
@@ -94,22 +94,26 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
     LobbyCommand cmd = static_cast<LobbyCommand>(cmdInt);
 
     if (m_isHost) {
-        // Sunucu Taraf� ��leme
+        // Sunucu Tarafı İşleme
         if (cmd == LobbyCommand::JoinRequest) {
             processJoinRequest(senderId, pkt);
         }
         else if (cmd == LobbyCommand::ToggleReady) {
             processToggleReady(senderId, pkt);
         }
-
+        else if (cmd == LobbyCommand::LeaveLobby) { // <-- YENİ İŞLEM BURADA
+            removePlayer(senderId);
+            std::cout << "[LobbyManager-Host] Istemci ID " << senderId << " lobiden ayrildi." << std::endl;
+            syncLobbyToClients(); // Durumu hemen senkronize et
+        }
     }
     else {
-        // �stemci Taraf� ��leme
+        // İstemci Tarafı İşleme
         if (cmd == LobbyCommand::LobbyStateSync) {
             // Lobi durumunu senkronize et
             sf::Uint64 selfIdInPkt;
             if (!(pkt >> selfIdInPkt)) return;
-            m_selfId = selfIdInPkt; // Sunucudan gelen kendi ID'mizi kaydet (KR�T�K)
+            m_selfId = selfIdInPkt; // Sunucudan gelen kendi ID'mizi kaydet (KRİTİK)
 
             m_players.clear();
             sf::Uint32 playerCount;
@@ -137,7 +141,7 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
     }
 }
 
-// --- Sunucu Taraf� Mant�k ---
+// --- Sunucu Tarafı Mantık ---
 
 void LobbyManager::processJoinRequest(uint64_t senderId, sf::Packet& pkt) {
     std::string playerName;
@@ -147,7 +151,7 @@ void LobbyManager::processJoinRequest(uint64_t senderId, sf::Packet& pkt) {
     addPlayer(senderId, playerName, false);
     std::cout << "[LobbyManager-Host] Yeni katilim istegi: ID=" << senderId << ", Ad=" << playerName << std::endl;
 
-    // T�m istemcilere (yeni gelen dahil) lobi durumunu g�nder
+    // Tüm istemcilere (yeni gelen dahil) lobi durumunu gönder
     syncLobbyToClients();
 }
 
@@ -155,11 +159,11 @@ void LobbyManager::processToggleReady(uint64_t senderId, sf::Packet& pkt) {
     bool isReady;
     if (!(pkt >> isReady)) return;
 
-    // Oyuncunun durumunu de�i�tir
+    // Oyuncunun durumunu değiştir
     setReady(senderId, isReady);
     std::cout << "[LobbyManager-Host] ID " << senderId << " hazir durumu: " << (isReady ? "EVET" : "HAYIR") << std::endl;
 
-    // T�m istemcilere lobi durumunu senkronize et
+    // Tüm istemcilere lobi durumunu senkronize et
     syncLobbyToClients();
 }
 
@@ -167,12 +171,12 @@ void LobbyManager::syncLobbyToClients() {
     if (!m_isHost || !m_netManager->server()) return;
 
     for (const auto& client : m_players) {
-        if (client.id == m_selfId) continue; // Host'a g�nderme
+        if (client.id == m_selfId) continue; // Host'a gönderme
 
         sf::Packet syncPkt;
         syncPkt << static_cast<sf::Int32>(LobbyCommand::LobbyStateSync);
 
-        syncPkt << static_cast<sf::Uint64>(client.id); // �stemcinin kendi ID'si
+        syncPkt << static_cast<sf::Uint64>(client.id); // İstemcinin kendi ID'si
 
         syncPkt << static_cast<sf::Uint32>(m_players.size());
 
@@ -183,18 +187,18 @@ void LobbyManager::syncLobbyToClients() {
         }
 
         if (m_netManager->server()->sendTo(client.id, syncPkt)) {
-            // Ba�ar�l� g�nderim
+            // Başarılı gönderim
         }
         else {
             // Hata logu eklenebilir
         }
     }
 
-    // Host'un lobi durumu da de�i�ti�i i�in callback'i tetikle
+    // Host'un lobi durumu da değiştiği için callback'i tetikle
     if (m_onChange) m_onChange();
 }
 
-// --- Yard�mc� Metotlar ---
+// --- Yardımcı Metotlar ---
 
 void LobbyManager::addPlayer(uint64_t id, const std::string& name, bool ready) {
     auto it = std::find_if(m_players.begin(), m_players.end(),
@@ -210,6 +214,7 @@ void LobbyManager::removePlayer(uint64_t id) {
     m_players.erase(std::remove_if(m_players.begin(), m_players.end(),
         [id](const PlayerInfo& p) { return p.id == id; }),
         m_players.end());
+    // removePlayer sonrası syncLobbyToClients (handleIncomingPacket'te) çağrıldığı için callback burada tetiklenmez.
 }
 
 void LobbyManager::setReady(uint64_t id, bool ready) {
@@ -219,7 +224,7 @@ void LobbyManager::setReady(uint64_t id, bool ready) {
     if (it != m_players.end() && it->ready != ready) {
         it->ready = ready;
         if (m_isHost) {
-            // Sunucu, durumu de�i�tirdikten sonra manuel olarak callback'i tetikler.
+            // setReady sonrası syncLobbyToClients (processToggleReady'de) çağrıldığı için manuel callback tetiklenmez.
         }
     }
 }

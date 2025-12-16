@@ -1,5 +1,4 @@
-﻿#pragma once
-// LobbyManager.h
+﻿// LobbyManager.h
 
 #pragma once
 
@@ -10,67 +9,71 @@
 #include <SFML/Network/Packet.hpp>
 #include <SFML/Network/IpAddress.hpp>
 
-// �leri Bildirim (Forward Declarations)
+// İleri Bildirim (Forward Declarations)
 class NetworkManager;
 
-// Lobi �leti�im Komutlar�
+// Lobi İletişim Komutları
 enum class LobbyCommand : sf::Int32 {
     JoinRequest,
     LobbyStateSync,
-    ToggleReady,
+    ToggleReady,      // Hazır durumunu değiştirmek (EVET/HAYIR)
     StartGameSignal,
-    // ... di�er komutlar
+    LeaveLobby        // <-- Lobiden ayrılma isteği
+    // ... diğer komutlar
 };
 
-// Oyuncu Bilgisi Yap�s�
+// Oyuncu Bilgisi Yapısı
 struct PlayerInfo {
     uint64_t id;
     std::string name;
     bool ready;
-    // ... di�er lobi bilgileri
+    // ... diğer lobi bilgileri
 };
 
 class LobbyManager {
 public:
-    // Yap�c�
+    // Yapıcı
     LobbyManager(NetworkManager* netManager, bool isHost);
 
-    // A� ve Lobi Ba�latma
+    // Ağ ve Lobi Başlatma
     void start(uint64_t selfId, const std::string& name);
 
-    // D�� d�nya ile etkile�im
+    // Dış dünya ile etkileşim
     void toggleReady(bool isReady);
     void startGame();
 
-    // Gelen Paket ��leme
+    // Gelen Paket İşleme
     void handleIncomingPacket(uint64_t senderId, sf::Packet& pkt);
 
-    // Getter'lar (Hata E0135 ve C2039 ��z�m� i�in KR�T�K)
-    uint64_t selfId() const { return m_selfId; } // <-- selfId eklendi
+    // Getter'lar
+    uint64_t selfId() const { return m_selfId; }
     const std::vector<PlayerInfo>& players() const { return m_players; }
     bool canStartGame() const;
 
-    // Callback Ayarlar�
+    // KRİTİK GETTER: netManager'a erişim sağlar
+    NetworkManager* netManager() const { return m_netManager; }
+
+    // Callback Ayarları
     using PlayerChangeCallback = std::function<void()>;
     using GameStartCallback = std::function<void()>;
     void setOnPlayerChange(PlayerChangeCallback cb);
     void setOnGameStart(GameStartCallback cb);
 
 private:
-    // Lobi Y�netimi (Sunucu Taraf�)
+    // Lobi Yönetimi (Sunucu Tarafı)
     void processJoinRequest(uint64_t senderId, sf::Packet& pkt);
     void processToggleReady(uint64_t senderId, sf::Packet& pkt);
-    void syncLobbyToClients(); // T�m istemcilere lobi durumunu g�nder
+    void syncLobbyToClients(); // Tüm istemcilere lobi durumunu gönder
 
-    // Yard�mc� Metotlar
+    // Yardımcı Metotlar
     void addPlayer(uint64_t id, const std::string& name, bool ready = false);
     void removePlayer(uint64_t id);
     void setReady(uint64_t id, bool ready);
 
-    // �ye De�i�kenleri
+    // Üye Değişkenleri
     NetworkManager* m_netManager;
     bool m_isHost;
-    uint64_t m_selfId; // Kendi ID'miz (Host i�in 1, Client i�in Sunucudan gelen ID)
+    uint64_t m_selfId; // Kendi ID'miz (Host için 1, Client için Sunucudan gelen ID)
     std::vector<PlayerInfo> m_players;
 
     // Callback'ler
