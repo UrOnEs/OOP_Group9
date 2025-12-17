@@ -1,0 +1,68 @@
+# ---------------------------------
+# Visual Studio & C++ build files
+# ---------------------------------
+.vs/
+out/
+build/
+*.obj
+*.pch
+*.pdb
+*.ipch
+*.tlog
+*.idb
+*.ilk
+*.suo
+*.user
+*.opendb
+*.db
+
+# ---------------------------------
+# Build folders
+# ---------------------------------
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+
+# ---------------------------------
+# Binary outputs (ignore by default)
+# ---------------------------------
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+
+# ---------------------------------
+# SFML / Dependencies (ALLOW)
+# ---------------------------------
+# 1. Dependencies klasörünün kendisini yoksayma listesinden çıkar
+!Dependencies/
+
+# 2. Dependencies içindeki TÜM alt klasörleri ve dosyaları kapsa
+!Dependencies/**
+
+# 3. BURASI ÇOK ÖNEMLİ:
+# Global *.dll yasağını, Dependencies altındaki tüm klasörler için özellikle kaldır.
+# (İki yıldız ve slash kullanımına dikkat: /**/)
+!Dependencies/**/*.dll
+!Dependencies/**/*.lib
+
+# ---------------------------------
+# Assets (ALLOW)
+# ---------------------------------
+!*.png
+!*.jpg
+!*.jpeg
+!*.wav
+!*.ogg
+!*.ttf
+!*.otf
+
+# ---------------------------------
+# Windows junk
+# ---------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
