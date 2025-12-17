@@ -37,12 +37,17 @@ x86/
 # ---------------------------------
 # SFML / Dependencies (ALLOW)
 # ---------------------------------
-!Dependencies/**
-!Dependencies/**.dll
-!Dependencies/**.lib
+# 1. Dependencies klasörünün kendisini yoksayma listesinden çıkar
+!Dependencies/
 
-# Eğer DLL'leri proje köküne koyarsan:
-!/*.dll
+# 2. Dependencies içindeki TÜM alt klasörleri ve dosyaları kapsa
+!Dependencies/**
+
+# 3. BURASI ÇOK ÖNEMLİ:
+# Global *.dll yasağını, Dependencies altındaki tüm klasörler için özellikle kaldır.
+# (İki yıldız ve slash kullanımına dikkat: /**/)
+!Dependencies/**/*.dll
+!Dependencies/**/*.lib
 
 # ---------------------------------
 # Assets (ALLOW)

@@ -7,7 +7,7 @@ namespace GameRules {
     // ==========================================
     // 1. GENEL AYARLAR (General Settings)
     // ==========================================
-    constexpr int TileSize = 32;          // Harita kare boyutu (Piksel)
+    constexpr int TileSize = 64;          // Harita kare boyutu (Piksel)
     constexpr int MaxPopulation = 200;    // Maksimum nüfus limiti (AoE standardý)
     constexpr float GameSpeed = 1.0f;     // Oyun hýzý çarpaný
 
