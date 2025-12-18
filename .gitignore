@@ -17,48 +17,26 @@ build/
 *.db
 
 # ---------------------------------
-# Build folders
+# Build folders (BURASI KRİTİK)
+# DLL uzantısını yasaklamadığımız için
+# bu klasörlerin engelli olması ŞART.
 # ---------------------------------
 [Dd]ebug/
 [Rr]elease/
 x64/
 x86/
 [Aa][Rr][Mm]/
+bin/
+obj/
+!bin/*.dll
+!lib/*.lib
 
 # ---------------------------------
-# Binary outputs (ignore by default)
+# Binary outputs (EXE'leri yine de engellemek iyidir)
+# Çünkü bazen proje köküne de exe çıkabilir.
+# DLL satırını buradan siliyoruz!
 # ---------------------------------
 *.exe
-*.dll
-*.lib
-*.so
-*.dylib
-
-# ---------------------------------
-# SFML / Dependencies (ALLOW)
-# ---------------------------------
-# 1. Dependencies klasörünün kendisini yoksayma listesinden çıkar
-!Dependencies/
-
-# 2. Dependencies içindeki TÜM alt klasörleri ve dosyaları kapsa
-!Dependencies/**
-
-# 3. BURASI ÇOK ÖNEMLİ:
-# Global *.dll yasağını, Dependencies altındaki tüm klasörler için özellikle kaldır.
-# (İki yıldız ve slash kullanımına dikkat: /**/)
-!Dependencies/**/*.dll
-!Dependencies/**/*.lib
-
-# ---------------------------------
-# Assets (ALLOW)
-# ---------------------------------
-!*.png
-!*.jpg
-!*.jpeg
-!*.wav
-!*.ogg
-!*.ttf
-!*.otf
 
 # ---------------------------------
 # Windows junk

@@ -14,7 +14,7 @@ enum class BuildTypes {
 enum class SoldierTypes {
 	Barbarian,
 	Archer,
-	catapult
+	Wizard
 };
 
 #endif // !TYPES_H

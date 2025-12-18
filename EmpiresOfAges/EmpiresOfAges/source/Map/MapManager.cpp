@@ -60,12 +60,29 @@ void MapManager::createTilesetFile() {
     tileset.saveToFile("tileset.png");
 }
 
-bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManager& resMgr) {
-    if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return false;
+bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) { // Parametreyi basitleþtirdim
+    // 1. Binanýn Boyutunu Belirle (Tile Cinsinden)
+    int widthInTiles = 2;  // Varsayýlan 2x2
+    int heightInTiles = 2;
 
-    int indices[4] = { tx + ty * m_width, (tx + 1) + ty * m_width, tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width };
-    for (int idx : indices) if (m_level[idx] != 0) return false;
+    if (type == BuildTypes::House) {
+        widthInTiles = 1;  // Ev ise 1x1
+        heightInTiles = 1;
+    }
+    // Ýleride TownCenter için 4x4 yapabilirsin vs.
 
+    // 2. Sýnýr Kontrolü
+    if (tx < 0 || ty < 0 || tx + widthInTiles > m_width || ty + heightInTiles > m_height) return false;
+
+    // 3. Alan Boþ mu Kontrolü (Döngü ile)
+    for (int x = 0; x < widthInTiles; x++) {
+        for (int y = 0; y < heightInTiles; y++) {
+            int idx = (tx + x) + (ty + y) * m_width;
+            if (m_level[idx] != 0) return false; // Doluysa iptal
+        }
+    }
+
+    // 4. Binayý Oluþtur
     std::shared_ptr<Building> newBuilding = nullptr;
 
     if (type == BuildTypes::House) newBuilding = std::make_shared<House>();
@@ -76,29 +93,55 @@ bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManag
     if (newBuilding) {
         newBuilding->setPosition(sf::Vector2f(tx * m_tileSize, ty * m_tileSize));
         newBuilding->setTexture(m_tilesetTexture);
+
+        // --- ÖNEMLÝ: Texture'ý Boyuta Göre Ayarla ---
+        // Eðer tileset.png kullanýyorsan TextureRect ayarlaman gerekebilir.
+        // Þimdilik basitçe býrakýyoruz.
+
         m_buildings.push_back(newBuilding);
 
-        for (int idx : indices) {
-            m_level[idx] = 1;
-            updateTile(tx, ty, 1);
-            updateTile(tx + 1, ty, 1);
-            updateTile(tx, ty + 1, 1);
-            updateTile(tx + 1, ty + 1, 1);
+        // 5. Haritadaki Kareleri Ýþaretle (Dolu Yap)
+        for (int x = 0; x < widthInTiles; x++) {
+            for (int y = 0; y < heightInTiles; y++) {
+                int targetX = tx + x;
+                int targetY = ty + y;
+                updateTile(targetX, targetY, 1); // 1 = Duvar/Bina ID'si
+            }
         }
         return true;
     }
     return false;
 }
 
+// --- YENÝ SÝLME MANTIÐI ---
 void MapManager::removeBuilding(int tx, int ty) {
-    sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
+    // Týklanan noktayý piksel olarak bul (tam orta nokta olmasýn, sol üst köþeye yakýn olsun)
+    sf::Vector2f checkPos(tx * m_tileSize + 5, ty * m_tileSize + 5);
+
     for (auto it = m_buildings.begin(); it != m_buildings.end(); ) {
+        // Eðer bina bu noktayý kapsýyorsa
         if ((*it)->getBounds().contains(checkPos)) {
+
+            // Binanýn sol üst grid koordinatýný bul
             sf::Vector2f pos = (*it)->getPosition();
             int bx = static_cast<int>(pos.x / m_tileSize);
             int by = static_cast<int>(pos.y / m_tileSize);
-            updateTile(bx, by, 0); updateTile(bx + 1, by, 0);
-            updateTile(bx, by + 1, 0); updateTile(bx + 1, by + 1, 0);
+
+            // Binanýn boyutuna göre altýndaki kareleri temizle (0 yap)
+            int widthInTiles = 2; // Varsayýlan
+            int heightInTiles = 2;
+
+            if ((*it)->buildingType == BuildTypes::House) {
+                widthInTiles = 1;
+                heightInTiles = 1;
+            }
+
+            for (int x = 0; x < widthInTiles; x++) {
+                for (int y = 0; y < heightInTiles; y++) {
+                    updateTile(bx + x, by + y, 0); // 0 = Çimen/Boþ
+                }
+            }
+
             it = m_buildings.erase(it);
             return;
         }

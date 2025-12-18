@@ -17,39 +17,18 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
         return false;
     }
 
-    // 3. Maliyet ve Süre Belirleme (GameRules'dan çekiyoruz)
-    int woodCost = 0;
-    int foodCost = 0;
-    int goldCost = 0;
-    float buildTime = 0.0f;
+    // GameRules'dan paketi (struct) istiyoruz
+    GameRules::Cost cost = GameRules::getUnitCost(unitType);
 
-    switch (unitType) {
-    case SoldierTypes::Barbarian:
-        // Barbar: Yemek + Altýn
-        foodCost = GameRules::Cost_Barbarian_Food;
-        goldCost = GameRules::Cost_Barbarian_Gold;
-        buildTime = GameRules::Time_Build_Soldier;
-        break;
+    // Deðerleri yerel deðiþkenlere alalým ki aþaðýdaki kodlar bozulmasýn
+    int woodCost = cost.wood;
+    int foodCost = cost.food;
+    int goldCost = cost.gold;
 
-    case SoldierTypes::Archer:
-        // Okçu: Odun + Altýn
-        woodCost = GameRules::Cost_Archer_Wood;
-        goldCost = GameRules::Cost_Archer_Gold;
-        buildTime = GameRules::Time_Build_Soldier;
-        break;
+    float buildTime = GameRules::Time_Build_Soldier;
 
-    case SoldierTypes::catapult:
-        // Mancýnýk: Çok Odun + Çok Altýn + Uzun Süre
-        woodCost = GameRules::Cost_Catapult_Wood;
-        goldCost = GameRules::Cost_Catapult_Gold;
-        buildTime = GameRules::Time_Build_Soldier * 2.0f; // Mancýnýk 2 kat uzun sürsün
-        break;
-    }
-
-    // 4. Kaynak Kontrolü
-    // Player.cpp getResources sýrasý: { Wood, Gold, Stone, Food }
-    // Index: 0=Wood, 1=Gold, 2=Stone, 3=Food
-    std::vector<int> resources = player.getResources();
+    // 4. Kaynak Kontrolü (Player kaynaklarýný kontrol et)
+    std::vector<int> resources = player.getResources(); // { Wood, Gold, Stone, Food }
 
     bool hasWood = resources[0] >= woodCost;
     bool hasGold = resources[1] >= goldCost;
@@ -57,7 +36,7 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
 
     if (hasWood && hasGold && hasFood) {
 
-        // Ödeme Yap (Negatif ekleme yaparak harcama yapýyoruz)
+        // Ödeme Yap
         if (woodCost > 0) player.addWood(-woodCost);
         if (goldCost > 0) player.addGold(-goldCost);
         if (foodCost > 0) player.addFood(-foodCost);

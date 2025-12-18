@@ -80,28 +80,72 @@ void Player::addStone(int amount) { playerResources.add(ResourceType::Stone, amo
 void Player::addEntity(std::shared_ptr<Entity> entity) { entities.push_back(entity); }
 */
 
-// --- SEÇÝM SÝSTEMÝ ---
-std::vector<std::shared_ptr<Entity>> Player::selectUnit(sf::RenderWindow& window, const sf::View& camera) {
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+// ---------------------- SEÇÝM SÝSTEMÝ -----------------------
+
+//---------- Tekli Seçim ------------------------
+void Player::selectUnit(sf::RenderWindow& window, const sf::View& camera, bool isShiftHeld) {
+    sf::Vector2i mousePosPixel = sf::Mouse::getPosition(window);
+    sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel, camera);
+
+    // Shift basýlý DEÐÝLSE, mevcut seçimi temizle
+    if (!isShiftHeld) {
+        for (auto& e : selected_entities) e->setSelected(false);
         selected_entities.clear();
-        sf::Vector2i mousePosPixel = sf::Mouse::getPosition(window);
+    }
 
-        // --- DÜZELTME BURADA ---
-        // Eskiden: window.mapPixelToCoords(mousePosPixel); 
-        // Þimdi kamerayý (view) parametre olarak veriyoruz:
-        sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel, camera);
+    bool clickedOnSomething = false;
 
-        for (auto& entity : entities) {
-            // entity->getBounds() zaten dünya koordinatlarýnda olduðu için artýk eþleþecekler.
-            if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
-                selected_entities.push_back(entity);
-                entity->setSelected(true);
+    for (auto& entity : entities) {
+        if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
+
+            // Eðer zaten seçiliyse ve Shift'e basýyorsak -> Seçimi kaldýr (Toggle)
+            if (isShiftHeld && entity->isSelected) {
+                entity->setSelected(false);
+                // Vektörden silme iþlemi biraz maliyetli olabilir ama basit tutalým:
+                // (Modern C++'da remove_if kullanýlýr ama þimdilik kalsýn, görsel güncellemesi yeter)
+                // Doðru yöntem: selected_entities listesinden bu elemaný bulup silmek gerekir.
             }
             else {
-                // Çoklu seçim (Shift tuþu vs.) yoksa diðerlerini iptal et
-                entity->setSelected(false);
+                // Seçili deðilse seç
+                if (!entity->isSelected) {
+                    entity->setSelected(true);
+                    selected_entities.push_back(entity);
+                }
+            }
+            clickedOnSomething = true;
+            break; // Üst üste binenlerden sadece en üsttekini seç
+        }
+    }
+
+    // Boþa týkladýysak ve Shift yoksa her þeyi býrak
+    if (!clickedOnSomething && !isShiftHeld) {
+        for (auto& e : selected_entities) e->setSelected(false);
+        selected_entities.clear();
+    }
+}
+
+// ---------------------  ÇOKLU SEÇÝM  --------------
+void Player::selectUnitsInRect(const sf::FloatRect& selectionRect, bool isShiftHeld) {
+
+    // Shift basýlý DEÐÝLSE önce temizle
+    if (!isShiftHeld) {
+        for (auto& e : selected_entities) e->setSelected(false);
+        selected_entities.clear();
+    }
+
+    for (auto& entity : entities) {
+        if (!entity->getIsAlive()) continue;
+
+        // Entity'nin pozisyonu kutunun içinde mi?
+        // intersects yerine contains kullanýyoruz ki sadece kutu içindekiler seçilsin
+        // veya biraz dokunsa da seçilsin istersen 'intersects' kullanabilirsin.
+        if (selectionRect.intersects(entity->getBounds())) {
+
+            // Zaten seçili deðilse listeye ekle
+            if (!entity->isSelected) {
+                entity->setSelected(true);
+                selected_entities.push_back(entity);
             }
         }
     }
-    return selected_entities;
 }

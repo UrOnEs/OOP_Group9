@@ -54,4 +54,8 @@ private:
     // Ýnþaat modunu açýp kapatan yardýmcý fonksiyon
     void enterBuildMode(BuildTypes type, const std::string& textureName);
     void cancelBuildMode();
+
+    bool isSelecting = false;        // Mouse basýlý mý?
+    sf::Vector2f selectionStartPos;  // Ýlk týkladýðýmýz yer (Dünya koordinatý)
+    sf::RectangleShape selectionBox; // Çizilecek yeþil kutu
 };

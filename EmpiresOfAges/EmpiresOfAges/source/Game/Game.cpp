@@ -44,6 +44,11 @@ Game::Game()
     ghostGridRect.setFillColor(sf::Color::Transparent);
     ghostGridRect.setOutlineThickness(1);
     ghostGridRect.setOutlineColor(sf::Color::White);
+
+    // Seçim Kutusu Görsel Ayarý
+    selectionBox.setFillColor(sf::Color(0, 255, 0, 50)); // Yarý saydam yeþil
+    selectionBox.setOutlineThickness(1.0f);
+    selectionBox.setOutlineColor(sf::Color::Green);
 }
 
 void Game::initNetwork() {
@@ -79,8 +84,11 @@ void Game::initUI() {
     AbilityInfo buildHouse;
     buildHouse.id = 1;
     buildHouse.name = "Build House";
-    buildHouse.costText = "Cost: 30 Wood";
-    buildHouse.description = "Population space for 5 units.\nNecessary for expanding army.";
+
+    int houseCost = GameRules::getBuildingCost(BuildTypes::House).wood;
+    buildHouse.costText = "Cost: " + std::to_string(houseCost) + " Wood";
+
+    buildHouse.description = "Population space for 5 units.";
     buildHouse.iconTexture = &houseIconTex;
     testAbilities.push_back(buildHouse);
 
@@ -114,127 +122,73 @@ void Game::processEvents() {
     sf::Event event;
     while (window.pollEvent(event)) {
 
+        // UI Olaylarýný Ýþle
         uiManager.handleEvent(event);
         hud.handleEvent(event);
 
+        // Pencere Kapatma
         if (event.type == sf::Event::Closed)
             window.close();
 
-        // --- ÝNÞAAT MODU TUÞ KONTROLLERÝ ---
+        // --- SADECE OYUN OYNANIRKEN ÇALIÞACAK KODLAR ---
         if (stateManager.getState() == GameState::Playing) {
 
-            // Klavye Kýsayollarý
+            // 1. KLAVYE KISAYOLLARI
             if (event.type == sf::Event::KeyPressed) {
+                // 'H' Tuþu: Ev Ýnþa Etme Modu
                 if (event.key.code == sf::Keyboard::H) {
-                    // H tuþuna basýnca Ev yapma moduna geç
-                    // Texture yoksa bile çalýþýr (Beyaz kare çýkar)
                     enterBuildMode(BuildTypes::House, "assets/icons/house_icon.jpg");
                 }
+                // 'ESC' Tuþu: Ýnþaatý Ýptal Et
                 if (event.key.code == sf::Keyboard::Escape) {
                     cancelBuildMode();
                 }
             }
 
+            // Mouse Pozisyonlarýný Al
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
+            sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
 
-            // UI Korumasý: Mouse panelin üzerindeyse haritaya týklama
+            // UI Korumasý: Mouse alt panelin veya üst barýn üzerindeyse haritaya týklama
             bool isMouseOnPanel = (pixelPos.y > 600);
             bool isMouseOnTopBar = (pixelPos.y < 50);
-
-            // Eðer UI üzerindeysek ve týklýyorsak, harita kodlarýný çalýþtýrma
-            if ((event.type == sf::Event::MouseButtonPressed) && (isMouseOnTopBar || isMouseOnPanel)) {
-                continue;
-            }
-
-            sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
+            bool isMouseOnUI = (isMouseOnPanel || isMouseOnTopBar);
 
             // Grid Koordinatlarýný Hesapla
             int gridX = static_cast<int>(worldPos.x / mapManager.getTileSize());
             int gridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
-            // --- TIKLAMA ÝÞLEMLERÝ ---
+            // 2. MOUSE TIKLAMA (BASMA) ÝÞLEMLERÝ
             if (event.type == sf::Event::MouseButtonPressed) {
 
-                // --- SAÐ TIK (ÝPTAL VEYA HAREKET) ---
-                if (event.mouseButton.button == sf::Mouse::Right) {
+                // --- SOL TIK ---
+                if (event.mouseButton.button == sf::Mouse::Left) {
+
+                    // Eðer UI üzerindeysek oyuna müdahale etme
+                    if (isMouseOnUI) continue;
+
                     if (isInBuildMode) {
-                        cancelBuildMode(); // Ýnþaat modundaysak iptal et
-                    }
-                    else {
-                        // --- MEVCUT HAREKET KODLARI (Aynen koruyoruz) ---
-                        if (gridX >= 0 && gridX < mapManager.getWidth() &&
-                            gridY >= 0 && gridY < mapManager.getHeight()) {
+                        // --- ÝNÞAAT MODU ---
 
-                            Point baseTarget = { gridX, gridY };
-                            std::set<Point> reservedTiles;
-                            const auto& levelData = mapManager.getLevelData();
+                        // 1. Maliyeti Öðren
+                        GameRules::Cost cost = GameRules::getBuildingCost(pendingBuildingType);
 
-                            // 1. Yer Kaplayanlarý Bul
-                            for (const auto& entity : localPlayer.getEntities()) {
-                                if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
-                                    if (!u->isSelected) {
-                                        reservedTiles.insert(u->getGridPoint());
-                                    }
-                                }
-                            }
+                        // 2. Kaynak Kontrolü (Þimdilik sadece Odun üzerinden örnekliyoruz)
+                        // Player.h içindeki getResources() sýrasý: 0:Wood, 1:Gold, 2:Stone, 3:Food
+                        if (localPlayer.getResources()[0] >= cost.wood) {
 
-                            // 2. Seçili askerlere hedef daðýt
-                            for (auto& entity : localPlayer.selected_entities) {
-                                if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
-                                    Point specificGridTarget = PathFinder::findClosestFreeTile(
-                                        baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
-                                    );
-                                    reservedTiles.insert(specificGridTarget);
+                            // 3. Binayý Yerleþtirmeyi Dene (MapManager kontrol eder)
+                            if (mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType)) {
 
-                                    // A* Yol Bulma
-                                    std::vector<Point> gridPath = PathFinder::findPath(
-                                        unit->getGridPoint(), specificGridTarget, levelData, mapManager.getWidth(), mapManager.getHeight()
-                                    );
+                                // 4. Baþarýlýysa Kaynaðý Düþ
+                                localPlayer.addWood(-cost.wood);
+                                localPlayer.addGold(-cost.gold); // Varsa diðerlerini de düþ
+                                localPlayer.addFood(-cost.food);
+                                localPlayer.addStone(-cost.stone);
 
-                                    // Grid -> Pixel Çevirme
-                                    std::vector<sf::Vector2f> worldPath;
-                                    for (const auto& p : gridPath) {
-                                        float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                                        float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                                        worldPath.push_back(sf::Vector2f(px, py));
-                                    }
-                                    unit->setPath(worldPath);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // --- SOL TIK (SEÇÝM VEYA ÝNÞAAT) ---
-                else if (event.mouseButton.button == sf::Mouse::Left) {
-                    if (isInBuildMode) {
-                        // --- ÝNÞAAT YAP ---
-                        int cost = GameRules::Cost_House_Wood;
-
-                        // Kaynak Yeterli mi?
-                        if (localPlayer.getResources()[0] >= cost) {
-
-                            // ResourceManager parametresini sildik (Geçici olarak)
-                            // mapManager.tryPlaceBuilding fonksiyonu son halinde resMgr istiyor mu kontrol etmeliyiz.
-                            // Eðer istiyorsa ve Player'dan eriþemiyorsak, þimdilik o parametreyi MapManager.h/cpp'den kaldýr veya dummy gönder.
-                            // Aþaðýdaki kod MapManager'ýn parametre istemeyen haline göredir:
-
-                            // NOT: Eðer MapManager::tryPlaceBuilding hata verirse parametreleri kontrol et.
-                            // Þimdilik kaynak düþme iþini burada yapýyoruz:
-
-                            // (MapManager'da tryPlaceBuilding fonksiyonunu çaðýrýrken ResourceManager istiyorsa orayý düzeltmemiz lazým, 
-                            // þimdilik parametresiz varsayýyorum veya dummy bir çözüm üretebiliriz)
-
-                            // Geçici Çözüm: ResourceManager referansý yerine kaynak kontrolünü burada yaptýk.
-                            // MapManager.cpp'deki tryPlaceBuilding'den "ResourceManager& resMgr" parametresini silmeni öneririm 
-                            // çünkü kaynak düþümünü zaten Game.cpp'de yapýyoruz.
-
-                            // Eðer tryPlaceBuilding parametre istiyorsa hatayý düzeltmek için MapManager.cpp'ye git ve o parametreyi sil.
-                            if (mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType, localPlayer.playerResources)) {
-
-                                localPlayer.addWood(-cost);
                                 std::cout << "[GAME] Bina insa edildi!\n";
 
+                                // Shift'e basýlý deðilse inþaat modundan çýk
                                 if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) {
                                     cancelBuildMode();
                                 }
@@ -245,13 +199,107 @@ void Game::processEvents() {
                         }
                         else {
                             std::cout << "[GAME] Yetersiz Kaynak!\n";
-                            cancelBuildMode(); // Parasý yoksa modu kapat
+                            cancelBuildMode();
                         }
                     }
                     else {
-                        // --- ASKER SEÇÝMÝ ---
-                        localPlayer.selectUnit(window, camera);
+                        // --- SEÇÝM BAÞLANGICI (Normal Mod) ---
+                        isSelecting = true;
+                        selectionStartPos = worldPos;             // Kutunun baþladýðý yer
+                        selectionBox.setSize(sf::Vector2f(0, 0)); // Kutuyu sýfýrla
                     }
+                }
+
+                // --- SAÐ TIK ---
+                else if (event.mouseButton.button == sf::Mouse::Right) {
+                    if (isInBuildMode) {
+                        // Ýnþaat modundaysak iptal et
+                        cancelBuildMode();
+                    }
+                    else {
+                        // --- HAREKET EMRÝ (PATHFINDING) ---
+
+                        // Harita sýnýrlarý içinde miyiz?
+                        if (gridX >= 0 && gridX < mapManager.getWidth() &&
+                            gridY >= 0 && gridY < mapManager.getHeight()) {
+
+                            Point baseTarget = { gridX, gridY };
+                            std::set<Point> reservedTiles;
+                            const auto& levelData = mapManager.getLevelData();
+
+                            // A. Diðer askerlerin olduðu yerleri "Dolu" say
+                            for (const auto& entity : localPlayer.getEntities()) {
+                                if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
+                                    if (!u->isSelected) {
+                                        reservedTiles.insert(u->getGridPoint());
+                                    }
+                                }
+                            }
+
+                            // B. Seçili askerlere hedef daðýt ve yol çiz
+                            for (auto& entity : localPlayer.selected_entities) {
+                                if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
+
+                                    // Formasyon için en yakýn boþ kareyi bul
+                                    Point specificGridTarget = PathFinder::findClosestFreeTile(
+                                        baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
+                                    );
+                                    reservedTiles.insert(specificGridTarget); // Orayý rezerve et
+
+                                    // A* ile yolu hesapla
+                                    std::vector<Point> gridPath = PathFinder::findPath(
+                                        unit->getGridPoint(), specificGridTarget, levelData, mapManager.getWidth(), mapManager.getHeight()
+                                    );
+
+                                    // Grid Koordinatlarýný Dünya (Pixel) Koordinatlarýna Çevir
+                                    std::vector<sf::Vector2f> worldPath;
+                                    for (const auto& p : gridPath) {
+                                        float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                        float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                                        worldPath.push_back(sf::Vector2f(px, py));
+                                    }
+
+                                    // Askere yolu ver
+                                    unit->setPath(worldPath);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. MOUSE BIRAKMA (SEÇÝM BÝTÝÞÝ)
+            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+                if (isSelecting) {
+                    isSelecting = false;
+                    bool shift = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+
+                    // Eðer kutu çok küçükse (sadece týklama yaptýysa)
+                    if (std::abs(selectionBox.getSize().x) < 5.0f && std::abs(selectionBox.getSize().y) < 5.0f) {
+                        localPlayer.selectUnit(window, camera, shift);
+                    }
+                    else {
+                        // Alan seçimi (Sürükle býrak)
+                        sf::FloatRect rect = selectionBox.getGlobalBounds();
+                        localPlayer.selectUnitsInRect(rect, shift);
+                    }
+
+                    // Görseli temizle
+                    selectionBox.setSize(sf::Vector2f(0, 0));
+                }
+            }
+
+            // 4. MOUSE HAREKETÝ (SEÇÝM KUTUSU GÜNCELLEME)
+            if (event.type == sf::Event::MouseMoved) {
+                if (isSelecting) {
+                    sf::Vector2i currentPixelPos = sf::Mouse::getPosition(window);
+                    sf::Vector2f currentWorldPos = window.mapPixelToCoords(currentPixelPos, camera);
+
+                    // Baþlangýç noktasýndan þu anki noktaya boyut hesapla
+                    sf::Vector2f size = currentWorldPos - selectionStartPos;
+
+                    selectionBox.setPosition(selectionStartPos);
+                    selectionBox.setSize(size);
                 }
             }
         }
@@ -284,41 +332,58 @@ void Game::update(float dt) {
 void Game::render() {
     window.clear();
 
-    // 1. Oyun Dünyasý
+    // 1. Oyun Dünyasý Görünümü
     window.setView(camera);
+
     if (stateManager.getState() == GameState::Playing) {
         mapManager.draw(window);
         localPlayer.renderEntities(window);
 
-        // --- ÝNÞAAT MODU GÖRSELÝ ---
+        // --- SEÇÝM KUTUSUNU ÇÝZ ---
+        if (isSelecting) {
+            window.draw(selectionBox);
+        }
+
+        // --- ÝNÞAAT MODU (DÜZELTÝLMÝÞ KISIM) ---
         if (isInBuildMode) {
-            // Mouse pozisyonunu al
+            // 1. Mouse'un haritadaki yerini bul
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
             sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
 
-            // Grid'e yapýþtýr (Snap to Grid)
+            // 2. Grid'e Yapýþtýr (Snap to Grid)
+            // Koordinatý TileSize'a böl, tam sayýya yuvarla, tekrar çarp.
             int gx = static_cast<int>(worldPos.x / mapManager.getTileSize());
             int gy = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
             float snapX = gx * mapManager.getTileSize();
             float snapY = gy * mapManager.getTileSize();
 
+            // 3. Pozisyonu Güncelle (Mouse'u takip etmesi için BURASI ÞART)
             ghostBuildingSprite.setPosition(snapX, snapY);
             ghostGridRect.setPosition(snapX, snapY);
 
-            // Harita sýnýrlarýnda mý?
-            bool isValid = (gx >= 0 && gx < mapManager.getWidth() && gy >= 0 && gy < mapManager.getHeight());
-            // Buraya mapManager.isBuildingAt(gx, gy) kontrolü de eklenebilir
+            // 4. Geçerlilik Kontrolü (Renk Deðiþimi)
+            // Sadece harita sýnýrlarýný kontrol ediyoruz.
+            // (Ýstersen buraya 'o karede bina var mý' kontrolü de eklenir)
+            bool isValid = (gx >= 0 && gx < mapManager.getWidth() &&
+                gy >= 0 && gy < mapManager.getHeight());
 
-            if (isValid) ghostBuildingSprite.setColor(sf::Color(0, 255, 0, 150)); // Yeþil
-            else ghostBuildingSprite.setColor(sf::Color(255, 0, 0, 150)); // Kýrmýzý
+            if (isValid) {
+                ghostBuildingSprite.setColor(sf::Color(0, 255, 0, 150)); // Yeþil (Müsait)
+                ghostGridRect.setOutlineColor(sf::Color::Green);
+            }
+            else {
+                ghostBuildingSprite.setColor(sf::Color(255, 0, 0, 150)); // Kýrmýzý (Yasak)
+                ghostGridRect.setOutlineColor(sf::Color::Red);
+            }
 
+            // 5. Çiz
             window.draw(ghostBuildingSprite);
             window.draw(ghostGridRect);
         }
     }
 
-    // 2. UI
+    // 2. UI Görünümü
     window.setView(window.getDefaultView());
     hud.draw(window);
     uiManager.draw(window);
@@ -338,17 +403,31 @@ void Game::enterBuildMode(BuildTypes type, const std::string& textureName) {
     isInBuildMode = true;
     pendingBuildingType = type;
 
-    // Texture'ý ResourceManager veya AssetManager'dan almalýsýn. 
-    // Þimdilik test için AssetManager kullanýyoruz ama normalde Player resources'dan almalý.
-    ghostBuildingSprite.setTexture(AssetManager::getTexture(textureName)); // "tileset.png" veya özel bina resmi
+    sf::Texture& tex = AssetManager::getTexture(textureName);
+    ghostBuildingSprite.setTexture(tex);
 
-    // Texture'ýn boyutuyla oynayabiliriz veya tileset kullanýyorsak TextureRect ayarlamalýyýz.
-    // Þimdilik basit tutalým, tileset'in tamamýný deðil, ilgili kýsmýný göstermeli ama 
-    // senin sisteminde binalar ayrý class olduðu için þimdilik varsayýlan bir ikon koyalým.
-    // EÐER tileset kullanýyorsan ve bina oradaysa:
-    // ghostBuildingSprite.setTextureRect(...); 
+    // --- BOYUT HESAPLAMA ---
+    float widthInTiles = 2.0f;
+    float heightInTiles = 2.0f;
 
-    std::cout << "[GAME] Insaat modu aktif: " << (int)type << "\n";
+    if (type == BuildTypes::House) {
+        widthInTiles = 1.0f;
+        heightInTiles = 1.0f;
+    }
+
+    // Hedef piksel boyutu (Örn: 1x1 ise 64px, 2x2 ise 128px)
+    float targetWidth = widthInTiles * mapManager.getTileSize();
+    float targetHeight = heightInTiles * mapManager.getTileSize();
+
+    // Resmi bu boyuta sýðdýr
+    sf::Vector2u texSize = tex.getSize();
+    ghostBuildingSprite.setScale(targetWidth / texSize.x, targetHeight / texSize.y);
+
+    // Izgara karesini de (Outline) bu boyuta ayarla
+    ghostGridRect.setSize(sf::Vector2f(targetWidth, targetHeight));
+
+    ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150));
+    std::cout << "[GAME] Insaat modu aktif.\n";
 }
 
 void Game::cancelBuildMode() {

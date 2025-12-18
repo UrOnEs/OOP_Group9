@@ -15,7 +15,7 @@ public:
     void initialize();
 
     // Bina yerleþtirme denemesi
-    bool tryPlaceBuilding(int tx, int ty, BuildTypes type, ResourceManager& resMgr);
+    bool tryPlaceBuilding(int tx, int ty, BuildTypes type);
 
     // Bina silme
     void removeBuilding(int tx, int ty);

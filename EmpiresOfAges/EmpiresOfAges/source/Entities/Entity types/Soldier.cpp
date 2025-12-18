@@ -27,7 +27,6 @@ void Soldier::setType(SoldierTypes type) {
         health = GameRules::HP_Barbarian;
         travelSpeed = GameRules::Speed_Barbarian;
 
-        // DÜZELTME BURADA: setColor -> setFillColor
         shape.setFillColor(sf::Color::Red);
         break;
 
@@ -35,16 +34,14 @@ void Soldier::setType(SoldierTypes type) {
         health = GameRules::HP_Archer;
         travelSpeed = GameRules::Speed_Archer;
 
-        // DÜZELTME BURADA: setColor -> setFillColor
+
         shape.setFillColor(sf::Color::Green);
         break;
 
-    case SoldierTypes::catapult:
-        health = GameRules::HP_Catapult;
-        travelSpeed = GameRules::Speed_Catapult;
-
-        // DÜZELTME BURADA: setColor -> setFillColor
-        shape.setFillColor(sf::Color::Magenta);
+    case SoldierTypes::Wizard: // Catapult gitti, Wizard geldi
+        health = GameRules::HP_Wizard;
+        travelSpeed = GameRules::Speed_Wizard;
+        shape.setFillColor(sf::Color::Blue); // Büyücü Mavi olsun
         break;
     }
 }
