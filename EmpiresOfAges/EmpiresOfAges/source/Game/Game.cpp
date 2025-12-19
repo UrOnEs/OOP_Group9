@@ -141,7 +141,7 @@ void Game::processEvents() {
             if (event.type == sf::Event::KeyPressed) {
                 // 'H' Tuþu: Ev Ýnþa Etme Modu
                 if (event.key.code == sf::Keyboard::H) {
-                    enterBuildMode(BuildTypes::House, "assets/icons/house_icon.jpg");
+                    enterBuildMode(BuildTypes::House, "assets/buildings/house.png");
                 }
 
                 // --- DEÐÝÞÝKLÝK 2: ESC TUÞU ÝÞLEVÝ ---

@@ -49,6 +49,11 @@ public:
         shape.setPosition(newPos);
     }
 
+    void setScale(float x, float y) {
+        if (hasTexture) sprite.setScale(x, y);
+        shape.setScale(x, y);
+    }
+
     virtual sf::Vector2f getPosition() const {
         return hasTexture ? sprite.getPosition() : shape.getPosition();
     }
