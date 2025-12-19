@@ -8,7 +8,8 @@ enum class BuildTypes {
 	WoodPlace,
 	StoneMine,
 	GoldMine,
-	House
+	House,
+	Tree
 };
 
 enum class SoldierTypes {

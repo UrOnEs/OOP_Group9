@@ -1,15 +1,11 @@
 #include "Map/MapManager.h"
 #include "Game/ResourceManager.h"
 #include "Entity System/Entity Type/types.h"
-
-// Alt Sýnýflar
 #include "Entity System/Entity Type/House.h"
 #include "Entity System/Entity Type/StoneMine.h"
 #include "Entity System/Entity Type/Farm.h"
 #include "Entity System/Entity Type/Barracks.h"
-// #include "Entity System/Entity Type/LumberCamp.h" // Dosya yoksa kapalý kalsýn
-// #include "Entity System/Entity Type/GoldMine.h"   // Dosya yoksa kapalý kalsýn
-
+#include "Entity System/Entity Type/Tree.h"
 #include "UI/AssetManager.h"
 
 #include <iostream>
@@ -21,13 +17,12 @@ MapManager::MapManager(int width, int height, int tileSize)
 }
 
 void MapManager::initialize() {
-    createTilesetFile(); // PNG oluþtur
+    createTilesetFile();
 
     if (!m_tilesetTexture.loadFromFile("tileset.png")) {
         std::cerr << "HATA: tileset.png yuklenemedi!" << std::endl;
     }
 
-    // Rastgele Duvarlar (%10 oranýnda)
     std::srand(static_cast<unsigned>(std::time(nullptr)));
     for (int i = 0; i < (m_width * m_height) / 10; i++) {
         int rx = std::rand() % m_width;
@@ -35,30 +30,81 @@ void MapManager::initialize() {
         m_level[rx + ry * m_width] = 1;
     }
 
-    // TileMap yükle
     if (!m_map.load("tileset.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
         std::cerr << "MapManager load hatasi!" << std::endl;
     }
 }
 
+// --- DEÐÝÞÝKLÝK: DÝNAMÝK TILESET OLUÞTURMA ---
 void MapManager::createTilesetFile() {
     sf::Image tileset;
-    tileset.create(704, 32, sf::Color::Black);
 
-    // 0: Çimen (Yeþil)
-    for (unsigned int x = 0; x < 32; ++x) {
-        for (unsigned int y = 0; y < 32; ++y) {
-            if (x == 0 || y == 0 || x == 31 || y == 31) tileset.setPixel(x, y, sf::Color(34, 139, 34));
-            else tileset.setPixel(x, y, sf::Color(50, 205, 50));
+    int ts = m_tileSize; // Kýsaltma
+
+    // Geniþlik hesabý: Yaklaþýk 22 adet tile sýðacak kadar yer ayýrýyoruz.
+    // (Eskiden 704px idi, 704/32 = 22 tile).
+    tileset.create(ts * 22, ts, sf::Color::Black);
+
+    // 0: Çimen (Yeþil) - [0 ile ts arasý]
+    for (unsigned int x = 0; x < ts; ++x) {
+        for (unsigned int y = 0; y < ts; ++y) {
+            // Kenar çizgileri (Border)
+            if (x == 0 || y == 0 || x == ts - 1 || y == ts - 1)
+                tileset.setPixel(x, y, sf::Color(34, 139, 34));
+            else
+                tileset.setPixel(x, y, sf::Color(50, 205, 50));
         }
     }
-    // 1: Duvar (Gri)
-    for (unsigned int x = 32; x < 64; ++x) {
-        for (unsigned int y = 0; y < 32; ++y) {
+
+    // 1: Duvar (Gri) - [ts ile 2*ts arasý]
+    for (unsigned int x = ts; x < ts * 2; ++x) {
+        for (unsigned int y = 0; y < ts; ++y) {
             tileset.setPixel(x, y, sf::Color(105, 105, 105));
-            if ((x - 32) == y || (x - 32) == (31 - y)) tileset.setPixel(x, y, sf::Color::Black);
+
+            // X iþareti (Göreceli koordinat hesabý: x - ts)
+            if ((x - ts) == y || (x - ts) == (ts - 1 - y))
+                tileset.setPixel(x, y, sf::Color::Black);
         }
     }
+
+    // ORMAN OLUÞTURMA (%5 Ýhtimalle Aðaç Koy)
+    for (int i = 0; i < (m_width * m_height); i++) {
+        // Koordinatlarý bul
+        int tx = i % m_width;
+        int ty = i / m_width;
+
+        // Eðer zemin boþsa (Duvar veya baþka bina yoksa)
+        if (m_level[i] == 0) {
+            // %5 ihtimalle aðaç dik
+            if (std::rand() % 100 < 5) {
+                // tryPlaceBuilding fonksiyonunu "Tree" tipiyle çaðýracaðýz
+                // Ancak tryPlaceBuilding'de Tree için özel ayar yapmamýz lazým.
+                // O yüzden manuel ekleyelim:
+
+                std::shared_ptr<Tree> newTree = std::make_shared<Tree>();
+
+                // Texture Yükle (Eline bir tree.png resmi lazým)
+                sf::Texture& tex = AssetManager::getTexture("assets/nature/tree.png");
+                newTree->setTexture(tex);
+
+                // Ölçekle (Aðaçlarý kareye sýðdýr veya biraz taþýrt)
+                float targetSize = (float)m_tileSize; // 64px
+                sf::Vector2u texSize = tex.getSize();
+                newTree->setScale(targetSize / texSize.x, targetSize / texSize.y);
+
+                // Pozisyon (Merkeze)
+                float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
+                float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
+                newTree->setPosition(sf::Vector2f(centerX, centerY));
+
+                m_buildings.push_back(newTree);
+
+                // Haritada o kareyi dolu iþaretle (1: Duvar, 2: Aðaç vs. diyebilirsin ama þimdilik 1 kalsýn geçilmesin)
+                m_level[i] = 1;
+            }
+        }
+    }
+
     tileset.saveToFile("tileset.png");
 }
 

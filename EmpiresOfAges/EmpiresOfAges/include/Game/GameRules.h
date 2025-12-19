@@ -1,15 +1,21 @@
 #pragma once
 
 #include <SFML/System/Vector2.hpp>
-
 #include "Entity System/Entity Type/types.h" 
 
 namespace GameRules {
 
     // ==========================================
-    // 1. GENEL AYARLAR
+    // 1. GENEL AYARLAR & HARÝTA
     // ==========================================
+    constexpr int MapWidth = 50;
+    constexpr int MapHeight = 50;
     constexpr int TileSize = 64;
+
+    // BÝRÝM BOYUTLANDIRMA (YENÝ)
+    // Askerlerin yarýçapý. (Örn: 15.0f yaparsan çapý 30 piksel olur)
+    constexpr float UnitRadius = 8.0f;
+
     constexpr int MaxPopulation = 200;
     constexpr float GameSpeed = 1.0f;
 
@@ -84,7 +90,7 @@ namespace GameRules {
     // ==========================================
     // 6. HAREKET HIZLARI
     // ==========================================
-    constexpr float Speed_Villager = 40.f;
+    constexpr float Speed_Villager = 100.f;
     constexpr float Speed_Barbarian = 150.f;
     constexpr float Speed_Archer = 45.f;
     constexpr float Speed_Wizard = 20.f;
@@ -114,4 +120,9 @@ namespace GameRules {
 
     // KIÞLA: 2x2 Kare (128x128)
     const sf::Vector2f Size_Barracks = sf::Vector2f(128.f, 128.f);
+
+    // ORMAN / AÐAÇ AYARLARI
+    constexpr float HP_Tree = 50.f;        // Aðacýn caný (Kesilince deðil, saldýrýlýnca yýkýlmasý için) %90 kaldýrýrýk
+    constexpr int Resources_Per_Tree = 100;// Bir aðaçtan kaç odun çýkar?
+    constexpr int Wood_Per_Tick = 10;      // Her seferinde kaç odun toplansýn?
 }

@@ -1,21 +1,31 @@
 #include "Entity System/Entity Type/Unit.h"
+#include "Game/GameRules.h" // GameRules'u eklemeyi unutma
 #include <cmath>
 
-// --- DÜZELTME: Varsayýlan Constructor ---
-Unit::Unit() : m_tileSize(32), m_isMoving(false), travelSpeed(100.f) {
-    // Varsayýlan deðerler (Hata almamak için)
-    shape.setRadius(12.f);
-    shape.setOrigin(12.f, 12.f);
+// Varsayýlan Yapýcý
+Unit::Unit()
+    : m_tileSize(GameRules::TileSize), // Varsayýlan olarak GameRules'daki deðeri al
+    m_isMoving(false),
+    travelSpeed(100.f)
+{
+    // --- DEÐÝÞÝKLÝK: Yarýçap GameRules'dan geliyor ---
+    shape.setRadius(GameRules::UnitRadius);
+    shape.setOrigin(GameRules::UnitRadius, GameRules::UnitRadius);
 }
 
+// Parametreli Yapýcý
 Unit::Unit(int startGridX, int startGridY, int tileSize)
     : m_tileSize(tileSize), m_isMoving(false), travelSpeed(100.f)
 {
-    float r = tileSize / 2.0f - 4.0f;
+    // --- DEÐÝÞÝKLÝK: Yarýçap GameRules'dan geliyor ---
+    // tileSize ne gelirse gelsin, askerin boyutu sabittir.
+    float r = GameRules::UnitRadius;
+
     shape.setRadius(r);
     shape.setOrigin(r, r);
     shape.setFillColor(sf::Color::Red);
 
+    // Konumlandýrma: Askeri yine karenin (tileSize) ortasýna koyuyoruz
     sf::Vector2f startPixel(startGridX * tileSize + tileSize / 2.0f, startGridY * tileSize + tileSize / 2.0f);
     shape.setPosition(startPixel);
     m_targetPos = startPixel;
@@ -35,41 +45,32 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
     sf::Vector2f direction = m_targetPos - currentPos;
     float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
-    // Hedefe çok yaklaþtýk mý? (Tolerans 4 piksel)
     if (distance < 4.0f) {
-        shape.setPosition(m_targetPos); // Tam noktaya otur
-
-        // Bu duraðý listeden sil (Çünkü vardýk)
+        shape.setPosition(m_targetPos);
         m_path.erase(m_path.begin());
 
-        // Baþka durak kaldý mý?
         if (m_path.empty()) {
-            m_isMoving = false; // Yol bitti
+            m_isMoving = false;
         }
         else {
-            m_targetPos = m_path[0]; // Sýradaki duraðý hedefle
+            m_targetPos = m_path[0];
         }
         return;
     }
 
-    // --- HAREKET MANTIÐI ---
     sf::Vector2f normalizedDir = direction / distance;
     sf::Vector2f velocity = normalizedDir * travelSpeed * dt;
 
-    // X Ekseninde Dene
     sf::Vector2f nextPosX = currentPos;
     nextPosX.x += velocity.x;
 
-    // Basit çarpýþma kontrolü (Güvenlik için kalsýn)
     if (checkCollision(nextPosX, mapData, width, height)) {
-        // Eðer duvara sürterse kaymaya devam etsin
         if (velocity.y != 0) velocity.y = (velocity.y > 0 ? 1.f : -1.f) * travelSpeed * dt;
     }
     else {
         currentPos.x = nextPosX.x;
     }
 
-    // Y Ekseninde Dene
     sf::Vector2f nextPosY = currentPos;
     nextPosY.y += velocity.y;
 
@@ -92,6 +93,7 @@ bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& ma
     };
 
     for (const auto& p : corners) {
+        // Burada m_tileSize (64) kullanýldýðý için grid hesabý doðru çalýþýr
         int tx = static_cast<int>(p.x) / m_tileSize;
         int ty = static_cast<int>(p.y) / m_tileSize;
 
@@ -102,7 +104,6 @@ bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& ma
 }
 
 void Unit::render(sf::RenderWindow& window) {
-    // Entity'den gelen seçim kontrolü
     if (isSelected) {
         shape.setOutlineThickness(2);
         shape.setOutlineColor(sf::Color::Green);
@@ -118,11 +119,8 @@ Point Unit::getGridPoint() const {
              static_cast<int>(shape.getPosition().y / m_tileSize) };
 }
 
-//-------------Rota Atama Fonksiyonu-----------------------------
 void Unit::setPath(const std::vector<sf::Vector2f>& pathPoints) {
-    m_path = pathPoints; // Listeyi kaydet
-
-    // Eðer liste doluysa ilk duraða doðru yola çýk
+    m_path = pathPoints;
     if (!m_path.empty()) {
         m_isMoving = true;
         m_targetPos = m_path[0];

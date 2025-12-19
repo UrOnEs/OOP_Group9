@@ -299,5 +299,8 @@
     <ClInclude Include="include\Entity System\Entity Type\GoldMine.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
+    <ClInclude Include="include\Entity System\Entity Type\Tree.h">
+      <Filter>Üst Bilgi Dosyaları</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

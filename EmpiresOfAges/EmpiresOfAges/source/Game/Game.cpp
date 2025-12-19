@@ -4,6 +4,8 @@
 #include "Systems/BuildSystem.h"
 #include "Systems/CombatSystem.h"
 #include "Entity System/Entity Type/Unit.h"
+#include "Entity System/Entity Type/Villager.h"
+#include <algorithm> // std::max ve std::min için
 #include <iostream>
 #include <vector>
 
@@ -12,19 +14,16 @@
 #include <set> 
 
 #include "UI/AssetManager.h"
+#include "Game/GameRules.h" // GameRules'u dahil et
 
 Game::Game()
-    : mapManager(50, 50, 32)
+// --- DEÐÝÞÝKLÝK 1: GameRules'dan deðerleri çekiyoruz ---
+    : mapManager(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize)
 {
-    // --- DEÐÝÞÝKLÝK 1: TAM EKRAN BAÞLATMA ---
-    // Masaüstü çözünürlüðünü alýyoruz (Örn: 1920x1080)
     sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
-
-    // Style::Fullscreen parametresi ekleyerek pencereyi oluþturuyoruz
     window.create(desktopMode, "Empires of Ages - RTS", sf::Style::Fullscreen);
     window.setFramerateLimit(60);
 
-    // Kamerayý (View) ekran çözünürlüðüne göre ayarla ki görüntü bozulmasýn
     camera.setSize(static_cast<float>(desktopMode.width), static_cast<float>(desktopMode.height));
     camera.setCenter(desktopMode.width / 2.0f, desktopMode.height / 2.0f);
 
@@ -32,10 +31,9 @@ Game::Game()
     initNetwork();
     stateManager.setState(GameState::Playing);
 
-    // Haritayý oluþtur
     mapManager.initialize();
 
-    // TEST ASKERÝ OLUÞTUR
+    // TEST ASKERÝ
     std::shared_ptr<Soldier> testSoldier = std::make_shared<Soldier>();
     testSoldier->setPosition(sf::Vector2f(500.f, 500.f));
     testSoldier->setType(SoldierTypes::Barbarian);
@@ -44,18 +42,40 @@ Game::Game()
 
     std::cout << "[SISTEM] Test askeri (Kirmizi) olusturuldu.\n";
 
+    for (int i = 0; i < 5; i++) {
+        std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
+
+        // Konumlarýný ayarla (Yan yana dizilsinler: 300,300'den baþlayarak)
+        // Her biri arasýnda 50 piksel boþluk olsun.
+        float startX = 300.0f + (i * 50.0f);
+        float startY = 300.0f;
+
+        newVillager->setPosition(sf::Vector2f(startX, startY));
+
+        // Eðer köylü için de PNG görseli kullanacaksan burayý açabilirsin:
+        // sf::Texture& tex = AssetManager::getTexture("assets/units/villager.png");
+        // newVillager->setTexture(tex);
+        // newVillager->getShape().setFillColor(sf::Color::Transparent); 
+        // (Þimdilik kýrmýzý nokta olarak kalsýn diyorsan üsttekileri kapalý tut)
+
+        localPlayer.addEntity(newVillager);
+    }
+    std::cout << "[SISTEM] 5 Koylu oyuna eklendi.\n";
+    // ---------------------------------------------
+
     ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150));
-    ghostGridRect.setSize(sf::Vector2f(32, 32));
+
+    // --- DEÐÝÞÝKLÝK 2: Hayalet Kutu da TileSize'a göre ayarlanýyor ---
+    ghostGridRect.setSize(sf::Vector2f(GameRules::TileSize, GameRules::TileSize));
+
     ghostGridRect.setFillColor(sf::Color::Transparent);
     ghostGridRect.setOutlineThickness(1);
     ghostGridRect.setOutlineColor(sf::Color::White);
 
-    // Seçim Kutusu Görsel Ayarý
     selectionBox.setFillColor(sf::Color(0, 255, 0, 50));
     selectionBox.setOutlineThickness(1.0f);
     selectionBox.setOutlineColor(sf::Color::Green);
 }
-
 void Game::initNetwork() {
     networkManager.setLogger([](const std::string& msg) {
         std::cout << "[NETWORK]: " << msg << std::endl;
@@ -404,11 +424,71 @@ void Game::render() {
 }
 
 void Game::handleInput(float dt) {
-    float speed = 500.0f * dt;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) camera.move(-speed, 0);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) camera.move(speed, 0);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) camera.move(0, -speed);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) camera.move(0, speed);
+    // Pencere aktif deðilse iþlem yapma
+    if (!window.hasFocus()) return;
+
+    float speed = 1000.0f * dt;
+    float edgeThreshold = 30.0f;
+
+    // --- 1. KLAVYE HAREKETÝ ---
+    sf::Vector2f movement(0.f, 0.f); // Toplam hareketi burada biriktirelim
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))  movement.x -= speed;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) movement.x += speed;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))    movement.y -= speed;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))  movement.y += speed;
+
+    // --- 2. MOUSE HAREKETÝ (EDGE PANNING) ---
+    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+    sf::Vector2u windowSize = window.getSize();
+
+    // Mouse pencere içindeyse
+    bool isMouseInside = (mousePos.x >= 0 && mousePos.y >= 0 &&
+        mousePos.x < static_cast<int>(windowSize.x) &&
+        mousePos.y < static_cast<int>(windowSize.y));
+
+    if (isMouseInside) {
+        if (mousePos.x < edgeThreshold) movement.x -= speed;
+        else if (mousePos.x > windowSize.x - edgeThreshold) movement.x += speed;
+
+        if (mousePos.y < edgeThreshold) movement.y -= speed;
+        else if (mousePos.y > windowSize.y - edgeThreshold) movement.y += speed;
+    }
+
+    // Hareketi Uygula
+    camera.move(movement);
+
+    // --- 3. SINIRLANDIRMA (CLAMPING) - YENÝ KISIM ---
+    // Kameranýn dýþarý taþmasýný engelliyoruz.
+
+    // Haritanýn toplam piksel boyutu
+    float mapWidthPixels = static_cast<float>(GameRules::MapWidth * GameRules::TileSize);
+    float mapHeightPixels = static_cast<float>(GameRules::MapHeight * GameRules::TileSize);
+
+    // Kameranýn þu anki boyutu ve merkezi
+    sf::Vector2f viewSize = camera.getSize();
+    sf::Vector2f viewCenter = camera.getCenter();
+
+    // Merkezin gidebileceði minimum ve maksimum noktalar
+    // (Merkez, kenara 'ekranýn yarýsý' kadar yaklaþabilir, daha fazla yaklaþamaz)
+    float minX = viewSize.x / 2.0f;
+    float minY = viewSize.y / 2.0f;
+    float maxX = mapWidthPixels - viewSize.x / 2.0f;
+    float maxY = mapHeightPixels - viewSize.y / 2.0f;
+
+    // Eðer harita ekrandan küçükse (örn: 3200px harita ama 4000px ekran), 
+    // maxX minX'ten küçük olabilir. Bu durumda minX'i baz al (Sola yasla).
+    if (maxX < minX) maxX = minX;
+    if (maxY < minY) maxY = minY;
+
+    // Koordinatlarý sýnýrla
+    if (viewCenter.x < minX) viewCenter.x = minX;
+    if (viewCenter.x > maxX) viewCenter.x = maxX;
+    if (viewCenter.y < minY) viewCenter.y = minY;
+    if (viewCenter.y > maxY) viewCenter.y = maxY;
+
+    // Yeni, güvenli merkezi kameraya ata
+    camera.setCenter(viewCenter);
 }
 
 void Game::enterBuildMode(BuildTypes type, const std::string& textureName) {

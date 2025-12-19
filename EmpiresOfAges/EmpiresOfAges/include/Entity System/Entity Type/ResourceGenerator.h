@@ -8,6 +8,8 @@ protected:
     float interval = 3.0f; // 3 saniyede bir kaynak versin
     int amountPerTick = 10; // Her seferinde ne kadar versin?
 
+    int remainingResources = -1;
+
 public:
     // Ýþçi içeri giriyor
     bool garrisonWorker() {
@@ -31,12 +33,40 @@ public:
         if (hasWorker) {
             generateTimer -= dt;
             if (generateTimer <= 0) {
-                generateTimer = interval; // Sayacý sýfýrla
-                return amountPerTick; // Kaynaðý ver
+                generateTimer = interval;
+
+                // Eðer kaynak sýnýrlýysa (Örn: Aðaç)
+                if (remainingResources > 0) {
+                    int amountToGive = amountPerTick;
+
+                    // Kalan miktar istenenden azsa, kalaný ver
+                    if (remainingResources < amountToGive) {
+                        amountToGive = remainingResources;
+                    }
+
+                    remainingResources -= amountToGive;
+
+                    // Kaynak bittiyse binayý/aðacý yok et!
+                    if (remainingResources <= 0) {
+                        this->health = 0; // Caný sýfýrla, EntityManager bunu silecek
+                        this->isAlive = false;
+                        hasWorker = false; // Ýþçiyi boþa çýkar
+                    }
+
+                    return amountToGive;
+                }
+                // Sýnýrsýz kaynaklar için (Örn: Tarla sonsuz olabilir)
+                else if (remainingResources == -1) {
+                    return amountPerTick;
+                }
             }
         }
         return 0;
     }
 
-    bool isWorking() const { return hasWorker; }
+    // Kaynak miktarýný ayarlamak için setter
+    void setTotalResources(int amount) { remainingResources = amount; }
+
+
+bool isWorking() const { return hasWorker; }
 };
