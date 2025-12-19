@@ -16,14 +16,19 @@
 Game::Game()
     : mapManager(50, 50, 32)
 {
-    window.create(sf::VideoMode(1280, 720), "Empires of Ages - RTS");
+    // --- DEÐÝÞÝKLÝK 1: TAM EKRAN BAÞLATMA ---
+    // Masaüstü çözünürlüðünü alýyoruz (Örn: 1920x1080)
+    sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
+
+    // Style::Fullscreen parametresi ekleyerek pencereyi oluþturuyoruz
+    window.create(desktopMode, "Empires of Ages - RTS", sf::Style::Fullscreen);
     window.setFramerateLimit(60);
 
-    // Kamerayý baþlat
-    camera.setSize(1280, 720);
-    camera.setCenter(1280 / 2, 720 / 2);
+    // Kamerayý (View) ekran çözünürlüðüne göre ayarla ki görüntü bozulmasýn
+    camera.setSize(static_cast<float>(desktopMode.width), static_cast<float>(desktopMode.height));
+    camera.setCenter(desktopMode.width / 2.0f, desktopMode.height / 2.0f);
 
-    initUI();      // <-- Test verileri burada yükleniyor
+    initUI();
     initNetwork();
     stateManager.setState(GameState::Playing);
 
@@ -39,14 +44,14 @@ Game::Game()
 
     std::cout << "[SISTEM] Test askeri (Kirmizi) olusturuldu.\n";
 
-    ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150)); // Yarý saydam beyaz
-    ghostGridRect.setSize(sf::Vector2f(32, 32)); // TileSize
+    ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150));
+    ghostGridRect.setSize(sf::Vector2f(32, 32));
     ghostGridRect.setFillColor(sf::Color::Transparent);
     ghostGridRect.setOutlineThickness(1);
     ghostGridRect.setOutlineColor(sf::Color::White);
 
     // Seçim Kutusu Görsel Ayarý
-    selectionBox.setFillColor(sf::Color(0, 255, 0, 50)); // Yarý saydam yeþil
+    selectionBox.setFillColor(sf::Color(0, 255, 0, 50));
     selectionBox.setOutlineThickness(1.0f);
     selectionBox.setOutlineColor(sf::Color::Green);
 }
@@ -126,11 +131,10 @@ void Game::processEvents() {
         uiManager.handleEvent(event);
         hud.handleEvent(event);
 
-        // Pencere Kapatma
+        // Pencere Kapatma (Alt+F4 vs. için)
         if (event.type == sf::Event::Closed)
             window.close();
 
-        // --- SADECE OYUN OYNANIRKEN ÇALIÞACAK KODLAR ---
         if (stateManager.getState() == GameState::Playing) {
 
             // 1. KLAVYE KISAYOLLARI
@@ -139,9 +143,17 @@ void Game::processEvents() {
                 if (event.key.code == sf::Keyboard::H) {
                     enterBuildMode(BuildTypes::House, "assets/icons/house_icon.jpg");
                 }
-                // 'ESC' Tuþu: Ýnþaatý Ýptal Et
+
+                // --- DEÐÝÞÝKLÝK 2: ESC TUÞU ÝÞLEVÝ ---
                 if (event.key.code == sf::Keyboard::Escape) {
-                    cancelBuildMode();
+                    if (isInBuildMode) {
+                        // Eðer inþaat modundaysak önce inþaatý iptal et
+                        cancelBuildMode();
+                    }
+                    else {
+                        // Ýnþaat modunda deðilsek oyunu kapat (Tam ekrandan çýkýþ)
+                        window.close();
+                    }
                 }
             }
 

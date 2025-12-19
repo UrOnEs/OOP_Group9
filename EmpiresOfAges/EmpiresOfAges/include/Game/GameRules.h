@@ -85,7 +85,7 @@ namespace GameRules {
     // 6. HAREKET HIZLARI
     // ==========================================
     constexpr float Speed_Villager = 40.f;
-    constexpr float Speed_Barbarian = 50.f;
+    constexpr float Speed_Barbarian = 150.f;
     constexpr float Speed_Archer = 45.f;
     constexpr float Speed_Wizard = 20.f;
 
