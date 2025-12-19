@@ -13,8 +13,9 @@ public:
     Barracks() {
         buildingType = BuildTypes::Barrack;
         
-        // Kýþla daha saðlamdýr
         health = GameRules::HP_Barracks;
+
+        this->sprite.setOrigin(64.f, 100.f);
     }
 
     // Üretimi Baþlat

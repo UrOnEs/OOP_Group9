@@ -4,6 +4,7 @@
 #include <memory>
 #include "TileMap.h"
 #include "Entity System/Entity Type/types.h"
+#include "UI/AssetManager.h"
 
 class ResourceManager;
 class Building;
