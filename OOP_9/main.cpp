@@ -1,4 +1,4 @@
-// main.cpp - RTS Network: Görsel Butonlar, Siyah Yazý, Doðru Hizalama
+// main.cpp - RTS Network: Hizalanmýþ Scroll Butonlar
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
@@ -146,67 +146,129 @@ int main() {
     srand(static_cast<unsigned int>(time(NULL)));
     g_netManager.setLogger([](const std::string& msg) { /* std::cout << msg << std::endl; */ });
 
-    sf::RenderWindow window(sf::VideoMode(900, 600), "RTS Proje - Visual Buttons");
+    // Pencere Boyutu
+    const int WIN_W = 900;
+    const int WIN_H = 600;
+
+    sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "RTS Proje - Final UI");
     window.setFramerateLimit(60);
 
-    // --- Font Yükleme ---
+    // --- 1. Font Yükleme ---
     sf::Font font;
     if (!font.loadFromFile("assets/arial.ttf")) {
         std::cerr << "HATA: assets/arial.ttf yok." << std::endl;
     }
+    sf::Font menuFont;
+    if (!menuFont.loadFromFile("assets/SuperPixel.ttf")) {
+        std::cerr << "HATA: asset bulunamadý" << std::endl;
+    }
 
-    // --- GÖRSEL YÜKLEME ---
+    // --- 2. Button Texture Yükleme ---
     sf::Texture btnTexture;
-    if (!btnTexture.loadFromFile("assets/button.png")) {
-        std::cerr << "HATA: assets/button.png bulunamadi!" << std::endl;
+    if (!btnTexture.loadFromFile("assets/button2.png")) {
+        std::cerr << "HATA: assets/button2.png bulunamadi!" << std::endl;
+    }
+    // Pürüzsüz görünüm için (Gerekirse açabilirsin)
+    // btnTexture.setSmooth(true); 
+
+    // --- 3. BACKGROUND (ARKA PLAN) YÜKLEME ---
+    sf::Texture bgTexture;
+    sf::Sprite bgSprite;
+    sf::Texture lobbySelectionBgTexture;
+    sf::Sprite lobbySelectionBgSprite;
+    sf::Texture lobbyBgTexture;
+    sf::Sprite lobbyBgSprite;
+    bool hasBg = false;
+    bool hasLobbySelectionBg = false;
+    bool hasLobbyBg = false;
+
+    if (bgTexture.loadFromFile("assets/background.png")) {
+        hasBg = true;
+        bgSprite.setTexture(bgTexture);
+        sf::Vector2u texSize = bgTexture.getSize();
+        bgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
+    }
+
+    // Eðer background.png yoksa .jpg dene
+    else if (bgTexture.loadFromFile("assets/background.jpg")) {
+        hasBg = true;
+        bgSprite.setTexture(bgTexture);
+        sf::Vector2u texSize = bgTexture.getSize();
+        bgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
+    }
+
+    if (lobbySelectionBgTexture.loadFromFile("assets/lobbySelection.png")) {
+        hasLobbySelectionBg = true;
+        lobbySelectionBgSprite.setTexture(lobbySelectionBgTexture);
+        sf::Vector2u texSize = lobbySelectionBgTexture.getSize();
+        lobbySelectionBgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
+    }
+
+    if (lobbyBgTexture.loadFromFile("assets/lobbyBackground.jpg")) {
+        hasLobbyBg = true;
+        lobbyBgSprite.setTexture(lobbyBgTexture);
+        sf::Vector2u texSize = lobbyBgTexture.getSize();
+        lobbyBgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
+    }
+
+    //Oyunun ismini koymaya çalýþýyom
+    sf::Texture gameNameTexture;
+    sf::Sprite gameNameSprite;
+    if (gameNameTexture.loadFromFile("assets/Empire of Ages1.png")) {
+        gameNameSprite.setTexture(gameNameTexture);
+        gameNameSprite.setOrigin(gameNameSprite.getLocalBounds().width / 2.0f, gameNameSprite.getLocalBounds().height / 2.0f);
+        gameNameSprite.setPosition(450.0f, 120.0f);
+        gameNameSprite.setScale({ 0.25f,0.25f });
     }
 
     // --- UI Buttonlar ---
-    // PÜF NOKTA: Yazýlarýn ortalanmasý için önce setSize() ile boyut veriyoruz.
-    // Görseli atamak için setTexture() kullanýyoruz.
+    // BUTON AYARLARI: 
+    // Scroll resmi olduðu için biraz daha geniþ ve yüksek yapýyoruz (280x65).
+    // Aralarýndaki boþluðu (Y ekseni) eþitliyoruz.
 
     // 1. Ana Menü
-    UIPanel mainMenu({ 400, 300 }, { 250, 150 });
+    UIPanel mainMenu({ 400, 300 }, { 250, 250 });
 
     UIButton btnStart;
-    btnStart.setPosition(325, 200);
-    btnStart.setSize(250, 50);             // 1. Önce Boyut (Yazý hizalamasý için)
-    btnStart.setTexture(btnTexture, 250, 50); // 2. Sonra Resim
-    btnStart.setText("Oyna", font);
+    btnStart.setPosition(310, 300);       // Ortalamak için ayarlandý
+    btnStart.setSize(280, 65);            // Parþömen boyutu
+    btnStart.setTexture(btnTexture, 280, 65);
+    btnStart.setText("Play", menuFont);
     btnStart.setCallback([&]() { g_currentState = GameState::LOBBY_SELECTION; });
 
     UIButton btnExit;
-    btnExit.setPosition(325, 270);
-    btnExit.setSize(250, 50);
-    btnExit.setTexture(btnTexture, 250, 50);
-    btnExit.setText("Cikis", font);
+    btnExit.setPosition(310, 380);        // 80 birim aþaðýya
+    btnExit.setSize(280, 65);
+    btnExit.setTexture(btnTexture, 280, 65);
+    btnExit.setText("Exit", menuFont);
     btnExit.setCallback([&]() { window.close(); });
 
     mainMenu.addButton(btnStart);
     mainMenu.addButton(btnExit);
 
-    // 2. Seçim Ekraný
-    UIPanel selectionMenu({ 400, 450 }, { 50, 50 });
+    // 2. Seçim Ekraný (Lobby Selection)
+    // SOL MENÜ HÝZALAMASI BURADA YAPILDI
+    UIPanel selectionMenu({ 0, 0 }, { 50, 50 });
 
     UIButton btnCreate;
-    btnCreate.setPosition(125, 100);
-    btnCreate.setSize(250, 50);
-    btnCreate.setTexture(btnTexture, 250, 50);
-    btnCreate.setText("Lobi Kur (Host)", font);
+    btnCreate.setPosition(25, 120);          // Ýlk Buton
+    btnCreate.setSize(280, 65);
+    btnCreate.setTexture(btnTexture, 280, 65);
+    btnCreate.setText("Lobi Kur (Host)", menuFont);
     btnCreate.setCallback(startHost);
 
     UIButton btnSearch;
-    btnSearch.setPosition(125, 170);
-    btnSearch.setSize(250, 50);
-    btnSearch.setTexture(btnTexture, 250, 50);
-    btnSearch.setText("Lobi Ara (Yenile)", font);
+    btnSearch.setPosition(25, 200);          // 80 birim altý
+    btnSearch.setSize(280, 65);
+    btnSearch.setTexture(btnTexture, 280, 65);
+    btnSearch.setText("Lobi Ara (Yenile)", menuFont);
     btnSearch.setCallback(startDiscoveryMode);
 
     UIButton btnBack;
-    btnBack.setPosition(125, 400);
-    btnBack.setSize(250, 50);
-    btnBack.setTexture(btnTexture, 250, 50);
-    btnBack.setText("Geri", font);
+    btnBack.setPosition(25, 280);            // 80 birim altý (Artýk en altta deðil, liste þeklinde)
+    btnBack.setSize(280, 65);
+    btnBack.setTexture(btnTexture, 280, 65);
+    btnBack.setText("Back", menuFont);
     btnBack.setCallback([&]() {
         g_netManager.discovery()->stop();
         g_currentState = GameState::MAIN_MENU;
@@ -219,23 +281,23 @@ int main() {
     // 3. Lobi Odasý Butonlarý
     UIButton btnReady;
     btnReady.setPosition(350, 500);
-    btnReady.setSize(200, 50);
-    btnReady.setTexture(btnTexture, 200, 50);
-    btnReady.setText("HAZIR OL", font);
+    btnReady.setSize(200, 60);
+    btnReady.setTexture(btnTexture, 200, 60);
+    btnReady.setText("Ready", menuFont);
     btnReady.setCallback([]() { if (g_lobbyManager) g_lobbyManager->toggleReady(!isSelfReady()); });
 
     UIButton btnStartGame;
     btnStartGame.setPosition(600, 500);
-    btnStartGame.setSize(200, 50);
-    btnStartGame.setTexture(btnTexture, 200, 50);
-    btnStartGame.setText("BASLAT", font);
+    btnStartGame.setSize(200, 60);
+    btnStartGame.setTexture(btnTexture, 200, 60);
+    btnStartGame.setText("Start", menuFont);
     btnStartGame.setCallback([]() { if (g_lobbyManager && g_isHost) g_lobbyManager->startGame(); });
 
     UIButton btnLeave;
     btnLeave.setPosition(50, 500);
-    btnLeave.setSize(100, 40);
-    btnLeave.setTexture(btnTexture, 100, 40);
-    btnLeave.setText("Ayril", font);
+    btnLeave.setSize(120, 50); // Çýkýþ butonu biraz daha küçük olabilir
+    btnLeave.setTexture(btnTexture, 120, 50);
+    btnLeave.setText("Leave", menuFont);
     btnLeave.setCallback(leaveLobby);
 
 
@@ -255,9 +317,9 @@ int main() {
             }
         }
 
-        // Görsel Update (Hazýr Butonu Metni)
+        // Görsel Update
         if (g_currentState == GameState::LOBBY_ROOM) {
-            btnReady.setText(isSelfReady() ? "VAZGEC" : "HAZIR OL", font);
+            btnReady.setText(isSelfReady() ? "Readyn't" : "Ready", menuFont);
         }
 
         // Event
@@ -272,7 +334,6 @@ int main() {
             else if (g_currentState == GameState::LOBBY_SELECTION) {
                 selectionMenu.handleEvent(event);
 
-                // SUNUCU LÝSTESÝNE TIKLAMA
                 if (!g_isHost && event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     int mouseX = event.mouseButton.x;
                     int mouseY = event.mouseButton.y;
@@ -293,7 +354,6 @@ int main() {
                 btnLeave.handleEvent(event);
                 if (g_isHost) btnStartGame.handleEvent(event);
 
-                // --- RENK KUTUCUÐUNA TIKLAMA ---
                 if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                     if (g_lobbyManager) {
                         int mx = event.mouseButton.x;
@@ -315,44 +375,65 @@ int main() {
             }
         }
 
-        // Draw
+        // --- DRAW (ÇÝZÝM) ---
         window.clear(sf::Color(40, 40, 50));
 
-        if (g_currentState == GameState::MAIN_MENU) mainMenu.draw(window);
+        // 1. ARKA PLAN
+        if (g_currentState == GameState::MAIN_MENU && hasBg) {
+            window.draw(bgSprite);
+            window.draw(gameNameSprite);
+        }
+        else if (g_currentState == GameState::LOBBY_SELECTION && hasLobbySelectionBg) {
+            window.draw(lobbySelectionBgSprite);
+        }
+        else if (g_currentState == GameState::LOBBY_ROOM && hasLobbyBg) {
+            window.draw(lobbyBgSprite);
+        }
+
+        // 2. UI ÇÝZÝMÝ
+        if (g_currentState == GameState::MAIN_MENU) {
+            mainMenu.draw(window);
+        }
         else if (g_currentState == GameState::LOBBY_SELECTION) {
             selectionMenu.draw(window);
 
             sf::Text header("BULUNAN LOBILER", font, 24);
-            header.setPosition(500, 50);
+            header.setPosition(475, 75);
             header.setStyle(sf::Text::Bold | sf::Text::Underlined);
+            // Yazý rengini parþömen/tahta uyumlu yapalým (Açýk renk)
+            header.setFillColor(sf::Color(240, 240, 240));
             window.draw(header);
 
             if (g_foundServers.empty()) {
                 sf::Text info("Sunucu araniyor veya yok...\n'Lobi Ara' butonuna basin.", font, 18);
-                info.setPosition(500, 100);
-                info.setFillColor(sf::Color(150, 150, 150));
+                info.setPosition(480, 130);
+                info.setFillColor(sf::Color(200, 200, 200));
                 window.draw(info);
             }
             else {
-                int y = 100;
+                int y = 150;
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
                 for (const auto& server : g_foundServers) {
                     sf::RectangleShape row(sf::Vector2f(300, 40));
-                    row.setPosition(500, y);
+                    row.setPosition(475, y);
+
+                    // Liste elemanlarý üzerine gelince hafif aydýnlansýn
                     if (row.getGlobalBounds().contains((float)mousePos.x, (float)mousePos.y))
-                        row.setFillColor(sf::Color(70, 70, 100));
+                        row.setFillColor(sf::Color(80, 80, 120, 200));
                     else
-                        row.setFillColor(sf::Color(50, 50, 60));
+                        row.setFillColor(sf::Color(50, 50, 70, 200)); // Hafif þeffaf
+
                     window.draw(row);
 
                     sf::Text t(server.name, font, 20);
-                    t.setPosition(510, y + 8);
+                    t.setPosition(485, y + 8);
+                    t.setFillColor(sf::Color::White);
                     window.draw(t);
 
                     sf::Text ip(server.address.toString(), font, 14);
-                    ip.setPosition(700, y + 12);
-                    ip.setFillColor(sf::Color(180, 180, 180));
+                    ip.setPosition(675, y + 12);
+                    ip.setFillColor(sf::Color(200, 200, 200));
                     window.draw(ip);
                     y += 50;
                 }
@@ -360,7 +441,9 @@ int main() {
         }
         else if (g_currentState == GameState::LOBBY_ROOM) {
             sf::Text title(g_isHost ? "Lobi (HOST)" : "Lobi (CLIENT)", font, 30);
-            title.setPosition(50, 50); window.draw(title);
+            title.setPosition(50, 50);
+            title.setFillColor(sf::Color::White);
+            window.draw(title);
 
             if (g_lobbyManager) {
                 int y = 100;
@@ -395,13 +478,15 @@ int main() {
                 }
             }
 
-            // Butonlarý Çiz
             btnReady.draw(window);
             btnLeave.draw(window);
             if (g_isHost) btnStartGame.draw(window);
         }
         else if (g_currentState == GameState::GAME_PLAYING) {
-            sf::Text t("OYUN BASLADI!", font, 50); t.setPosition(250, 250); window.draw(t);
+            sf::Text t("OYUN BASLADI!", font, 50);
+            t.setPosition(250, 250);
+            t.setFillColor(sf::Color::White);
+            window.draw(t);
         }
 
         window.display();
