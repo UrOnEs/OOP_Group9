@@ -34,6 +34,10 @@ Unit::Unit(int startGridX, int startGridY, int tileSize)
 void Unit::moveTo(sf::Vector2f targetWorldPos) {
     m_targetPos = targetWorldPos;
     m_isMoving = true;
+
+    // HAREKETÝN BAÞLAMASI ÝÇÝN YOL LÝSTESÝNÝ DOLDURMALIYIZ
+    m_path.clear();
+    m_path.push_back(targetWorldPos);
 }
 
 // ------------------- FÝZÝKSEL HAREKET ---------------------

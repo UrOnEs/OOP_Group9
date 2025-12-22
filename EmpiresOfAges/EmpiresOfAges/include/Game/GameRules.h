@@ -8,8 +8,8 @@ namespace GameRules {
     // ==========================================
     // 1. GENEL AYARLAR & HARÝTA
     // ==========================================
-    constexpr int MapWidth = 50;
-    constexpr int MapHeight = 50;
+    constexpr int MapWidth = 100;
+    constexpr int MapHeight = 100;
     constexpr int TileSize = 64;
 
     // BÝRÝM BOYUTLANDIRMA (YENÝ)
