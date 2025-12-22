@@ -163,6 +163,7 @@
     <ClCompile Include="source\Systems\CombatSystem.cpp" />
     <ClCompile Include="source\Systems\MovementSystem.cpp" />
     <ClCompile Include="source\Systems\ProductionSystem.cpp" />
+    <ClCompile Include="source\Systems\SoundManager.cpp" />
     <ClCompile Include="source\UI\DataManager.cpp" />
     <ClCompile Include="source\UI\HUD.cpp" />
     <ClCompile Include="source\UI\ResourceBar.cpp" />
@@ -211,6 +212,7 @@
     <ClInclude Include="include\Systems\PopulationSystem.h" />
     <ClInclude Include="include\Systems\ProductionSystem.h" />
     <ClInclude Include="include\Systems\ResourceSystem.h" />
+    <ClInclude Include="include\Systems\SoundManager.h" />
     <ClInclude Include="include\UI\DataManager.h" />
     <ClInclude Include="include\UI\HUD.h" />
     <ClInclude Include="include\UI\ResourceBar.h" />
