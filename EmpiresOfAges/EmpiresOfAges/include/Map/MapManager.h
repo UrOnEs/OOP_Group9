@@ -14,23 +14,23 @@ public:
     MapManager(int width, int height, int tileSize);
 
     void initialize();
-
-    // Bina yerleþtirme denemesi
     bool tryPlaceBuilding(int tx, int ty, BuildTypes type);
-
-    // Bina silme
     void removeBuilding(int tx, int ty);
-
-    // Binalarý çizme ve güncelleme
     void updateBuildings(float dt);
     void draw(sf::RenderWindow& window);
+    void removeDeadBuildings();
 
-    // Getterlar
+
     const std::vector<int>& getLevelData() const;
     Building* getBuildingAt(int tx, int ty);
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
     int getTileSize() const { return m_tileSize; }
+
+    // --- EKLENEN FONKSÝYON ---
+    // Game.cpp'nin binalarý/aðaçlarý güncelleyebilmesi için listeyi veriyoruz
+    std::vector<std::shared_ptr<Building>>& getBuildings() { return m_buildings; }
+    // -------------------------
 
 private:
     void createTilesetFile();

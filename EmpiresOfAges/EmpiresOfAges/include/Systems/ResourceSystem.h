@@ -17,6 +17,10 @@ public:
             else if (building.buildingType == BuildTypes::StoneMine) {
                 player.playerResources.add(ResourceType::Stone, producedAmount);
             }
+            // --- YENÝ EKLENEN KISIM ---
+            else if (building.buildingType == BuildTypes::Tree) {
+                player.playerResources.add(ResourceType::Wood, producedAmount);
+            }
         }
     }
 };

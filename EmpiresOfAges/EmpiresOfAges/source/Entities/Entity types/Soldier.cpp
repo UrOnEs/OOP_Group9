@@ -38,10 +38,10 @@ void Soldier::setType(SoldierTypes type) {
         shape.setFillColor(sf::Color::Green);
         break;
 
-    case SoldierTypes::Wizard: // Catapult gitti, Wizard geldi
+    case SoldierTypes::Wizard:
         health = GameRules::HP_Wizard;
         travelSpeed = GameRules::Speed_Wizard;
-        shape.setFillColor(sf::Color::Blue); // Büyücü Mavi olsun
+        shape.setFillColor(sf::Color::Blue); 
         break;
     }
 }

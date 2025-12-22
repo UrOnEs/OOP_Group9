@@ -302,7 +302,11 @@
     <ClInclude Include="include\Entity System\Entity Type\GoldMine.h">
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="include\Systems\SoundManager.h">
+=======
+    <ClInclude Include="include\Entity System\Entity Type\Tree.h">
+>>>>>>> d673c703720bdddc6427fc3465a888fea61082d1
       <Filter>Üst Bilgi Dosyaları</Filter>
     </ClInclude>
   </ItemGroup>
