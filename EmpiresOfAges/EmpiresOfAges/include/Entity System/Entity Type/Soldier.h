@@ -15,6 +15,7 @@ public:
     ~Soldier();
 
     void setType(SoldierTypes type);
+    int getMaxHealth() const override;
     std::string stats() override;
 
     // --- ESKÝ KODLARIN ÇALIÞMASI ÝÇÝN YÖNLENDÝRME ---

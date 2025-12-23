@@ -23,6 +23,7 @@ public:
     ~Villager();
 
     std::string stats() override;
+    int getMaxHealth() const override;
 
     void startHarvesting(std::shared_ptr<ResourceGenerator> resource);
     void stopHarvesting();

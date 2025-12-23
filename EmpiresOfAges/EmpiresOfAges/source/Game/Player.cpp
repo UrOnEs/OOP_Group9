@@ -5,14 +5,14 @@
 
 Player::Player() {
     // Baþlangýç kaynaklarý
-    playerResources.add(ResourceType::Wood, 200);
-    playerResources.add(ResourceType::Food, 200);
-    playerResources.add(ResourceType::Gold, 100);
-    playerResources.add(ResourceType::Stone, 0);
+    playerResources.add(ResourceType::Wood, 1000);
+    playerResources.add(ResourceType::Food, 1000);
+    playerResources.add(ResourceType::Gold, 1000);
+    playerResources.add(ResourceType::Stone, 1000);
 
     // Limitler
-    unitLimit = 10;
-    buildLimit = 5;
+    unitLimit = 999;
+    buildLimit = 999;
 }
 
 Player::~Player() {

@@ -18,5 +18,8 @@ public:
         // setSize(GameRules::Size_House); 
     }
 
+    // Class içine ekle:
+    int getMaxHealth() const override { return (int)GameRules::HP_House; }
+
     std::string getInfo() override { return "House: +5 Nufus"; }
 };

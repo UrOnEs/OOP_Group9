@@ -46,6 +46,15 @@ void Soldier::setType(SoldierTypes type) {
     }
 }
 
+int Soldier::getMaxHealth() const {
+    switch (soldierType) {
+    case SoldierTypes::Barbarian: return (int)GameRules::HP_Barbarian;
+    case SoldierTypes::Archer:    return (int)GameRules::HP_Archer;
+    case SoldierTypes::Wizard:    return (int)GameRules::HP_Wizard;
+    default:                      return 100;
+    }
+}
+
 std::string Soldier::stats() {
     return "HP: " + std::to_string((int)health);
 }

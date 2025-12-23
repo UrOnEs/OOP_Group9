@@ -15,5 +15,8 @@ public:
         setTotalResources(GameRules::Resources_Per_Tree);
     }
 
+    // Class içine ekle:
+    int getMaxHealth() const override { return (int)GameRules::HP_Tree; }
+
     std::string getInfo() override { return "Tree: Odun Kaynagi"; }
 };

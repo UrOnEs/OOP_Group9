@@ -13,12 +13,18 @@ Villager::Villager() : Unit() {
     this->damage = GameRules::Dmg_Villager;
     this->travelSpeed = GameRules::Speed_Villager;
     this->range = GameRules::Range_Melee;
-
     this->isAlive = true;
     this->isSelected = false;
     this->entityID = ++IDcounter;
 
     counter++;
+
+    //Abilities
+    addAbility(Ability(1, "Ev Insa Et", "30 Odun", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));
+    addAbility(Ability(2, "Kisla Yap", "175 Odun", "Asker Uret", &AssetManager::getTexture("assets/buildings/barrack.png")));
+    addAbility(Ability(3, "Ciftlik Kur", "60 Odun", "Yemek Uret", &AssetManager::getTexture("assets/buildings/mill.png")));
+    addAbility(Ability(4, "Ana bina Üret", "400 Odun, 200 taþ", "Ana bina", &AssetManager::getTexture("assets/buildings/castle.png")));
+
 }
 
 Villager::~Villager() {
@@ -135,4 +141,10 @@ void Villager::findNearestResource(const std::vector<std::shared_ptr<Building>>&
         std::cout << "[Villager] Yakinda baska agac yok. Bekliyor.\n";
         stopHarvesting();
     }
+
+
+}
+
+int Villager::getMaxHealth() const {
+    return GameRules::HP_Villager; // Deðeri doðrudan kurallardan çeker
 }

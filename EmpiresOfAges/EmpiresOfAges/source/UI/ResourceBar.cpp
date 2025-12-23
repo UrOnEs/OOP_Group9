@@ -9,7 +9,7 @@ ResourceBar::ResourceBar() {
     // 2. Arka Plan Þeridi (Simsiyah deðil, yarý saydam gri)
     // 1920 geniþlik, 40 yükseklik. Ekranýn tepesini kaplar.
     backgroundBar.setSize(sf::Vector2f(1920.f, 40.f));
-    backgroundBar.setFillColor(sf::Color(0, 0, 0, 150)); // Son parametre (150) saydamlýk (Alpha)
+    backgroundBar.setFillColor(sf::Color(0, 0, 0, 150));
     backgroundBar.setPosition(0, 0);
 
     // Ortak Ayarlar Ýçin Lambda veya Döngü kullanabiliriz ama 
@@ -42,15 +42,37 @@ ResourceBar::ResourceBar() {
     stoneText.setCharacterSize(fontSize);
     stoneText.setFillColor(sf::Color(192, 192, 192)); // Silver/Gri
     stoneText.setPosition(startX + spacing * 3, 10);
+
+    // --- POPULATÝON ---
+    populationText.setFont(font);
+    populationText.setCharacterSize(fontSize);
+    populationText.setFillColor(sf::Color(256, 256, 256)); //siyah (sanýrým)
+    populationText.setPosition(startX + spacing * 4, 10);
 }
 
-void ResourceBar::updateResources(int wood, int food, int gold, int stone) {
+void ResourceBar::setWidth(float width) {
+    backgroundBar.setSize(sf::Vector2f(width, 40.f));
+
+    // Yazýlarý ekrana orantýlý yaymak için:
+    float startX = 20.f;
+    float spacing = width / 6.0f; // Ekraný parçalara bölerek hizala
+
+    woodText.setPosition(startX, 10);
+    foodText.setPosition(startX + spacing, 10);
+    goldText.setPosition(startX + spacing * 2, 10);
+    stoneText.setPosition(startX + spacing * 3, 10);
+    populationText.setPosition(startX + spacing * 4, 10);
+}
+
+void ResourceBar::updateResources(int wood, int food, int gold, int stone, Player player) {
     // Yazý formatýný da güzelleþtirelim
     // Örnek çýktý: "Wood: 150" yerine "[ Wood: 150 ]" gibi
     woodText.setString("Wood: " + std::to_string(wood));
     foodText.setString("Food: " + std::to_string(food));
     goldText.setString("Gold: " + std::to_string(gold));
     stoneText.setString("Stone: " + std::to_string(stone));
+    populationText.setString(std::to_string(player.getUnitCount()) + "  /  " + std::to_string(player.getUnitLimit()));
+    
 }
 
 void ResourceBar::draw(sf::RenderWindow& window) {
@@ -61,5 +83,6 @@ void ResourceBar::draw(sf::RenderWindow& window) {
     window.draw(foodText);
     window.draw(goldText);
     window.draw(stoneText);
+    window.draw(populationText);
 }
 

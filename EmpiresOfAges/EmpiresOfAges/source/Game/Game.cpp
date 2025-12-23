@@ -33,7 +33,8 @@ Game::Game()
     // Kamerayý (View) ekran çözünürlüðüne göre ayarla
     camera.setSize(static_cast<float>(desktopMode.width), static_cast<float>(desktopMode.height));
     camera.setCenter(desktopMode.width / 2.0f, desktopMode.height / 2.0f);
-
+    hud.init(desktopMode.width, desktopMode.height);
+    
     initUI();
     initNetwork();
     stateManager.setState(GameState::Playing);
@@ -96,17 +97,8 @@ void Game::initUI() {
     if (!villagerTex.loadFromFile("assets/icons/villager.png")) {}
     if (!houseIconTex.loadFromFile("assets/icons/house_icon.jpg")) {}
 
-    static std::vector<AbilityInfo> testAbilities;
+    static std::vector<Ability> testAbilities;
     testAbilities.clear();
-
-    AbilityInfo buildHouse;
-    buildHouse.id = 1;
-    buildHouse.name = "Build House";
-    int houseCost = GameRules::getBuildingCost(BuildTypes::House).wood;
-    buildHouse.costText = "Cost: " + std::to_string(houseCost) + " Wood";
-    buildHouse.description = "Population space.";
-    buildHouse.iconTexture = &houseIconTex;
-    testAbilities.push_back(buildHouse);
 
     hud.selectedPanel.updateSelection("Selection", 0, 0, nullptr, testAbilities);
 }
@@ -188,9 +180,7 @@ void Game::processEvents() {
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
             sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
 
-            bool isMouseOnPanel = (pixelPos.y > 600);
-            bool isMouseOnTopBar = (pixelPos.y < 50);
-            bool isMouseOnUI = (isMouseOnPanel || isMouseOnTopBar);
+            bool isMouseOnUI = hud.isMouseOverUI(pixelPos);
 
             int gridX = static_cast<int>(worldPos.x / mapManager.getTileSize());
             int gridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
@@ -328,6 +318,68 @@ void Game::processEvents() {
                         localPlayer.selectUnitsInRect(selectionBox.getGlobalBounds(), shift);
                     }
                     selectionBox.setSize(sf::Vector2f(0, 0));
+
+                    // =========================================================
+                    //   PANEL GÜNCELLEME KISMI
+                    // =========================================================
+                    if (!localPlayer.selected_entities.empty()) {
+                        hud.selectedPanel.setVisible(true);
+
+                        // Ýlk seçili birimi al
+                        auto entity = localPlayer.selected_entities[0];
+
+                        // 1. Entity'nin yetenek listesini kopyala
+                        std::vector<Ability> uiAbilities = entity->getAbilities();
+
+                        // 2. Yeteneklere iþlev (Callback) ata
+                        for (auto& ab : uiAbilities) {
+
+                            // --- ÝNÞAAT YETENEKLERÝ (Villager için) ---
+                            if (ab.getId() == 1) { // Ev
+                                ab.setOnClick([this]() {
+                                    this->enterBuildMode(BuildTypes::House, "assets/buildings/house.png");
+                                    });
+                            }
+                            else if (ab.getId() == 2) { // Kýþla
+                                ab.setOnClick([this]() {
+                                    this->enterBuildMode(BuildTypes::Barrack, "assets/buildings/barrack.png");
+                                    });
+                            }
+                            else if (ab.getId() == 3) { // Çiftlik
+                                ab.setOnClick([this]() {
+                                    this->enterBuildMode(BuildTypes::Farm, "assets/buildings/mill.png"); // Texture adýna dikkat
+                                    });
+                            }
+                            else if(ab.getId() == 4) { //castle
+                                ab.setOnClick([this]() {
+                                    this->enterBuildMode(BuildTypes::TownCenter, "assets/buildings/castle.png"); // Texture adýna dikkat
+                                    });
+                            }
+
+                            // --- ÜRETÝM YETENEKLERÝ (Binalar için) ---
+                            else if (ab.getId() == 10) { // Kýþla: Asker Üret
+                                // Entity'i Barracks tipine dönüþtür
+                                if (auto b = std::dynamic_pointer_cast<Barracks>(entity)) {
+                                    ab.setOnClick([this, b]() { // b pointer'ýný kopyala
+                                        ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian);
+                                        });
+                                }
+                            }
+                        }
+
+                        // 3. Güncellenmiþ listeyi panele gönder
+                        hud.selectedPanel.updateSelection(
+                            entity->getName(),
+                            (int)entity->health,
+                            entity->getMaxHealth(),
+                            entity->getIcon(),
+                            uiAbilities
+                        );
+                    }
+                    else {
+                        // Kimse seçili deðilse paneli gizle
+                        hud.selectedPanel.setVisible(false);
+                    }
                 }
             }
 
@@ -385,7 +437,7 @@ void Game::update(float dt) {
 
         // UI Güncelle
         std::vector<int> res = localPlayer.getResources();
-        hud.resourceBar.updateResources(res[0], res[3], res[1], res[2]);
+        hud.resourceBar.updateResources(res[0], res[3], res[1], res[2],localPlayer);
     }
 }
 

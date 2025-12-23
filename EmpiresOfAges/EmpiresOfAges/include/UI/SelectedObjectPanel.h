@@ -2,54 +2,57 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
-#include <functional>
-#include "UIButton.h" // <-- UIButton sýnýfýný burada dahil ediyoruz
-
-// AbilityInfo yapýsý
-struct AbilityInfo {
-    int id;
-    std::string name;
-    std::string costText;
-    std::string description;
-    sf::Texture* iconTexture;
-};
+#include "UIButton.h"
+#include "UI/Ability.h" // Ability sýnýfýný tanýmasý için
 
 class SelectedObjectPanel {
 public:
     SelectedObjectPanel(float x, float y);
 
-    // Seçili obje verilerini günceller
     void updateSelection(const std::string& name, int health, int maxHealth,
         sf::Texture* objectTexture,
-        const std::vector<AbilityInfo>& abilities);
+        const std::vector<Ability>& abilities);
 
-    // Eski handleInput yerine artýk handleEvent kullanýyoruz
     void handleEvent(const sf::Event& event);
-
     void draw(sf::RenderWindow& window);
+
+    // --- EKSÝK OLAN FONKSÝYON ---
+    void setPosition(float x, float y);
+
+    // --- HATAYI ÇÖZEN KISIM ---
+    void setVisible(bool status) { isVisible = status; }
+    bool getVisible() const { return isVisible; }
+
+    // Mouse kontrolünü cpp tarafýnda iptal etmiþtik ama 
+    // fonksiyon imzasýný burada tutuyoruz ki HUD çaðýrdýðýnda hata vermesin.
+    // Ýstersen tamamen silebilirsin ama HUD.cpp'deki çaðrýyý da silmen gerekir.
+    bool isMouseOver(float mouseX, float mouseY) const;
 
 private:
     sf::Font font;
     sf::Vector2f position;
     sf::RectangleShape panelBackground;
 
-    // --- SAÐ PANEL (INFO) ---
+    // --- ÝÞTE EKSÝK OLAN DEÐÝÞKEN ---
+    bool isVisible = false;
+
+    // --- INFO PANEL ---
     sf::Text nameText;
     sf::Text hpText;
     sf::Sprite selectedIcon;
     sf::RectangleShape hpBarBack;
     sf::RectangleShape hpBarFront;
 
-    // --- SOL PANEL (ARTIK UIBUTTON KULLANIYOR) ---
-    // Hatanýn asýl kaynaðý burasýydý, eski kodda burasý ActionButton struct'ýydý.
+    // --- BUTTONS ---
     std::vector<UIButton> buttons;
-    std::vector<AbilityInfo> currentAbilities; // Tooltip göstermek için veriyi saklýyoruz
 
-    // --- TOOLTIP (AÇIKLAMA KUTUSU) ---
+    // Tooltip verisi
+    std::vector<Ability> currentAbilities;
+
+    // --- TOOLTIP ---
     sf::RectangleShape tooltipBackground;
     sf::Text tooltipText;
     bool showTooltip;
 
-    // Bu fonksiyon da private olarak tanýmlý olmalý
-    void setupTooltip(const AbilityInfo& info);
+    void setupTooltip(const Ability& info);
 };

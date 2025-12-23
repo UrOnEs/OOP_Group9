@@ -33,6 +33,7 @@
     <ClCompile Include="source\UI\UIButton.cpp" />
     <ClCompile Include="source\UI\UIManager.cpp" />
     <ClCompile Include="source\UI\UIPanel.cpp" />
+    <ClCompile Include="source\UI\Ability.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
@@ -84,5 +85,6 @@
     <ClInclude Include="include\UI\UIManager.h" />
     <ClInclude Include="include\UI\UIPanel.h" />
     <ClInclude Include="include\Entity System\Entity Type\TownCenter.h" />
+    <ClInclude Include="include\UI\Ability.h" />
   </ItemGroup>
 </Project>

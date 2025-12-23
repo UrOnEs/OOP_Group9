@@ -6,12 +6,15 @@
 #include <memory>
 #include <SFML/Graphics.hpp>
 #include "Game/TeamColors.h"
+#include "UI/Ability.h"
+#include "UI/AssetManager.h"
 
 class Entity {
 protected:
     // 1. ASIL OYUNCU: Sprite (Resim varsa bu çizilecek)
     sf::Sprite sprite;
     bool hasTexture = false;
+    std::vector<Ability> m_abilities;
 
     // 2. YEDEK OYUNCU: Yuvarlak (Resim yoksa bu çizilecek)
     sf::CircleShape shape;
@@ -36,6 +39,8 @@ public:
         shape.setFillColor(sf::Color::White); // Varsayýlan renk
     }
 
+    virtual int getMaxHealth() const = 0;
+
     virtual ~Entity() = default;
 
     // --- HAREKET ---
@@ -52,6 +57,16 @@ public:
     void setScale(float x, float y) {
         if (hasTexture) sprite.setScale(x, y);
         shape.setScale(x, y);
+    }
+
+    // UI Ýçin Gerekli Fonksiyonlar (Hata veren kýsýmlar)
+    virtual std::string getName() { return "Bilinmeyen"; }
+    virtual sf::Texture* getIcon() { return nullptr; }
+    void addAbility(const Ability& ability) {
+        m_abilities.push_back(ability);
+    }
+    std::vector<Ability> getAbilities() const {
+        return m_abilities;
     }
 
     virtual sf::Vector2f getPosition() const {

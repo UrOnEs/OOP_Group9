@@ -17,6 +17,9 @@ public:
         this->sprite.setOrigin(64.f, 100.f);
     }
 
+    // Class içine ekle:
+    int getMaxHealth() const override { return (int)GameRules::HP_Barracks; }
+
     // Üretimi Baþlat
     void startTraining(SoldierTypes type, float duration) {
         if (!isProducing) {

@@ -12,5 +12,8 @@ public:
         amountPerTick = 20;
     }
 
+    // Class içine ekle:
+    int getMaxHealth() const override { return (int)GameRules::HP_Farm; }
+
     std::string getInfo() override { return "Farm: Yemek Uretir"; }
 };

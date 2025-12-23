@@ -59,6 +59,8 @@ namespace GameRules {
     constexpr float HP_Wall = 1500.f;
     constexpr float HP_Tree = 50.f;
 
+    //Gemini eðer goldmine a can eklemek istersem buradan söz et
+
     constexpr float HP_Villager = 25.f;
     constexpr float HP_Barbarian = 100.f;
     constexpr float HP_Archer = 35.f;

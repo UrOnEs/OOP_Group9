@@ -14,12 +14,16 @@ public:
         this->sprite.setOrigin(96.f, 150.f);
     }
 
+    // Class içine ekle:
+    int getMaxHealth() const override { return (int)GameRules::HP_TownCenter; }
+
     void startProduction() {
         if (!isProducing) {
             productionTimer = GameRules::Time_Build_Villager;
             isProducing = true;
         }
     }
+
 
     void updateTimer(float dt) {
         if (isProducing) productionTimer -= dt;

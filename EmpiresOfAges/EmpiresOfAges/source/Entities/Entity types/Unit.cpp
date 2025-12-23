@@ -2,6 +2,8 @@
 #include "Game/GameRules.h" // GameRules'u eklemeyi unutma
 #include <cmath>
 
+int Unit::entityCounter = 0;
+
 // Varsayýlan Yapýcý
 Unit::Unit()
     : m_tileSize(GameRules::TileSize), // Varsayýlan olarak GameRules'daki deðeri al
@@ -12,6 +14,8 @@ Unit::Unit()
     shape.setRadius(GameRules::UnitRadius);
     shape.setOrigin(GameRules::UnitRadius, GameRules::UnitRadius);
 }
+
+
 
 // Parametreli Yapýcý
 Unit::Unit(int startGridX, int startGridY, int tileSize)

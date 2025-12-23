@@ -21,12 +21,14 @@ public:
     // --- HAREKET SÝSTEMÝ ---
     void moveTo(sf::Vector2f targetWorldPos);
     Point getGridPoint() const;
+    static int getPopulation() { return entityCounter; };
 
     // Getterlar (Eski kodlarýn çalýþmasý için)
     float getSpeed() const { return travelSpeed; }
 
 protected:
     float travelSpeed;
+    static int entityCounter;
 
     // Hareket Deðiþkenleri
     bool m_isMoving;
