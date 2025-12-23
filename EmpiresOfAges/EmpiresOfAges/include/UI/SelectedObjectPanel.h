@@ -3,9 +3,9 @@
 #include <vector>
 #include <string>
 #include <functional>
-#include "UIButton.h" // <-- UIButton sýnýfýný burada dahil ediyoruz
+#include "UIButton.h" // <-- UIButton s?n?f?n? burada dahil ediyoruz
 
-// AbilityInfo yapýsý
+// AbilityInfo yap?s?
 struct AbilityInfo {
     int id;
     std::string name;
@@ -18,12 +18,12 @@ class SelectedObjectPanel {
 public:
     SelectedObjectPanel(float x, float y);
 
-    // Seçili obje verilerini günceller
+    // Se?ili obje verilerini g?nceller
     void updateSelection(const std::string& name, int health, int maxHealth,
         sf::Texture* objectTexture,
         const std::vector<AbilityInfo>& abilities);
 
-    // Eski handleInput yerine artýk handleEvent kullanýyoruz
+    // Eski handleInput yerine art?k handleEvent kullan?yoruz
     void handleEvent(const sf::Event& event);
 
     void draw(sf::RenderWindow& window);
@@ -33,7 +33,7 @@ private:
     sf::Vector2f position;
     sf::RectangleShape panelBackground;
 
-    // --- SAÐ PANEL (INFO) ---
+    // --- SA? PANEL (INFO) ---
     sf::Text nameText;
     sf::Text hpText;
     sf::Sprite selectedIcon;
@@ -41,15 +41,15 @@ private:
     sf::RectangleShape hpBarFront;
 
     // --- SOL PANEL (ARTIK UIBUTTON KULLANIYOR) ---
-    // Hatanýn asýl kaynaðý burasýydý, eski kodda burasý ActionButton struct'ýydý.
+    // Hatan?n as?l kayna?? buras?yd?, eski kodda buras? ActionButton struct'?yd?.
     std::vector<UIButton> buttons;
-    std::vector<AbilityInfo> currentAbilities; // Tooltip göstermek için veriyi saklýyoruz
+    std::vector<AbilityInfo> currentAbilities; // Tooltip g?stermek i?in veriyi sakl?yoruz
 
-    // --- TOOLTIP (AÇIKLAMA KUTUSU) ---
+    // --- TOOLTIP (A?IKLAMA KUTUSU) ---
     sf::RectangleShape tooltipBackground;
     sf::Text tooltipText;
     bool showTooltip;
 
-    // Bu fonksiyon da private olarak tanýmlý olmalý
+    // Bu fonksiyon da private olarak tan?ml? olmal?
     void setupTooltip(const AbilityInfo& info);
 };

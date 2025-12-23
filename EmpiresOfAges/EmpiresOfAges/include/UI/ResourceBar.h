@@ -1,6 +1,5 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include <string>
 
 class ResourceBar {
 public:
@@ -10,11 +9,5 @@ public:
 
 private:
     sf::Font font;
-
-    sf::RectangleShape backgroundBar;
-
-    sf::Text woodText;
-    sf::Text foodText;
-    sf::Text goldText;
-    sf::Text stoneText;
+    sf::Text woodText, foodText, goldText, stoneText;
 };

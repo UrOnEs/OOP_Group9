@@ -12,12 +12,11 @@ public:
         sf::Texture* texture,
         const std::vector<AbilityInfo>& abilities);
     void handleEvent(const sf::Event& event);
-    
-    // Bu ikisini public yaptým normalde private dý haberiniz olsun(Game.cpp kýsmýnda ihtiyacým vardý(Satýr 102))
+
+    // Bu ikisini public yapt?m normalde private d? haberiniz olsun(Game.cpp k?sm?nda ihtiyac?m vard?(Sat?r 102))
     ResourceBar resourceBar;
     SelectedObjectPanel selectedPanel;
 
 private:
 
 };
-

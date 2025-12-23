@@ -4,7 +4,7 @@
 SelectedObjectPanel::SelectedObjectPanel(float x, float y) {
     position = sf::Vector2f(x, y);
 
-    // Font yükleme
+    // Font y?kleme
     if (!font.loadFromFile("assets/fonts/arial.ttf")) {
         std::cerr << "Font yuklenemedi: assets/fonts/arial.ttf" << std::endl;
     }
@@ -16,35 +16,35 @@ SelectedObjectPanel::SelectedObjectPanel(float x, float y) {
     panelBackground.setOutlineThickness(2.0f);
     panelBackground.setOutlineColor(sf::Color(100, 100, 100));
 
-    // --- 2. SAÐ TARAFTAKÝ BÝLGÝ PANELÝ (INFO) ---
+    // --- 2. SA? TARAFTAK? B?LG? PANEL? (INFO) ---
     float infoStartX = position.x + 280;
 
-    // Seçili Obje Ýkonu
+    // Se?ili Obje ?konu
     selectedIcon.setPosition(infoStartX, position.y + 20);
 
-    // Ýsim
+    // ?sim
     nameText.setFont(font);
     nameText.setCharacterSize(18);
     nameText.setFillColor(sf::Color::White);
     nameText.setPosition(infoStartX + 70, position.y + 25);
 
-    // Can Deðeri Metni
+    // Can De?eri Metni
     hpText.setFont(font);
     hpText.setCharacterSize(14);
     hpText.setFillColor(sf::Color::White);
     hpText.setPosition(infoStartX + 70, position.y + 80);
 
-    // Can Barý Arka Planý
+    // Can Bar? Arka Plan?
     hpBarBack.setSize(sf::Vector2f(100, 10));
     hpBarBack.setFillColor(sf::Color(20, 20, 20));
     hpBarBack.setPosition(infoStartX + 70, position.y + 65);
 
-    // Can Barý Ön Yüzü (Yeþil)
+    // Can Bar? ?n Y?z? (Ye?il)
     hpBarFront.setSize(sf::Vector2f(100, 10));
     hpBarFront.setFillColor(sf::Color(0, 200, 0));
     hpBarFront.setPosition(infoStartX + 70, position.y + 65);
 
-    // --- 3. TOOLTIP (ÝPUCU KUTUSU) ---
+    // --- 3. TOOLTIP (?PUCU KUTUSU) ---
     tooltipBackground.setFillColor(sf::Color(0, 0, 0, 230));
     tooltipText.setFont(font);
     tooltipText.setCharacterSize(14);
@@ -55,25 +55,25 @@ SelectedObjectPanel::SelectedObjectPanel(float x, float y) {
 void SelectedObjectPanel::updateSelection(const std::string& name, int health, int maxHealth,
     sf::Texture* objectTexture,
     const std::vector<AbilityInfo>& abilities) {
-    // --- A. BÝLGÝLERÝ GÜNCELLE ---
+    // --- A. B?LG?LER? G?NCELLE ---
     nameText.setString(name);
 
-    // Ana Ýkonu Ayarla ve Ölçekle (64x64'e sýðdýr)
+    // Ana ?konu Ayarla ve ?l?ekle (64x64'e s??d?r)
     if (objectTexture) {
         selectedIcon.setTexture(*objectTexture);
         sf::Vector2u texSize = objectTexture->getSize();
         selectedIcon.setScale(64.0f / texSize.x, 64.0f / texSize.y);
     }
 
-    // Can Barýný Güncelle
+    // Can Bar?n? G?ncelle
     hpText.setString(std::to_string(health) + "/" + std::to_string(maxHealth));
     float hpPercent = (maxHealth > 0) ? (float)health / (float)maxHealth : 0.0f;
     hpBarFront.setSize(sf::Vector2f(100 * hpPercent, 10));
 
 
-    // --- B. BUTONLARI OLUÞTUR (UIButton Kullanarak) ---
+    // --- B. BUTONLARI OLU?TUR (UIButton Kullanarak) ---
     buttons.clear();
-    currentAbilities = abilities; // Tooltip için veriyi sakla
+    currentAbilities = abilities; // Tooltip i?in veriyi sakla
 
     float startX = position.x + 15;
     float startY = position.y + 15;
@@ -90,7 +90,7 @@ void SelectedObjectPanel::updateSelection(const std::string& name, int health, i
 
         newBtn.setPosition(btnX, btnY);
 
-        // Texture Varsa Yükle, Yoksa "?" Koy
+        // Texture Varsa Y?kle, Yoksa "?" Koy
         if (abilities[i].iconTexture) {
             newBtn.setTexture(*abilities[i].iconTexture, btnSize, btnSize);
         }
@@ -99,13 +99,13 @@ void SelectedObjectPanel::updateSelection(const std::string& name, int health, i
             newBtn.setText("?", font, 20);
         }
 
-        // --- CALLBACK (Týklama Görevi) ATA ---
+        // --- CALLBACK (T?klama G?revi) ATA ---
         int actionID = abilities[i].id;
         newBtn.setCallback([actionID]() {
-            // Burasý butona týklandýðýnda çalýþacak kod bloðu
+            // Buras? butona t?kland???nda ?al??acak kod blo?u
             std::cout << "[PANEL] Action Button Clicked! ID: " << actionID << std::endl;
 
-            // Ýleride buraya NetworkManager->sendCommand(...) gelecek.
+            // ?leride buraya NetworkManager->sendCommand(...) gelecek.
             });
 
         buttons.push_back(newBtn);
@@ -115,11 +115,11 @@ void SelectedObjectPanel::updateSelection(const std::string& name, int health, i
 void SelectedObjectPanel::handleEvent(const sf::Event& event) {
     showTooltip = false;
 
-    // Tüm butonlarýn olaylarýný (hover/click) tetikle
+    // T?m butonlar?n olaylar?n? (hover/click) tetikle
     for (size_t i = 0; i < buttons.size(); ++i) {
         buttons[i].handleEvent(event);
 
-        // Eðer mouse üzerindeyse Tooltip göster (MouseMoved event'inde bakýlýr)
+        // E?er mouse ?zerindeyse Tooltip g?ster (MouseMoved event'inde bak?l?r)
         if (buttons[i].isMouseOver()) {
             setupTooltip(currentAbilities[i]);
             showTooltip = true;
@@ -128,15 +128,15 @@ void SelectedObjectPanel::handleEvent(const sf::Event& event) {
 }
 
 void SelectedObjectPanel::setupTooltip(const AbilityInfo& info) {
-    // Tooltip metnini hazýrla
+    // Tooltip metnini haz?rla
     std::string fullText = info.name + " (" + info.costText + ")\n\n" + info.description;
     tooltipText.setString(fullText);
 
-    // Arka planý metne göre boyutlandýr
+    // Arka plan? metne g?re boyutland?r
     sf::FloatRect textBounds = tooltipText.getGlobalBounds();
     tooltipBackground.setSize(sf::Vector2f(textBounds.width + 20, textBounds.height + 20));
 
-    // Tooltip'i panelin hemen üstüne yerleþtir
+    // Tooltip'i panelin hemen ?st?ne yerle?tir
     float tooltipX = position.x;
     float tooltipY = position.y - tooltipBackground.getSize().y - 5;
 
@@ -148,19 +148,19 @@ void SelectedObjectPanel::draw(sf::RenderWindow& window) {
     // 1. Arka Plan
     window.draw(panelBackground);
 
-    // 2. Bilgi Kýsmý
+    // 2. Bilgi K?sm?
     window.draw(nameText);
     window.draw(hpText);
     window.draw(selectedIcon);
     window.draw(hpBarBack);
     window.draw(hpBarFront);
 
-    // 3. Butonlar (UIButton sýnýfýnýn kendi draw fonksiyonu)
+    // 3. Butonlar (UIButton s?n?f?n?n kendi draw fonksiyonu)
     for (auto& btn : buttons) {
         btn.draw(window);
     }
 
-    // 4. Tooltip (En üstte)
+    // 4. Tooltip (En ?stte)
     if (showTooltip) {
         window.draw(tooltipBackground);
         window.draw(tooltipText);

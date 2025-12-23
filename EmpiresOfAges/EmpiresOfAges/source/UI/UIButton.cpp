@@ -26,6 +26,7 @@ void UIButton::setText(const std::string& text, const sf::Font& font, unsigned i
     m_text.setString(text);
     m_text.setCharacterSize(size);
     setPosition(m_shape.getPosition().x, m_shape.getPosition().y);
+    m_text.setFillColor(sf::Color::Black);
 }
 
 void UIButton::setTexture(const sf::Texture& texture, float width, float height) {
@@ -88,8 +89,8 @@ void UIButton::draw(sf::RenderWindow& window) {
     if (m_hasTexture) window.draw(m_sprite);
     else {
         window.draw(m_shape);
-        window.draw(m_text);
     }
+    window.draw(m_text);
 }
 
 sf::FloatRect UIButton::getGlobalBounds() const {

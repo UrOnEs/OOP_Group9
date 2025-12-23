@@ -9,9 +9,9 @@ void HUD::update() {
     // RTS resource update vs.
 }
 
-// --- BU FONKSÝYONU DEÐÝÞTÝRÝYORUZ ---
+// --- BU FONKS?YONU DE???T?R?YORUZ ---
 void HUD::handleEvent(const sf::Event& event) {
-    // Olayý panele ilet (O da butonlara iletecek)
+    // Olay? panele ilet (O da butonlara iletecek)
     selectedPanel.handleEvent(event);
 }
 
