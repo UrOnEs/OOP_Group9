@@ -144,7 +144,6 @@
     <ClCompile Include="source\Entities\Entity types\Soldier.cpp" />
     <ClCompile Include="source\Entities\Entity types\Unit.cpp" />
     <ClCompile Include="source\Entities\Entity types\Villager.cpp" />
-    <ClCompile Include="source\Entities\Entity.cpp" />
     <ClCompile Include="source\Entities\EntityManager.cpp" />
     <ClCompile Include="source\Game\Game.cpp" />
     <ClCompile Include="source\Game\GameStateManager.cpp" />
@@ -182,6 +181,7 @@
     <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h" />
     <ClInclude Include="include\Entity System\Entity Type\Soldier.h" />
     <ClInclude Include="include\Entity System\Entity Type\StoneMine.h" />
+    <ClInclude Include="include\Entity System\Entity Type\TownCenter.h" />
     <ClInclude Include="include\Entity System\Entity Type\Tree.h" />
     <ClInclude Include="include\Entity System\Entity Type\types.h" />
     <ClInclude Include="include\Entity System\Entity Type\Unit.h" />

@@ -3,12 +3,11 @@
 
 #include "Unit.h"
 #include "types.h"
-#include <vector>  // vector için
-#include <memory>  // shared_ptr için
+#include <vector>
+#include <memory> 
 
-// Forward Declaration
 class ResourceGenerator;
-class Building; // <-- Bunu ekle
+class Building;
 
 class Villager : public Unit {
 private:
@@ -16,9 +15,7 @@ private:
     static int counter;
 
     bool isBusy = false;
-
-    // --- HASAT DEÐÝÞKENLERÝ ---
-    ResourceGenerator* targetResource = nullptr;
+    std::weak_ptr<ResourceGenerator> targetResource;
     bool isHarvesting = false;
 
 public:
@@ -27,18 +24,21 @@ public:
 
     std::string stats() override;
 
-    void startHarvesting(ResourceGenerator* resource);
+    void startHarvesting(std::shared_ptr<ResourceGenerator> resource);
     void stopHarvesting();
-    void updateHarvesting();
-    void checkTargetStatus();
 
-    // --- YENÝ EKLENEN FONKSÝYON ---
-    // Etraftaki yeni kaynaðý bulur ve ona yönelir
+    // --- DEÐÝÞÝKLÝK BURADA ---
+    // Artýk güncelleme yaparken etrafýna bakabilmesi için binalarý istiyoruz
+    void updateHarvesting(const std::vector<std::shared_ptr<Building>>& buildings);
+
+    void checkTargetStatus();
     void findNearestResource(const std::vector<std::shared_ptr<Building>>& buildings);
 
-    // Getterlar
     bool getIsHarvesting() const { return isHarvesting; }
-    ResourceGenerator* getTargetResource() { return targetResource; }
+
+    std::shared_ptr<ResourceGenerator> getTargetResource() {
+        return targetResource.lock();
+    }
 };
 
 #endif // !VILLAGER_H

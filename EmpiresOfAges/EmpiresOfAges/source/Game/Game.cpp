@@ -8,6 +8,8 @@
 #include "Entity System/Entity Type/Unit.h"
 #include "Entity System/Entity Type/Villager.h" // - Köylü sýnýfý
 #include "Entity System/Entity Type/ResourceGenerator.h" // - Aðaç/Maden sýnýfý
+#include "Entity System/Entity Type/Barracks.h" // Kýþla
+#include "Entity System/Entity Type/TownCenter.h" // Ana Merkez
 
 #include <algorithm> // std::max ve std::min için
 #include <iostream>
@@ -133,8 +135,15 @@ void Game::processEvents() {
 
             // KLAVYE KISAYOLLARI
             if (event.type == sf::Event::KeyPressed) {
+                //------------------ Tuþlar ------------------------------
+
                 if (event.key.code == sf::Keyboard::H) {
                     enterBuildMode(BuildTypes::House, "assets/buildings/house.png");
+                }
+
+                if (event.key.code == sf::Keyboard::B) {
+                    // Texture adýný senin klasörüne göre ayarla
+                    enterBuildMode(BuildTypes::Barrack, "assets/buildings/barrack.png");
                 }
 
                 // ESC TUÞU
@@ -144,6 +153,23 @@ void Game::processEvents() {
                     }
                     else {
                         window.close();
+                    }
+                }
+
+                // --- 'T' TUÞU ÝLE ASKER ÜRET ---
+                if (event.key.code == sf::Keyboard::T) {
+                    // Seçili birim var mý?
+                    if (!localPlayer.selected_entities.empty()) {
+                        // Ýlk seçilen þey bir Kýþla mý?
+                        if (auto barracks = std::dynamic_pointer_cast<Barracks>(localPlayer.selected_entities[0])) {
+
+                            // Barbar üretimini baþlat (Parayý ProductionSystem kontrol edecek)
+                            // Þimdilik sadece Barbarian üretiyoruz, ileride okçu vs. için baþka tuþlar eklersin.
+                            if (ProductionSystem::startProduction(localPlayer, *barracks, SoldierTypes::Barbarian)) {
+                                // Ses çalabilirsin: "Emredersiniz!"
+                                // SoundManager::playSound("train_unit"); 
+                            }
+                        }
                     }
                 }
             }
@@ -168,17 +194,27 @@ void Game::processEvents() {
                     if (isInBuildMode) {
                         // ÝNÞAAT MODU
                         GameRules::Cost cost = GameRules::getBuildingCost(pendingBuildingType);
-                        if (localPlayer.getResources()[0] >= cost.wood) {
-                            if (mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType)) {
+                        if (localPlayer.getResources()[0] >= cost.wood && localPlayer.getResources()[1] >= cost.gold && localPlayer.getResources()[2] >= cost.stone && localPlayer.getResources()[3] >= cost.food) {
+                            std::shared_ptr<Building> placedBuilding = mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType);
+
+                            // Eðer bina baþarýyla oluþturulduysa (boþ deðilse)
+                            if (placedBuilding != nullptr) {
+
+                                //Binayý oyuncunun listesine ekle
+                                localPlayer.addEntity(placedBuilding);
+
+                                // Kaynak düþme iþlemleri
                                 localPlayer.addWood(-cost.wood);
                                 localPlayer.addGold(-cost.gold);
-                                localPlayer.addFood(-cost.food);
                                 localPlayer.addStone(-cost.stone);
-                                std::cout << "[GAME] Bina insa edildi!\n";
+                                localPlayer.addFood(-cost.food);
 
-                                if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) {
-                                    cancelBuildMode();
-                                }
+                                std::cout << "[GAME] Bina insa edildi ve oyuncuya eklendi!\n";
+
+                                if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) cancelBuildMode();
+                            }
+                            else {
+                                std::cout << "[GAME] Buraya insa edilemez!\n";
                             }
                         }
                         else {
@@ -201,25 +237,25 @@ void Game::processEvents() {
                         cancelBuildMode();
                     }
                     else {
-                        // 1. Týklanan karede bir bina/kaynak var mý?
-                        Building* clickedBuilding = mapManager.getBuildingAt(gridX, gridY);
+                        // 1. Týklanan binayý al (Artýk shared_ptr dönüyor)
+                        std::shared_ptr<Building> clickedBuilding = mapManager.getBuildingAt(gridX, gridY);
 
-                        // Bu bina bir "ResourceGenerator" (Aðaç, Maden) mý?
-                        ResourceGenerator* resGen = dynamic_cast<ResourceGenerator*>(clickedBuilding);
+                        // Dynamic cast, shared_ptr ile þöyle yapýlýr:
+                        std::shared_ptr<ResourceGenerator> resGen = std::dynamic_pointer_cast<ResourceGenerator>(clickedBuilding);
 
                         if (resGen) {
-                            // --- EVET, AÐAÇ VAR: HASAT EMRÝ VER ---
+                            // --- EVET, AÐAÇ VAR ---
                             bool sentVillager = false;
                             for (auto& entity : localPlayer.selected_entities) {
-                                // Seçili birim köylü mü?
                                 if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
+
+                                    // ARTIK shared_ptr GÖNDERÝYORUZ
                                     villager->startHarvesting(resGen);
+
                                     sentVillager = true;
                                 }
                             }
-                            if (sentVillager) {
-                                std::cout << "[GAME] Koylu agaca gonderildi";
-                            }
+                            if (sentVillager) std::cout << "[GAME] Koylu agaca gonderildi\n";
                         }
                         else {
                             // --- HAYIR, BOÞ ZEMÝN: NORMAL YÜRÜ ---
@@ -230,8 +266,6 @@ void Game::processEvents() {
                                     villager->stopHarvesting();
                                 }
                             }
-
-                            // Mevcut Pathfinding ve Hareket kodlarýn burada çalýþacak...
                             if (gridX >= 0 && gridX < mapManager.getWidth() &&
                                 gridY >= 0 && gridY < mapManager.getHeight()) {
 
@@ -300,26 +334,33 @@ void Game::processEvents() {
 
 void Game::update(float dt) {
     networkManager.update(dt);
-
     if (stateManager.getState() == GameState::Playing) {
         handleInput(dt);
         const auto& levelData = mapManager.getLevelData();
         int mapW = mapManager.getWidth();
         int mapH = mapManager.getHeight();
 
-        // 1. OYUNCU BÝRÝMLERÝNÝ GÜNCELLE
+        // Haritadaki binalarýn listesini al (Referans olarak)
+        const auto& allBuildings = mapManager.getBuildings();
+
+        // 1. Entity Güncellemeleri
         for (auto& entity : localPlayer.getEntities()) {
-            // Normal Hareket
             if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
                 unit->update(dt, levelData, mapW, mapH);
             }
-            // Hasat Kontrolü
+
+            // --- DEÐÝÞÝKLÝK BURADA ---
             if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
-                villager->updateHarvesting();
+                // Artýk parametre olarak binalarý gönderiyoruz
+                villager->updateHarvesting(allBuildings);
+            }
+
+            if (auto barracks = std::dynamic_pointer_cast<Barracks>(entity)) {
+                ProductionSystem::update(localPlayer, *barracks, dt);
             }
         }
 
-        // 2. KAYNAK SÝSTEMÝ (Aðaçlarýn caný burada azalýr)
+        // 2. Kaynak Sistemi
         for (auto& building : mapManager.getBuildings()) {
             if (building) {
                 if (auto resGen = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
@@ -328,35 +369,11 @@ void Game::update(float dt) {
             }
         }
 
-        // --- 3. AKILLI HASAT SÝSTEMÝ VE GÜVENLÝK ---
-        // Aðaçlarý silmeden önce, hedefi ölen köylüleri yeni aðaca yönlendir.
-
-        // MapManager'daki bina listesine ihtiyacýmýz var
-        const auto& allBuildings = mapManager.getBuildings();
-
-        for (auto& entity : localPlayer.getEntities()) {
-            if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
-
-                // Eðer köylü hasat modundaysa ve hedefi varsa
-                if (villager->getIsHarvesting() && villager->getTargetResource()) {
-
-                    // Hedef aðacýn caný bitti mi?
-                    if (!villager->getTargetResource()->getIsAlive()) {
-
-                        // ESKÝ KOD: Sadece duruyordu.
-                        // villager->stopHarvesting(); 
-
-                        // YENÝ KOD: Yakýndaki baþka bir aðacý ara!
-                        villager->findNearestResource(allBuildings);
-                    }
-                }
-            }
-        }
-        // --------------------------------------------------
-
-        // 4. Þimdi ölü aðaçlarý güvenle silebiliriz
+        // 3. Ölüleri Temizle
         mapManager.removeDeadBuildings();
+        // EntityManager::removeDeadEntities eklemen gerekebilir
 
+        // UI Güncelle
         std::vector<int> res = localPlayer.getResources();
         hud.resourceBar.updateResources(res[0], res[3], res[1], res[2]);
     }

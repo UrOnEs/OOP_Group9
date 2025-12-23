@@ -14,7 +14,7 @@ public:
     MapManager(int width, int height, int tileSize);
 
     void initialize();
-    bool tryPlaceBuilding(int tx, int ty, BuildTypes type);
+    std::shared_ptr<Building> tryPlaceBuilding(int tx, int ty, BuildTypes type);
     void removeBuilding(int tx, int ty);
     void updateBuildings(float dt);
     void draw(sf::RenderWindow& window);
@@ -22,7 +22,7 @@ public:
 
 
     const std::vector<int>& getLevelData() const;
-    Building* getBuildingAt(int tx, int ty);
+    std::shared_ptr<Building> getBuildingAt(int tx, int ty);
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
     int getTileSize() const { return m_tileSize; }

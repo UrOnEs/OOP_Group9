@@ -5,6 +5,7 @@
 #include "Entity System/Entity Type/StoneMine.h"
 #include "Entity System/Entity Type/Farm.h"
 #include "Entity System/Entity Type/Barracks.h"
+#include "Entity System/Entity Type/TownCenter.h"
 #include "Entity System/Entity Type/Tree.h"
 #include "UI/AssetManager.h"
 
@@ -127,14 +128,18 @@ void MapManager::createTilesetFile() {
     tileset.saveToFile("tileset.png");
 }
 
-bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) {
-    if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return false;
+std::shared_ptr<Building> MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) {
+    // 1. Sýnýr Kontrolü
+    if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return nullptr;
 
-    int indices[4] = { tx + ty * m_width, (tx + 1) + ty * m_width, tx + (ty + 1) * m_width, (tx + 1) + (ty + 1) * m_width };
-    if (m_level[indices[0]] != 0) return false;
+    // 2. Alan Dolu mu? (Þimdilik sol üst köþe kontrolü)
+    int idx = tx + ty * m_width;
+    if (m_level[idx] != 0) return nullptr;
 
     std::shared_ptr<Building> newBuilding = nullptr;
     std::string textureName = "";
+
+    // Boyut Ayarlarý
     float widthInTiles = 2.0f;
     float heightInTiles = 2.0f;
 
@@ -145,8 +150,18 @@ bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) {
     }
     else if (type == BuildTypes::Barrack) {
         newBuilding = std::make_shared<Barracks>();
-        textureName = "assets/buildings/barracks.png";
+        textureName = "assets/buildings/barrack.png";
         widthInTiles = 2.0f; heightInTiles = 2.0f;
+    }
+    else if (type == BuildTypes::Farm) {
+        newBuilding = std::make_shared<Farm>();
+        textureName = "assets/buildings/mill.png"; // Mill görseli
+        widthInTiles = 2.0f; heightInTiles = 2.0f;
+    }
+    else if (type == BuildTypes::TownCenter) {
+        newBuilding = std::make_shared<TownCenter>();
+        textureName = "assets/buildings/castle.png"; // Castle görseli
+        widthInTiles = 3.0f; heightInTiles = 3.0f;
     }
 
     if (newBuilding) {
@@ -156,25 +171,31 @@ bool MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) {
         if (!textureName.empty()) {
             sf::Texture& tex = AssetManager::getTexture(textureName);
             newBuilding->setTexture(tex);
+
+            // --- GÜVENLÝK KONTROLÜ (Sýfýra Bölme Hatasý Ýçin) ---
             sf::Vector2u texSize = tex.getSize();
-            newBuilding->setScale(targetW / texSize.x, targetH / texSize.y);
+            if (texSize.x > 0 && texSize.y > 0) {
+                newBuilding->setScale(targetW / (float)texSize.x, targetH / (float)texSize.y);
+            }
         }
 
+        // Pozisyonlama (Merkeze)
         float centerX = (tx * m_tileSize) + (targetW / 2.0f);
         float centerY = (ty * m_tileSize) + (targetH / 2.0f);
         newBuilding->setPosition(sf::Vector2f(centerX, centerY));
 
         m_buildings.push_back(newBuilding);
 
+        // Haritada alaný iþaretle
         for (int x = 0; x < widthInTiles; x++) {
             for (int y = 0; y < heightInTiles; y++) {
-                int idx = (tx + x) + (ty + y) * m_width;
-                if (idx < m_level.size()) m_level[idx] = 1;
+                int mapIdx = (tx + x) + (ty + y) * m_width;
+                if (mapIdx < m_level.size()) m_level[mapIdx] = 1;
             }
         }
-        return true;
+        return newBuilding; // Binayý döndür
     }
-    return false;
+    return nullptr;
 }
 
 void MapManager::removeBuilding(int tx, int ty) {
@@ -214,10 +235,11 @@ void MapManager::updateTile(int tx, int ty, int id) {
 
 const std::vector<int>& MapManager::getLevelData() const { return m_level; }
 
-Building* MapManager::getBuildingAt(int tx, int ty) {
+std::shared_ptr<Building> MapManager::getBuildingAt(int tx, int ty) {
     sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
     for (auto& b : m_buildings) {
-        if (b->getBounds().contains(checkPos)) return b.get();
+        // Direkt shared_ptr döndür
+        if (b->getBounds().contains(checkPos)) return b;
     }
     return nullptr;
 }

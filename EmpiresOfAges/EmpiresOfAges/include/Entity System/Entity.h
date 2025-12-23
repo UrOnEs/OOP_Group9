@@ -73,37 +73,57 @@ public:
     float getRange() const { return range; }
 
     // --- ÇÝZÝM (Render) ---
-    // Bunu .h içinde tanýmladýðýmýz için .cpp'de tekrar yazma!
     virtual void render(sf::RenderWindow& window) {
-        if (!isAlive) return;
-
-        // Seçim Halkasý
+        // 1. SEÇÝM HALKASINI ÇÝZ (Seçiliyse)
         if (isSelected) {
-            shape.setOutlineThickness(2.0f);
-            shape.setOutlineColor(sf::Color::Green);
-        }
-        else {
-            shape.setOutlineThickness(0.0f);
+            float radius = 32.0f; // Varsayýlan bir boyut (Askerler için)
+
+            // Eðer bir texture (görsel) varsa, onun boyutuna göre ayarla
+            if (hasTexture) {
+                // Sprite'ýn ekranda kapladýðý alaný al (Ölçeklenmiþ hali)
+                sf::FloatRect bounds = sprite.getGlobalBounds();
+                // Yarýçapý geniþliðin yarýsý yap. Biraz taþmasý için 1.1 ile çarpabiliriz.
+                radius = (bounds.width / 2.0f) * 1.1f;
+            }
+
+            sf::CircleShape selectionCircle(radius);
+            selectionCircle.setPointCount(40); // Daha pürüzsüz bir daire
+
+            // Merkezi ayarla (Tam ayak bastýðý nokta)
+            selectionCircle.setOrigin(radius, radius-10);
+            selectionCircle.setPosition(getPosition());
+
+            // --- ÝZOMETRÝK GÖRÜNÜM ---
+            // Daireyi dikey olarak bastýrarak elips yapýyoruz.
+            // Yere yatýrýlmýþ gibi görünmesini saðlar.
+            selectionCircle.setScale(1.0f, 0.6f);
+
+            // Renk ve þeffaflýk ayarlarý
+            selectionCircle.setFillColor(sf::Color(0, 255, 0, 50)); // Ýçi yarý saydam yeþil
+            selectionCircle.setOutlineColor(sf::Color::Green);      // Kenarý parlak yeþil
+            selectionCircle.setOutlineThickness(3.0f);            // Çizgi kalýnlýðý (Daha belirgin)
+
+            window.draw(selectionCircle);
         }
 
+        // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
         if (hasTexture) {
             window.draw(sprite);
-            if (isSelected) window.draw(shape); // Seçiliyse halkayý da çiz
         }
         else {
+            // Texture yoksa þekli çiz (Failsafe)
             window.draw(shape);
         }
+
+        // (Eðer varsa can barý vb. burada çizilir)
     }
 
-    // --- DURUM YÖNETÝMÝ (Eksik olanlar buradaydý) ---
+    // --- DURUM YÖNETÝMÝ ---
 
-    // "getIsAlive" hatasý için
     bool getIsAlive() const { return isAlive; }
 
-    // "setSelected" hatasý için
     void setSelected(bool status) { isSelected = status; }
 
-    // "takeDamage" hatasý için
     void takeDamage(float amount) {
         health -= amount;
         if (health <= 0) isAlive = false;

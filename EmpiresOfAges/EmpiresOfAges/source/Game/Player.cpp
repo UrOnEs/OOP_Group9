@@ -1,4 +1,6 @@
 #include "Game/Player.h"
+#include "Entity System/Entity Type/Unit.h"     
+#include "Entity System/Entity Type/Building.h"
 #include <iostream>
 
 Player::Player() {
@@ -36,6 +38,18 @@ std::vector<std::shared_ptr<Entity>> Player::getEntities() {
 void Player::renderEntities(sf::RenderWindow& window) {
     for (auto& entity : entities) {
         if (entity->getIsAlive()) {
+            // EÐER BU BÝR BÝNAYSA ÇÝZME (MapManager zaten çiziyor)
+            if (std::dynamic_pointer_cast<Building>(entity)) {
+                // Ancak bina SEÇÝLÝYSE seçim halkasýný çizmemiz gerekebilir.
+                // Entity::render içinde seçim halkasý mantýðý var.
+                // Eðer burada çizmezsek seçim halkasý görünmeyebilir.
+
+                // Seçenek A: Býrak iki kere çizilsin (Basit çözüm)
+                // Seçenek B: Sadece seçiliyse çiz (Daha optimize)
+                if (entity->isSelected) entity->render(window);
+
+                continue;
+            }
             entity->render(window);
         }
     }
@@ -80,51 +94,82 @@ void Player::addStone(int amount) { playerResources.add(ResourceType::Stone, amo
 void Player::addEntity(std::shared_ptr<Entity> entity) { entities.push_back(entity); }
 */
 
-// ---------------------- SEÇÝM SÝSTEMÝ -----------------------
+// ====================================================================================
+//                                SEÇÝM SÝSTEMÝ GÜNCELLEMESÝ
+// ====================================================================================
 
-//---------- Tekli Seçim ------------------------
+// --- 1. TEKÝL SEÇÝM (TIKLAMA) ---
 void Player::selectUnit(sf::RenderWindow& window, const sf::View& camera, bool isShiftHeld) {
     sf::Vector2i mousePosPixel = sf::Mouse::getPosition(window);
     sf::Vector2f mousePosWorld = window.mapPixelToCoords(mousePosPixel, camera);
 
-    // Shift basýlý DEÐÝLSE, mevcut seçimi temizle
-    if (!isShiftHeld) {
-        for (auto& e : selected_entities) e->setSelected(false);
-        selected_entities.clear();
-    }
+    bool clickedOnUnit = false;
+    bool clickedOnBuilding = false;
 
-    bool clickedOnSomething = false;
-
+    // --- ADIM 1: ÖNCE ASKERLERÝ (UNITS) KONTROL ET ---
+    // Askerler binalarýn önünde durabilir, önce onlarý seçmek isteriz.
     for (auto& entity : entities) {
         if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
 
-            // Eðer zaten seçiliyse ve Shift'e basýyorsak -> Seçimi kaldýr (Toggle)
-            if (isShiftHeld && entity->isSelected) {
-                entity->setSelected(false);
-                // Vektörden silme iþlemi biraz maliyetli olabilir ama basit tutalým:
-                // (Modern C++'da remove_if kullanýlýr ama þimdilik kalsýn, görsel güncellemesi yeter)
-                // Doðru yöntem: selected_entities listesinden bu elemaný bulup silmek gerekir.
-            }
-            else {
-                // Seçili deðilse seç
-                if (!entity->isSelected) {
-                    entity->setSelected(true);
-                    selected_entities.push_back(entity);
+            // Bu bir ASKER (Unit) mi?
+            if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
+
+                // Shift basýlý DEÐÝLSE önceki seçimleri temizle
+                if (!isShiftHeld && !clickedOnUnit) {
+                    for (auto& e : selected_entities) e->setSelected(false);
+                    selected_entities.clear();
                 }
+
+                // Seçimi yap/kaldýr
+                if (isShiftHeld && unit->isSelected) {
+                    // Zaten seçiliyse ve Shift varsa -> Çýkar (Toggle)
+                    unit->setSelected(false);
+                    // (Vektörden silme iþlemi biraz maliyetli, basit býrakýyoruz þimdilik)
+                }
+                else if (!unit->isSelected) {
+                    unit->setSelected(true);
+                    selected_entities.push_back(unit);
+                }
+
+                clickedOnUnit = true;
+                break; // Bir asker bulduk, döngüden çýk (En üsttekini seç)
             }
-            clickedOnSomething = true;
-            break; // Üst üste binenlerden sadece en üsttekini seç
         }
     }
 
-    // Boþa týkladýysak ve Shift yoksa her þeyi býrak
-    if (!clickedOnSomething && !isShiftHeld) {
+    // --- ADIM 2: ASKER BULAMADIYSAK BÝNALARA BAK ---
+    if (!clickedOnUnit) {
+        for (auto& entity : entities) {
+            if (entity->getIsAlive() && entity->getBounds().contains(mousePosWorld)) {
+
+                // Bu bir BÝNA (Building) mý?
+                if (auto building = std::dynamic_pointer_cast<Building>(entity)) {
+
+                    // KURAL: Bina seçerken her zaman tekli seçim yapýlýr.
+                    // Shift basýlý olsa bile her þeyi temizle.
+                    for (auto& e : selected_entities) e->setSelected(false);
+                    selected_entities.clear();
+
+                    // Binayý seç
+                    building->setSelected(true);
+                    selected_entities.push_back(building);
+
+                    clickedOnBuilding = true;
+                    break; // Binayý bulduk, çýk.
+                }
+            }
+        }
+    }
+
+    // --- ADIM 3: BOÞA TIKLAMA ---
+    // Hiçbir þeye (Asker veya Bina) týklamadýysak ve Shift yoksa her þeyi býrak
+    if (!clickedOnUnit && !clickedOnBuilding && !isShiftHeld) {
         for (auto& e : selected_entities) e->setSelected(false);
         selected_entities.clear();
     }
 }
 
-// ---------------------  ÇOKLU SEÇÝM  --------------
+// --- 2. ÇOKLU SEÇÝM (SÜRÜKLE-BIRAK / BOX SELECTION) ---
 void Player::selectUnitsInRect(const sf::FloatRect& selectionRect, bool isShiftHeld) {
 
     // Shift basýlý DEÐÝLSE önce temizle
@@ -136,12 +181,14 @@ void Player::selectUnitsInRect(const sf::FloatRect& selectionRect, bool isShiftH
     for (auto& entity : entities) {
         if (!entity->getIsAlive()) continue;
 
-        // Entity'nin pozisyonu kutunun içinde mi?
-        // intersects yerine contains kullanýyoruz ki sadece kutu içindekiler seçilsin
-        // veya biraz dokunsa da seçilsin istersen 'intersects' kullanabilirsin.
-        if (selectionRect.intersects(entity->getBounds())) {
+        // --- DEÐÝÞÝKLÝK BURADA: BÝNALARI YOKSAY ---
+        // Eðer bu entity bir Bina ise, kutu seçiminde onu es geç.
+        if (std::dynamic_pointer_cast<Building>(entity)) {
+            continue;
+        }
 
-            // Zaten seçili deðilse listeye ekle
+        // Sadece Unit'ler buraya gelebilir
+        if (selectionRect.intersects(entity->getBounds())) {
             if (!entity->isSelected) {
                 entity->setSelected(true);
                 selected_entities.push_back(entity);
