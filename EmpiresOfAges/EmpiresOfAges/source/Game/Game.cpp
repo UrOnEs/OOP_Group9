@@ -146,6 +146,16 @@ void Game::processEvents() {
                     enterBuildMode(BuildTypes::Barrack, "assets/buildings/barrack.png");
                 }
 
+                if (event.key.code == sf::Keyboard::C) {
+                    // Texture adýný senin klasörüne göre ayarla
+                    enterBuildMode(BuildTypes::TownCenter, "assets/buildings/castle.png");
+                }
+
+                if (event.key.code == sf::Keyboard::M) {
+                    // Texture adýný senin klasörüne göre ayarla
+                    enterBuildMode(BuildTypes::Farm, "assets/buildings/mill.png");
+                }
+
                 // ESC TUÞU
                 if (event.key.code == sf::Keyboard::Escape) {
                     if (isInBuildMode) {
