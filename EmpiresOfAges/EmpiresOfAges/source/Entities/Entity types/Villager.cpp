@@ -2,6 +2,8 @@
 #include "Entity System/Entity Type/Building.h"
 #include "Game/GameRules.h"
 #include "Entity System/Entity Type/ResourceGenerator.h"
+#include "Entity System/Entity Type/TownCenter.h"
+#include "Map/PathFinder.h"
 #include <iostream>
 #include <cmath>
 
@@ -17,134 +19,265 @@ Villager::Villager() : Unit() {
     this->isSelected = false;
     this->entityID = ++IDcounter;
 
-    counter++;
-
-    //Abilities
+    // Yetenekler
     addAbility(Ability(1, "Ev Insa Et", "30 Odun", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));
     addAbility(Ability(2, "Kisla Yap", "175 Odun", "Asker Uret", &AssetManager::getTexture("assets/buildings/barrack.png")));
     addAbility(Ability(3, "Ciftlik Kur", "60 Odun", "Yemek Uret", &AssetManager::getTexture("assets/buildings/mill.png")));
-    addAbility(Ability(4, "Ana bina Üret", "400 Odun, 200 taþ", "Ana bina", &AssetManager::getTexture("assets/buildings/castle.png")));
+    addAbility(Ability(4, "Ana bina", "400 Odun", "Merkez", &AssetManager::getTexture("assets/buildings/castle.png")));
 
+    counter++;
 }
 
-Villager::~Villager() {
-    counter--;
-}
+Villager::~Villager() { counter--; }
 
 std::string Villager::stats() {
-    return "Villager HP: " + std::to_string((int)health);
+    return "Yuk: " + std::to_string(currentCargo) + "/" + std::to_string(maxCargo);
 }
 
-// =========================================================
-//               HASAT VE HAREKET MANTIÐI 
-// =========================================================
+int Villager::getMaxHealth() const { return GameRules::HP_Villager; }
 
+// --- HASAT BAÞLATMA ---
 void Villager::startHarvesting(std::shared_ptr<ResourceGenerator> resource) {
     if (!resource) return;
 
-    // weak_ptr'a shared_ptr atanabilir (otomatik dönüþüm)
+    // Eðer hedeflediðimiz kaynak doluysa ve içinde biz yoksak, gitme.
+    // Ancak oyuncu sað týkladýysa zorla gitmeye çalýþsýn, belki o gidene kadar boþalýr.
     targetResource = resource;
-    isHarvesting = true;
+    state = VillagerState::MovingToResource;
+
+    // Kaynak tipini belirle
+    if (resource->buildingType == BuildTypes::Tree) cargoType = ResourceType::Wood;
+    else if (resource->buildingType == BuildTypes::GoldMine) cargoType = ResourceType::Gold;
+    else if (resource->buildingType == BuildTypes::StoneMine) cargoType = ResourceType::Stone;
+    else if (resource->buildingType == BuildTypes::Farm) cargoType = ResourceType::Food;
 
     moveTo(resource->getPosition());
 }
 
+// --- HASAT DURDURMA ---
 void Villager::stopHarvesting() {
-    // Önce kilitliyoruz, eðer hala varsa iþlem yapýyoruz
-    if (isHarvesting) {
-        if (auto res = targetResource.lock()) {
-            res->releaseWorker();
-        }
+    if (auto res = targetResource.lock()) {
+        res->releaseWorker();
     }
-    isHarvesting = false;
-    targetResource.reset(); // Baðý kopar
+    state = VillagerState::Idle;
+    targetResource.reset();
+    targetBase.reset();
+    m_path.clear();
+    m_isMoving = false;
 }
 
-void Villager::checkTargetStatus() {
-    if (isHarvesting) {
-        // Hedefe eriþmeye çalýþ
-        if (auto res = targetResource.lock()) {
-            if (!res->getIsAlive()) {
-                stopHarvesting();
+// --- ANA DÖNGÜ (State Machine) ---
+void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player) {
+
+    // 0. Durum: GARRISONED (Binanýn Ýçinde - Saklanmýþ)
+    if (state == VillagerState::Garrisoned) {
+        auto res = targetResource.lock();
+        // Eðer bina yýkýldýysa veya kaynak tükendiyse dýþarý çýk
+        if (!res || !res->getIsAlive()) {
+            state = VillagerState::Idle;
+            // Görünür olunca hafif kaydýr ki içine doðmasýn
+            this->setPosition(this->getPosition() + sf::Vector2f(0, 50));
+        }
+        return; // Ýçerideyken baþka iþlem yapma
+    }
+
+    // 1. Durum: KAYNAÐA GÝDÝYOR
+    if (state == VillagerState::MovingToResource) {
+        auto res = targetResource.lock();
+
+        // Kaynak yok olduysa hemen yenisini ara
+        if (!res || !res->getIsAlive()) {
+            findNearestResource(buildings);
+            return;
+        }
+
+        sf::Vector2f diff = res->getPosition() - getPosition();
+        float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+
+        // --- DÜZELTME 1: MENZÝLÝ GENÝÞLETÝYORUZ ---
+        // Askerlerin çarpýþma yarýçapý + Bina yarýçapý + Güvenlik payý
+        // Bu sayede duvara çarpsa bile "vardým" sayacak.
+        float targetRadius = res->getBounds().width / 2.0f;
+        if (targetRadius < 32.0f) targetRadius = 32.0f; // Minimum (Aðaç için)
+
+        float interactionDist = targetRadius + 15.0f; // 45px pay veriyoruz (Çarpýþma hatasýný önler)
+
+        if (dist <= interactionDist) {
+
+            // --- DÜZELTME 2: ÇÝFTLÝK VE NORMAL KAYNAK AYRIMI ---
+            if (res->buildingType == BuildTypes::Farm) {
+                if (res->garrisonWorker()) {
+                    state = VillagerState::Garrisoned; // Ýçeri gir
+                    m_path.clear();
+                    m_isMoving = false;
+                    isSelected = false;
+                }
+                else {
+                    // Doluysa bekleme yapma, etrafta baþka çiftlik varsa ona bak
+                    // Þimdilik duruyor, istenirse findNearestResource çaðrýlabilir.
+                    stopHarvesting();
+                }
+            }
+            // --- NORMAL KAYNAK (AÐAÇ/MADEN) ---
+            else {
+                if (res->garrisonWorker()) {
+                    state = VillagerState::Harvesting;
+                    m_path.clear();
+                    m_isMoving = false;
+                }
+                else {
+                    // --- DÜZELTME 3: AÐAÇ DOLUYSA BAÞKASINI ARA ---
+                    // Eðer kapýsýna geldiðimiz aðaç doluysa, mal gibi bekleme, yanýndakine git.
+                    findNearestResource(buildings);
+                }
             }
         }
-        else {
-            // Eðer lock() boþ döndüyse, aðaç silinmiþ demektir.
-            stopHarvesting();
+    }
+
+    // 2. Durum: KAYNAK TOPLUYOR (Harvesting)
+    else if (state == VillagerState::Harvesting) {
+        auto res = targetResource.lock();
+
+        // Kaynak bittiyse ne yapayým?
+        if (!res || !res->getIsAlive()) {
+            // --- DÜZELTME 4: ELÝM BOÞSA EVE DÖNME ---
+            if (currentCargo > 0) {
+                state = VillagerState::ReturningToBase;
+            }
+            else {
+                findNearestResource(buildings); // Elim boþ, hemen yeni aðaç bul
+            }
+            return;
+        }
+
+        // Kaynaktan veri çek
+        int amount = res->updateGeneration(dt);
+        if (amount > 0) {
+            currentCargo += amount;
+
+            // Çanta doldu mu?
+            if (currentCargo >= maxCargo) {
+                currentCargo = maxCargo;
+                res->releaseWorker();    // Kaynaktan çýk
+
+                // Depo bul
+                auto base = findNearestBase(buildings);
+                if (base) {
+                    targetBase = base;
+                    state = VillagerState::ReturningToBase;
+                    moveTo(base->getPosition());
+                }
+                else {
+                    std::cout << "[UYARI] Depo yok! Bekliyorum.\n";
+                    stopHarvesting();
+                }
+            }
         }
     }
-}
 
-void Villager::updateHarvesting(const std::vector<std::shared_ptr<Building>>& buildings) {
-    if (!isHarvesting) return;
+    // 3. Durum: EVE DÖNÜYOR (Returning)
+    else if (state == VillagerState::ReturningToBase) {
+        auto base = targetBase.lock();
 
-    auto res = targetResource.lock();
+        // Hedef depo yýkýldýysa yenisini bul
+        if (!base || !base->getIsAlive()) {
+            base = findNearestBase(buildings);
+            if (base) {
+                targetBase = base;
+                moveTo(base->getPosition());
+            }
+            return;
+        }
 
-    // 1. Durum: Hedef Kaynak Yok Olduysa (Kesildi/Yýkýldý)
-    if (!res || !res->getIsAlive()) {
-        // Önce mevcut iþlemi temizle
-        stopHarvesting();
+        sf::Vector2f diff = base->getPosition() - getPosition();
+        float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-        // SONRA YENÝSÝNÝ ARA (Otomasyon Kýsmý)
-        findNearestResource(buildings);
-        return;
-    }
+        // --- MENZÝL DÜZELTMESÝ ---
+        float buildingRadius = base->getBounds().width / 2.0f;
+        if (buildingRadius < 32.0f) buildingRadius = 32.0f;
+        float interactionRange = buildingRadius + 50.0f; // Geniþ tolerans
 
-    // 2. Durum: Hedef Hala Var, Oraya Git veya Kes
-    sf::Vector2f diff = res->getPosition() - getPosition();
-    float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+        if (dist <= interactionRange) {
+            // Boþalt
+            if (cargoType == ResourceType::Wood) player.addWood(currentCargo);
+            else if (cargoType == ResourceType::Food) player.addFood(currentCargo);
+            else if (cargoType == ResourceType::Gold) player.addGold(currentCargo);
+            else if (cargoType == ResourceType::Stone) player.addStone(currentCargo);
 
-    if (dist <= 50.0f) {
-        if (!res->isWorking()) {
-            if (res->garrisonWorker()) {
-                // Aðaca girince yürüme dursun
-                m_path.clear();
-                m_isMoving = false;
+            currentCargo = 0;
+
+            // Tekrar Kaynaða Dön
+            auto res = targetResource.lock();
+            // Eski kaynak duruyor mu ve DOLU DEÐÝL MÝ?
+            if (res && res->getIsAlive() && !res->isFull()) {
+                state = VillagerState::MovingToResource;
+                moveTo(res->getPosition());
+            }
+            else {
+                // Eski kaynak bittiyse veya baþkasý kaptýysa yenisini ara
+                findNearestResource(buildings);
             }
         }
     }
 }
 
+// --- EN YAKIN DEPOYU BUL ---
+std::shared_ptr<Building> Villager::findNearestBase(const std::vector<std::shared_ptr<Building>>& buildings) {
+    float minDist = 100000.f;
+    std::shared_ptr<Building> nearest = nullptr;
+
+    for (const auto& b : buildings) {
+        if (!b->getIsAlive()) continue;
+
+        if (b->buildingType == BuildTypes::TownCenter) {
+            float d = PathFinder::heuristic({ (int)getPosition().x, (int)getPosition().y },
+                { (int)b->getPosition().x, (int)b->getPosition().y });
+            if (d < minDist) {
+                minDist = d;
+                nearest = b;
+            }
+        }
+    }
+    return nearest;
+}
+
+// --- EN YAKIN KAYNAK BUL (GÜNCELLENMÝÞ) ---
 void Villager::findNearestResource(const std::vector<std::shared_ptr<Building>>& buildings) {
-    float minDistance = 500.0f;
+    float minDistance = 2000.0f; // Arama menzili
     std::shared_ptr<ResourceGenerator> closest = nullptr;
 
-    // Mevcut hedefi al (varsa)
-    auto currentTarget = targetResource.lock();
+    BuildTypes targetType = BuildTypes::Tree;
+    if (cargoType == ResourceType::Gold) targetType = BuildTypes::GoldMine;
+    else if (cargoType == ResourceType::Food) targetType = BuildTypes::Farm;
 
     for (const auto& building : buildings) {
-        if (building) {
-            if (building->buildingType == BuildTypes::Tree) { // Sadece aðaç ara
-                if (auto res = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
+        if (building && building->getIsAlive() && building->buildingType == targetType) {
+            if (auto res = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
 
-                    // Þu anki hedefe tekrar gitme ve ölüleri sayma
-                    if (res->getIsAlive() && res != currentTarget) {
+                // --- KRÝTÝK: ZATEN DOLU OLANLARI HEDEFLEME ---
+                if (res->isFull()) continue;
 
-                        sf::Vector2f diff = res->getPosition() - getPosition();
-                        float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+                sf::Vector2f diff = res->getPosition() - getPosition();
+                float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            closest = res;
-                        }
-                    }
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closest = res;
                 }
             }
         }
     }
 
     if (closest) {
-        std::cout << "[Villager] Yeni agac bulundu! Oraya gidiliyor...\n";
         startHarvesting(closest);
     }
     else {
-        std::cout << "[Villager] Yakinda baska agac yok. Bekliyor.\n";
+        // Yakýnda kaynak yoksa dur
         stopHarvesting();
     }
-
-
 }
 
-int Villager::getMaxHealth() const {
-    return GameRules::HP_Villager; // Deðeri doðrudan kurallardan çeker
+void Villager::render(sf::RenderWindow& window) {
+    if (state == VillagerState::Garrisoned) return;
+    Unit::render(window);
 }

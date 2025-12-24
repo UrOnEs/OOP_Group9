@@ -2,6 +2,7 @@
 #include "Game/GameRules.h"
 #include "Entity System/Entity Type/Soldier.h"
 #include <iostream>
+#include <Entity System/Entity Type/Villager.h>
 
 bool ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
 
@@ -94,5 +95,53 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt) {
         player.addEntity(newSoldier);
 
         std::cout << "[INFO] Asker sahaya indi! Stats: " << newSoldier->stats() << "\n";
+    }
+}
+
+bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
+    if (tc.isReady()) { // isProducing kontrolü yerine isReady/getIsProducing kullanabilirsin
+        // TownCenter.h'da getIsProducing yoksa, doðrudan tc deðiþkenlerine eriþmek gerekebilir 
+        // veya TownCenter.h'a getter eklemelisin.
+        // Þimdilik TownCenter kodunda isProducing private ama startProduction kontrol ediyor.
+    }
+
+    // TownCenter.h'a "getIsProducing()" eklediðini varsayýyorum.
+    // Eðer yoksa TownCenter.h dosyasýný güncelle: bool getIsProducing() const { return isProducing; }
+
+    if (player.getUnitCount() >= player.getUnitLimit()) {
+        std::cout << "[INFO] Nufus dolu!\n";
+        return false;
+    }
+
+    GameRules::Cost cost = GameRules::Cost_Villager; // {0, 50, 0, 0}
+
+    if (player.getResources()[3] >= cost.food) { // Yemek kontrolü
+        player.addFood(-cost.food);
+        tc.startProduction(); // Bu fonksiyon TownCenter.h'da zaten var
+        std::cout << "[BASARILI] Koylu uretimi basladi.\n";
+        return true;
+    }
+
+    std::cout << "[HATA] Yetersiz Yemek! (50 Yemek Gerekli)\n";
+    return false;
+}
+
+void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt) {
+    // TownCenter içindeki timer'ý güncelle
+    tc.updateTimer(dt);
+
+    if (tc.isReady()) {
+        tc.finishProduction();
+
+        // Köylüyü Oluþtur
+        std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
+
+        // Konum: Binanýn önüne koy
+        sf::Vector2f spawnPos = tc.getPosition();
+        spawnPos.y += 150.0f; // Biraz aþaðýsý
+        newVillager->setPosition(spawnPos);
+
+        player.addEntity(newVillager);
+        std::cout << "[INFO] Yeni koylu dogdu!\n";
     }
 }

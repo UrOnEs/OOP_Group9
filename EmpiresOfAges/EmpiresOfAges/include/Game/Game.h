@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio/Music.hpp>
 #include <vector>
 #include <memory>
 
@@ -14,6 +15,7 @@
 // --- ENTITIES ---
 #include "Game/Player.h"
 #include "Entity System/Entity Type/types.h" 
+
 
 class Game {
 public:
@@ -39,6 +41,9 @@ private:
     // --- OYUN NESNELERÝ ---
     Player localPlayer;
     HUD hud;
+
+    // ----- Sesler ----------
+    sf::Music bgMusic;
 
     // --- ÝNÞAAT SÝSTEMÝ DEÐÝÞKENLERÝ (YENÝ) ---
     bool isInBuildMode = false;          // Þu an bina yerleþtirmeye çalýþýyor muyuz?

@@ -42,26 +42,29 @@ Game::Game()
     // Haritayý oluþtur (Aðaçlar vs. burada oluþuyor)
     mapManager.initialize();
 
-    // TEST ASKERÝ OLUÞTUR
-    std::shared_ptr<Soldier> testSoldier = std::make_shared<Soldier>();
-    testSoldier->setPosition(sf::Vector2f(500.f, 500.f));
-    testSoldier->setType(SoldierTypes::Barbarian);
-    localPlayer.addEntity(testSoldier);
+    // ================= BAÞLANGIÇ ===================================
+    int startX = 6;
+    int startY = 5;
 
-    std::cout << "[SISTEM] Test askeri olusturuldu.\n";
+    std::shared_ptr<Building> startTC = mapManager.tryPlaceBuilding(startX, startY, BuildTypes::TownCenter);
 
-    // --- 2. 5 ADET KÖYLÜ OLUÞTURMA ---
-    for (int i = 0; i < 5; i++) {
-        std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
+    if (startTC) {
+        localPlayer.addEntity(startTC); // Oyuncuya ver
 
-        // Konumlarýný ayarla (Yan yana dizilsinler: 300,300'den baþlayarak)
-        float startX = 300.0f + (i * 50.0f);
-        float startY = 300.0f;
+        // 2. Bir tane de köylü ver (Binanýn yanýna)
+        std::shared_ptr<Villager> startVil = std::make_shared<Villager>();
 
-        newVillager->setPosition(sf::Vector2f(startX, startY));
-        localPlayer.addEntity(newVillager);
+        sf::Vector2f spawnPos = startTC->getPosition();
+        spawnPos.y += 150.0f; // Binanýn biraz aþaðýsý
+
+        startVil->setPosition(spawnPos);
+        localPlayer.addEntity(startVil);
+
+        std::cout << "[SISTEM] Oyun baslatildi (1 Castle, 1 Villager).\n";
     }
-    std::cout << "[SISTEM] 5 Koylu oyuna eklendi.\n";
+    else {
+        std::cerr << "[HATA] Baslangic binasi yerlestirilemedi! (Alan dolu olabilir)\n";
+    }
 
     // ÝNÞAAT GÖRSELLERÝ
     ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150));
@@ -74,6 +77,16 @@ Game::Game()
     selectionBox.setFillColor(sf::Color(0, 255, 0, 50));
     selectionBox.setOutlineThickness(1.0f);
     selectionBox.setOutlineColor(sf::Color::Green);
+
+    // ARKAPLAN MÜZÝÐÝ
+    if (bgMusic.openFromFile("assets/sounds/background_music.ogg")) {
+        bgMusic.setLoop(true);   // Þarký bitince baþa sar
+        bgMusic.setVolume(30.f); // Ses seviyesi (0-100 arasý)
+        bgMusic.play();          // Çalmaya baþla
+    }
+    else {
+        std::cout << "Müzik dosyasý bulunamadý!" << std::endl;
+    }
 }
 
 void Game::initNetwork() {
@@ -160,17 +173,16 @@ void Game::processEvents() {
 
                 // --- 'T' TUÞU ÝLE ASKER ÜRET ---
                 if (event.key.code == sf::Keyboard::T) {
-                    // Seçili birim var mý?
                     if (!localPlayer.selected_entities.empty()) {
-                        // Ýlk seçilen þey bir Kýþla mý?
-                        if (auto barracks = std::dynamic_pointer_cast<Barracks>(localPlayer.selected_entities[0])) {
+                        auto firstEntity = localPlayer.selected_entities[0];
 
-                            // Barbar üretimini baþlat (Parayý ProductionSystem kontrol edecek)
-                            // Þimdilik sadece Barbarian üretiyoruz, ileride okçu vs. için baþka tuþlar eklersin.
-                            if (ProductionSystem::startProduction(localPlayer, *barracks, SoldierTypes::Barbarian)) {
-                                // Ses çalabilirsin: "Emredersiniz!"
-                                // SoundManager::playSound("train_unit"); 
-                            }
+                        // 1. KIÞLA ÝSE -> ASKER
+                        if (auto barracks = std::dynamic_pointer_cast<Barracks>(firstEntity)) {
+                            ProductionSystem::startProduction(localPlayer, *barracks, SoldierTypes::Barbarian);
+                        }
+                        // 2. ANA BÝNA ÝSE -> KÖYLÜ
+                        else if (auto tc = std::dynamic_pointer_cast<TownCenter>(firstEntity)) {
+                            ProductionSystem::startVillagerProduction(localPlayer, *tc);
                         }
                     }
                 }
@@ -202,6 +214,9 @@ void Game::processEvents() {
 
                                 //Binayý oyuncunun listesine ekle
                                 localPlayer.addEntity(placedBuilding);
+                                if (placedBuilding->buildingType == BuildTypes::House) {
+                                    localPlayer.addUnitLimit(5);
+                                }
 
                                 // Kaynak düþme iþlemleri
                                 localPlayer.addWood(-cost.wood);
@@ -411,17 +426,38 @@ void Game::update(float dt) {
                 unit->update(dt, levelData, mapW, mapH);
             }
 
-            // --- DEÐÝÞÝKLÝK BURADA ---
+            // --- KÖYLÜ MANTIÐI ------
             if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
-                // Artýk parametre olarak binalarý gönderiyoruz
-                villager->updateHarvesting(allBuildings);
+                // Parametreler: dt, binalar, oyuncu (kaynaðý oyuncuya verecek)
+                villager->updateVillager(dt, allBuildings, localPlayer);
             }
 
             if (auto barracks = std::dynamic_pointer_cast<Barracks>(entity)) {
                 ProductionSystem::update(localPlayer, *barracks, dt);
             }
+            // Ana Merkez Üretimi (Castle)
+            if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity)) {
+                ProductionSystem::updateTC(localPlayer, *tc, dt);
+            }
+
+
+        }
+        // ------ ÇÝFTLÝK ÜRETÝM SÝSTEMÝ (Garrisoned olanlar için) -------------
+        // Çiftliklerin içine köylü girdiði için "ResourceSystem" mantýðýný burada kullanýyoruz.
+        for (auto& building : mapManager.getBuildings()) {
+            if (building) {
+                // Sadece ResourceGenerator olanlar (Farm, Mine vb.)
+                if (auto resGen = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
+                    // Sadece içinde iþçi varsa üretim yap
+                    if (resGen->isWorking()) {
+                        // ResourceSystem::update fonksiyonu Player'a kaynaðý ekler
+                        ResourceSystem::update(localPlayer, *resGen, dt);
+                    }
+                }
+            }
         }
 
+        /*
         // 2. Kaynak Sistemi
         for (auto& building : mapManager.getBuildings()) {
             if (building) {
@@ -430,6 +466,8 @@ void Game::update(float dt) {
                 }
             }
         }
+        */
+        
 
         // 3. Ölüleri Temizle
         mapManager.removeDeadBuildings();
