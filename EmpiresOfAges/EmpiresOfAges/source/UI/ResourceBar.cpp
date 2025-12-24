@@ -46,7 +46,7 @@ ResourceBar::ResourceBar() {
     // --- POPULATÝON ---
     populationText.setFont(font);
     populationText.setCharacterSize(fontSize);
-    populationText.setFillColor(sf::Color(256, 256, 256)); //siyah (sanýrým)
+    populationText.setFillColor(sf::Color::White); //siyah (sanýrým)
     populationText.setPosition(startX + spacing * 4, 10);
 }
 

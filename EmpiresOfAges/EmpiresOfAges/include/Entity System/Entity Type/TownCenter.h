@@ -7,29 +7,50 @@ private:
     float productionTimer = 0.0f;
     float productionDuration = 0.0f; // Ýlerleme çubuðu için gerekli toplam süre
 
+    int queuedVillagers = 0;
+
 public:
     TownCenter() {
         buildingType = BuildTypes::TownCenter;
         health = GameRules::HP_TownCenter;
         this->sprite.setOrigin(96.f, 150.f);
+        addAbility(Ability(10, "Koylu Uret", "50 Yemek", "Kaynak toplar", &AssetManager::getTexture("assets/units/default.png")));
     }
 
     int getMaxHealth() const override { return (int)GameRules::HP_TownCenter; }
 
     void startProduction() {
-        if (!isProducing) {
-            productionDuration = GameRules::Time_Build_Villager; // Süreyi kaydet
+        if (isProducing) {
+            queuedVillagers++;
+        }
+        else {
+            productionDuration = GameRules::Time_Build_Villager;
             productionTimer = productionDuration;
             isProducing = true;
         }
     }
+
+    bool getIsProducing() const { return isProducing; }
 
     void updateTimer(float dt) {
         if (isProducing) productionTimer -= dt;
     }
 
     bool isReady() const { return isProducing && productionTimer <= 0; }
-    void finishProduction() { isProducing = false; }
+    
+    void finishProduction() {
+        if (queuedVillagers > 0) {
+            // Sýrada bekleyen varsa, sayacý bir azalt ve süreyi sýfýrla
+            queuedVillagers--;
+            productionDuration = GameRules::Time_Build_Villager;
+            productionTimer = productionDuration;
+            isProducing = true; // Hala üretiyor
+        }
+        else {
+            // Sýra bittiyse dur
+            isProducing = false;
+        }
+    }
 
     std::string getInfo() override { return "TownCenter: Ana Merkez"; }
 

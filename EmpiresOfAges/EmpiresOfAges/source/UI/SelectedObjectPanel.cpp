@@ -149,3 +149,17 @@ bool SelectedObjectPanel::isMouseOver(float mouseX, float mouseY) const {
     if (!isVisible) return false;
     return panelBackground.getGlobalBounds().contains(mouseX, mouseY);
 }
+
+void SelectedObjectPanel::updateHealth(int health, int maxHealth) {
+    
+    hpText.setString(std::to_string(health) + "/" + std::to_string(maxHealth));
+
+    // 2. Bar Boyutunu Güncelle
+    float hpP = (maxHealth > 0) ? (float)health / maxHealth : 0.f;
+
+    // Sýnýr korumasý (0 ile 1 arasýnda tut)
+    if (hpP > 1.0f) hpP = 1.0f;
+    if (hpP < 0.0f) hpP = 0.0f;
+
+    hpBarFront.setSize(sf::Vector2f(100.0f * hpP, 10.0f));
+}

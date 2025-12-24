@@ -21,4 +21,26 @@ public:
     }
 
     virtual std::string getInfo() = 0;
+
+
+    std::string getName() override {
+        switch (buildingType) {
+        case BuildTypes::Barrack:    return "Barracks";
+        case BuildTypes::Farm:       return "Farm";
+        case BuildTypes::WoodPlace:  return "Lumber Camp"; // Veya WoodPlace
+        case BuildTypes::StoneMine:  return "Stone Mine";
+        case BuildTypes::GoldMine:   return "Gold Mine";
+        case BuildTypes::House:      return "House";
+        case BuildTypes::TownCenter: return "Town Center";
+        default:                     return "Building";
+        }
+    }
+
+    // Ayrýca getIcon için basit bir yönlendirme yapabiliriz
+    sf::Texture* getIcon() override {
+        if (hasTexture) return (sf::Texture*)sprite.getTexture();
+        return nullptr;
+    }
+
+    // ...
 };

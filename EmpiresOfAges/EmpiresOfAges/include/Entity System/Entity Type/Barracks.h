@@ -1,6 +1,7 @@
 #pragma once
 #include "Building.h"
 #include "Soldier.h"
+#include <deque>
 
 class Barracks : public Building {
 private:
@@ -9,12 +10,18 @@ private:
     float productionDuration = 0.0f;
     SoldierTypes currentProduction;
 
+    std::deque<SoldierTypes> productionQueue;
+
 public:
     Barracks() {
         buildingType = BuildTypes::Barrack;
         health = GameRules::HP_Barracks;
         // Görselin origin noktasý (Görseli merkeze oturtmak için)
         this->sprite.setOrigin(64.f, 100.f);
+
+        addAbility(Ability(11, "Barbar Uret", "60 Yemek", "Temel Savasci", &AssetManager::getTexture("assets/units/barbarian.png")));
+        addAbility(Ability(12, "Okçu Üret", "CostArcher", "Menzilli Asker", &AssetManager::getTexture("assets/units/archer.png")));
+        addAbility(Ability(13, "Büyücü Üret", "CostWizard", "Uzun Menzilli Büyücü", &AssetManager::getTexture("assets/units/wizard.png")));
     }
 
     // Class içine ekle:
@@ -22,7 +29,12 @@ public:
 
     // Üretimi Baþlat
     void startTraining(SoldierTypes type, float duration) {
-        if (!isProducing) {
+        if (isProducing) {
+            // Zaten çalýþýyorsa sýraya at
+            productionQueue.push_back(type);
+        }
+        else {
+            // Boþsa hemen baþla
             currentProduction = type;
             productionTimer = duration;
             productionDuration = duration;
@@ -40,8 +52,26 @@ public:
 
     // Üretimi Bitir
     SoldierTypes finishTraining() {
-        isProducing = false;
-        return currentProduction;
+        SoldierTypes finishedUnit = currentProduction;
+
+        // Kuyrukta asker var mý?
+        if (!productionQueue.empty()) {
+            // Sýradaki askeri al
+            currentProduction = productionQueue.front();
+            productionQueue.pop_front();
+
+            // Süreyi yeniden baþlat (Sabit süre kullanýyoruz þimdilik)
+            productionDuration = GameRules::Time_Build_Soldier;
+            productionTimer = productionDuration;
+
+            isProducing = true; // Üretim devam ediyor
+        }
+        else {
+            // Kuyruk boþsa dur
+            isProducing = false;
+        }
+
+        return finishedUnit; // Üretilen askeri sisteme ver
     }
 
     bool getIsProducing() const { return isProducing; }

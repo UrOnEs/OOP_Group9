@@ -54,6 +54,15 @@ public:
     bool getIsHarvesting() const { return state == VillagerState::Harvesting || state == VillagerState::ReturningToBase; }
 
     std::shared_ptr<ResourceGenerator> getTargetResource() { return targetResource.lock(); }
+
+    std::string getName() override {
+        return "Villager";
+    }
+
+    sf::Texture* getIcon() override {
+        if (hasTexture) return (sf::Texture*)sprite.getTexture();
+        return nullptr;
+    }
 };
 
 #endif

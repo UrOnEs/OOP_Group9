@@ -18,6 +18,12 @@ Villager::Villager() : Unit() {
     this->isAlive = true;
     this->isSelected = false;
     this->entityID = ++IDcounter;
+    this->setTexture(AssetManager::getTexture("assets/units/default.png"));
+    // Görsel çok büyükse küçültmek için (Unit boyutu 20x20 gibi düþünülürse):
+    float scaleX = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().x;
+    float scaleY = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().y;
+    this->setScale(scaleX, scaleY);
+    // ------------------------------------------
 
     // Yetenekler
     addAbility(Ability(1, "Ev Insa Et", "30 Odun", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));

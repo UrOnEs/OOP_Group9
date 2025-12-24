@@ -13,6 +13,8 @@ public:
         sf::Texture* objectTexture,
         const std::vector<Ability>& abilities);
 
+    void updateHealth(int health, int maxHealth);
+
     void handleEvent(const sf::Event& event);
     void draw(sf::RenderWindow& window);
 

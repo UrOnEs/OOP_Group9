@@ -21,6 +21,20 @@ public:
     // --- ESKÝ KODLARIN ÇALIÞMASI ÝÇÝN YÖNLENDÝRME ---
     // Game.cpp "getModel()" diye sorarsa, babasýndaki "getShape()"i versin.
     sf::CircleShape& getModel() { return getShape(); }
+
+    std::string getName() override {
+        switch (soldierType) {
+        case SoldierTypes::Barbarian: return "Barbarian";
+        case SoldierTypes::Archer:    return "Archer";
+        case SoldierTypes::Wizard:    return "Wizard";
+        default:                      return "Soldier";
+        }
+    }
+
+    sf::Texture* getIcon() override {
+        if (hasTexture) return (sf::Texture*)sprite.getTexture();
+        return nullptr;
+    }
 };
 
 #endif

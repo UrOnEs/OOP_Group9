@@ -11,7 +11,7 @@ Player::Player() {
     playerResources.add(ResourceType::Stone, 1000);
 
     // Limitler
-    unitLimit = 999;
+    unitLimit = 5;
     buildLimit = 999;
 }
 
@@ -64,7 +64,15 @@ int Player::getUnitCount() {
     // Canlý olan entity sayýsýný (veya sadece asker sayýsýný) döndür
     int count = 0;
     for (auto& e : entities) {
-        if (e->getIsAlive()) count++;
+        // 1. Nesne canlý mý?
+        if (e->getIsAlive()) {
+
+            // 2. Bu nesne bir "Unit" (Asker veya Köylü) mi?
+            // Binalar (Building) Unit sýnýfýndan türemediði için bu kontrol onlarý saymaz.
+            if (std::dynamic_pointer_cast<Unit>(e)) {
+                count++;
+            }
+        }
     }
     return count;
 }

@@ -54,7 +54,8 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
     float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
     if (distance < 4.0f) {
-        shape.setPosition(m_targetPos);
+        this->setPosition(m_targetPos);
+        //shape.setPosition(m_targetPos);
         m_path.erase(m_path.begin());
 
         if (m_path.empty()) {
@@ -86,7 +87,8 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
         currentPos.y = nextPosY.y;
     }
 
-    shape.setPosition(currentPos);
+    this->setPosition(currentPos);
+    //shape.setPosition(currentPos);
 }
 
 bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& mapData, int width, int height) {
@@ -120,6 +122,7 @@ void Unit::render(sf::RenderWindow& window) {
         shape.setOutlineThickness(0);
     }
     window.draw(shape);
+    Entity::render(window);
 }
 
 Point Unit::getGridPoint() const {

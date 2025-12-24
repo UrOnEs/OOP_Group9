@@ -137,6 +137,17 @@ void Game::processEvents() {
                 if (event.key.code == sf::Keyboard::M) {
                     enterBuildMode(BuildTypes::Farm, "assets/buildings/mill.png");
                 }
+                //HEALTHBAR TEST
+                if (event.key.code == sf::Keyboard::K) {
+                    if (!localPlayer.selected_entities.empty()) {
+                        auto entity = localPlayer.selected_entities[0];
+
+                        if (entity->getIsAlive()) {
+                            entity->takeDamage(10.0f); // 10 Can azalt
+                            std::cout << "[TEST] Hasar verildi! Kalan Can: " << entity->health << std::endl;
+                        }
+                    }
+                }
                 if (event.key.code == sf::Keyboard::Escape) {
                     if (isInBuildMode) cancelBuildMode();
                     else window.close();
@@ -293,10 +304,28 @@ void Game::processEvents() {
                                 ab.setOnClick([this]() { this->enterBuildMode(BuildTypes::TownCenter, "assets/buildings/castle.png"); });
                             }
                             else if (ab.getId() == 10) {
+                                if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity)) {
+                                    ab.setOnClick([this, tc]() {
+                                        ProductionSystem::startVillagerProduction(localPlayer, *tc);
+                                        });
+                                }
+                            }
+                            else if (ab.getId() == 11) {
                                 if (auto b = std::dynamic_pointer_cast<Barracks>(entity)) {
                                     ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian); });
                                 }
                             }
+                            else if (ab.getId() == 12) {
+                                if (auto b = std::dynamic_pointer_cast<Barracks>(entity)) {
+                                    ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Archer); });
+                                }
+                            }
+                            else if (ab.getId() == 13) {
+                                if (auto b = std::dynamic_pointer_cast<Barracks>(entity)) {
+                                    ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard); });
+                                }
+                            }
+                            
                         }
 
                         hud.selectedPanel.updateSelection(
@@ -351,6 +380,29 @@ void Game::update(float dt) {
                     }
                 }
             }
+        }
+
+        //ENTÝTY HEALTH BAR
+        if (!localPlayer.selected_entities.empty()) {
+            auto entity = localPlayer.selected_entities[0];
+
+            if (entity->getIsAlive()) {
+                // Panel görünür olsun
+                hud.selectedPanel.setVisible(true);
+
+                // Sadece CAN deðerini güncelle (Butonlarý tekrar oluþturmaz)
+                hud.selectedPanel.updateHealth((int)entity->health, entity->getMaxHealth());
+
+            }
+            else {
+                // Seçili nesne öldüyse seçimi kaldýr ve paneli gizle
+                hud.selectedPanel.setVisible(false);
+                localPlayer.selected_entities.clear();
+            }
+        }
+        else {
+            // Seçim yoksa paneli gizle
+            hud.selectedPanel.setVisible(false);
         }
 
         mapManager.removeDeadBuildings();

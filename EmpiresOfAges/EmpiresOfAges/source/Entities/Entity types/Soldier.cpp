@@ -11,6 +11,11 @@ Soldier::Soldier() {
     // Baþlangýç pozisyonu (0,0 olmasýn)
     shape.setPosition(100.f, 100.f);
 
+    this->setTexture(AssetManager::getTexture("assets/units/barbarian.png"));
+    float scaleX = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().x;
+    float scaleY = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().y;
+    this->setScale(scaleX, scaleY);
+
     // Varsayýlan Tip
     setType(SoldierTypes::Barbarian);
 }
@@ -27,21 +32,24 @@ void Soldier::setType(SoldierTypes type) {
         health = GameRules::HP_Barbarian;
         travelSpeed = GameRules::Speed_Barbarian;
 
-        shape.setFillColor(sf::Color::Red);
+        
+        //shape.setFillColor(sf::Color::Red);
         break;
 
     case SoldierTypes::Archer:
         health = GameRules::HP_Archer;
         travelSpeed = GameRules::Speed_Archer;
 
-
-        shape.setFillColor(sf::Color::Green);
+        this->setTexture(AssetManager::getTexture("assets/units/archer.png"));
+        //shape.setFillColor(sf::Color::Green);
         break;
 
     case SoldierTypes::Wizard:
         health = GameRules::HP_Wizard;
         travelSpeed = GameRules::Speed_Wizard;
-        shape.setFillColor(sf::Color::Blue); 
+
+        this->setTexture(AssetManager::getTexture("assets/units/wizard.png"));
+        //shape.setFillColor(sf::Color::Blue); 
         break;
     }
 }
