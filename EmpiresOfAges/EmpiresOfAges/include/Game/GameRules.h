@@ -9,7 +9,7 @@ namespace GameRules {
     // ==========================================
     constexpr int MapWidth = 100;
     constexpr int MapHeight = 100;
-    constexpr int TileSize = 64;
+    constexpr int TileSize = 32;
     constexpr float UnitRadius = 8.0f;
     constexpr int MaxPopulation = 200;
     constexpr float GameSpeed = 1.0f;

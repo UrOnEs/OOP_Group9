@@ -43,56 +43,55 @@ void MapManager::initialize() {
         std::cerr << "MapManager load hatasi!" << std::endl;
     }
 
-    // --- DEÐÝÞEN KISIM: 3x3 ORMAN KÜMELERÝ ---
-
-    // Harita büyüklüðüne göre kaç tane orman kümesi olacaðýný belirle
-    // Örn: %2 yoðunluk -> 50x50 haritada 50 tane küme oluþturur.
+    // --- 3x3 ORMAN KÜMELERÝ (ARTIK AÐAÇLAR 2x2) ---
     int forestClusterCount = (totalTiles * 2) / 100;
 
     for (int i = 0; i < forestClusterCount; i++) {
-        // Rastgele bir baþlangýç noktasý seç (Kümeyi baþlatacak sol üst köþe)
         int startX = std::rand() % m_width;
         int startY = std::rand() % m_height;
 
-        // 3x3'lük alaný tara
         for (int x = 0; x < 3; x++) {
             for (int y = 0; y < 3; y++) {
-                int tx = startX + x;
-                int ty = startY + y;
+                // Aðaçlar artýk 2x2 olduðu için koordinatlarý 2'þer 2'þer atlatýyoruz
+                // Böylece iç içe girmezler.
+                int tx = startX + x * 2;
+                int ty = startY + y * 2;
 
-                // Harita sýnýrlarý içinde miyiz?
-                if (tx >= 0 && tx < m_width && ty >= 0 && ty < m_height) {
+                // Harita sýnýrlarý ve 2x2 alan kontrolü
+                if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
 
-                    int index = tx + ty * m_width;
+                    // 2x2'lik alanýn tamamý boþ mu?
+                    bool isSpaceFree = true;
+                    if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
+                    else if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
+                    else if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
+                    else if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
 
-                    // Eðer zemin boþsa (Duvar veya baþka bina yoksa)
-                    if (m_level[index] == 0) {
-
-                        // Küme içindeki her kareye %75 ihtimalle aðaç dik
-                        // (Böylece tam kare gibi durmaz, daha doðal ve boþluklu olur)
+                    if (isSpaceFree) {
                         if (std::rand() % 100 < 75) {
-
                             std::shared_ptr<Tree> newTree = std::make_shared<Tree>();
-
                             sf::Texture& tex = AssetManager::getTexture("assets/nature/tree.png");
                             newTree->setTexture(tex);
 
-                            // Ölçekleme
-                            float targetSize = (float)m_tileSize;
+                            // --- GÖRSEL VE FÝZÝKSEL BOYUT: 2x2 ---
+                            float targetSize = (float)m_tileSize * 2.0f;
                             sf::Vector2u texSize = tex.getSize();
                             if (texSize.x > 0 && texSize.y > 0) {
                                 newTree->setScale(targetSize / texSize.x, targetSize / texSize.y);
                             }
 
-                            // Pozisyon
+                            // Pozisyon (Merkeze hizala)
                             float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
                             float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
                             newTree->setPosition(sf::Vector2f(centerX, centerY));
 
                             m_buildings.push_back(newTree);
 
-                            // Alaný iþaretle
-                            m_level[index] = 1;
+                            // Haritada 4 kareyi de iþaretle
+                            m_level[tx + ty * m_width] = 1;
+                            m_level[(tx + 1) + ty * m_width] = 1;
+                            m_level[tx + (ty + 1) * m_width] = 1;
+                            m_level[(tx + 1) + (ty + 1) * m_width] = 1;
                         }
                     }
                 }
@@ -101,9 +100,7 @@ void MapManager::initialize() {
     }
 }
 
-// ... Dosyanýn geri kalaný ayný kalacak ...
 void MapManager::createTilesetFile() {
-    // ... Eski kodlar ...
     sf::Image tileset;
     int ts = m_tileSize;
     tileset.create(ts * 22, ts, sf::Color::Black);
@@ -132,36 +129,49 @@ std::shared_ptr<Building> MapManager::tryPlaceBuilding(int tx, int ty, BuildType
     // 1. Sýnýr Kontrolü
     if (tx < 0 || ty < 0 || tx + 1 >= m_width || ty + 1 >= m_height) return nullptr;
 
-    // 2. Alan Dolu mu? (Þimdilik sol üst köþe kontrolü)
-    int idx = tx + ty * m_width;
-    if (m_level[idx] != 0) return nullptr;
+    // --- BOYUTLARI BELÝRLE ---
+    float widthInTiles = 4.0f;
+    float heightInTiles = 4.0f;
 
     std::shared_ptr<Building> newBuilding = nullptr;
     std::string textureName = "";
 
-    // Boyut Ayarlarý
-    float widthInTiles = 2.0f;
-    float heightInTiles = 2.0f;
-
     if (type == BuildTypes::House) {
         newBuilding = std::make_shared<House>();
         textureName = "assets/buildings/house.png";
-        widthInTiles = 1.0f; heightInTiles = 1.0f;
+        // Ev: 2x2
+        widthInTiles = 2.0f;
+        heightInTiles = 2.0f;
     }
     else if (type == BuildTypes::Barrack) {
         newBuilding = std::make_shared<Barracks>();
         textureName = "assets/buildings/barrack.png";
-        widthInTiles = 2.0f; heightInTiles = 2.0f;
+        // Kýþla: 4x4
+        widthInTiles = 4.0f;
+        heightInTiles = 4.0f;
     }
     else if (type == BuildTypes::Farm) {
         newBuilding = std::make_shared<Farm>();
-        textureName = "assets/buildings/mill.png"; // Mill görseli
-        widthInTiles = 2.0f; heightInTiles = 2.0f;
+        textureName = "assets/buildings/mill.png";
+        // Çiftlik: 4x4
+        widthInTiles = 4.0f;
+        heightInTiles = 4.0f;
     }
     else if (type == BuildTypes::TownCenter) {
         newBuilding = std::make_shared<TownCenter>();
-        textureName = "assets/buildings/castle.png"; // Castle görseli
-        widthInTiles = 3.0f; heightInTiles = 3.0f;
+        textureName = "assets/buildings/castle.png";
+        // Ana Bina: 6x6
+        widthInTiles = 6.0f;
+        heightInTiles = 6.0f;
+    }
+
+    // 2. Alan Kontrolü
+    for (int x = 0; x < widthInTiles; x++) {
+        for (int y = 0; y < heightInTiles; y++) {
+            if (tx + x >= m_width || ty + y >= m_height) return nullptr;
+            int idx = (tx + x) + (ty + y) * m_width;
+            if (m_level[idx] != 0) return nullptr;
+        }
     }
 
     if (newBuilding) {
@@ -172,7 +182,6 @@ std::shared_ptr<Building> MapManager::tryPlaceBuilding(int tx, int ty, BuildType
             sf::Texture& tex = AssetManager::getTexture(textureName);
             newBuilding->setTexture(tex);
 
-            // --- GÜVENLÝK KONTROLÜ (Sýfýra Bölme Hatasý Ýçin) ---
             sf::Vector2u texSize = tex.getSize();
             if (texSize.x > 0 && texSize.y > 0) {
                 newBuilding->setScale(targetW / (float)texSize.x, targetH / (float)texSize.y);
@@ -193,7 +202,7 @@ std::shared_ptr<Building> MapManager::tryPlaceBuilding(int tx, int ty, BuildType
                 if (mapIdx < m_level.size()) m_level[mapIdx] = 1;
             }
         }
-        return newBuilding; // Binayý döndür
+        return newBuilding;
     }
     return nullptr;
 }
@@ -202,12 +211,15 @@ void MapManager::removeBuilding(int tx, int ty) {
     sf::Vector2f checkPos(tx * m_tileSize + 5, ty * m_tileSize + 5);
     for (auto it = m_buildings.begin(); it != m_buildings.end(); ) {
         if ((*it)->getBounds().contains(checkPos)) {
-            sf::Vector2f pos = (*it)->getPosition();
-            int bx = static_cast<int>(pos.x / m_tileSize);
-            int by = static_cast<int>(pos.y / m_tileSize);
+            sf::FloatRect bounds = (*it)->getBounds();
+            int bx = static_cast<int>(bounds.left / m_tileSize);
+            int by = static_cast<int>(bounds.top / m_tileSize);
 
-            int w = 2, h = 2;
-            if ((*it)->buildingType == BuildTypes::House) { w = 1; h = 1; }
+            int w = 4, h = 4;
+            if ((*it)->buildingType == BuildTypes::House) { w = 2; h = 2; }
+            else if ((*it)->buildingType == BuildTypes::TownCenter) { w = 6; h = 6; }
+            // --- GÜNCELLEME: Aðaç silinirken 2x2 alan temizlensin ---
+            else if ((*it)->buildingType == BuildTypes::Tree) { w = 2; h = 2; }
 
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < h; y++) {
@@ -238,7 +250,6 @@ const std::vector<int>& MapManager::getLevelData() const { return m_level; }
 std::shared_ptr<Building> MapManager::getBuildingAt(int tx, int ty) {
     sf::Vector2f checkPos(tx * m_tileSize + 16, ty * m_tileSize + 16);
     for (auto& b : m_buildings) {
-        // Direkt shared_ptr döndür
         if (b->getBounds().contains(checkPos)) return b;
     }
     return nullptr;
@@ -254,26 +265,22 @@ void MapManager::removeDeadBuildings() {
     auto it = m_buildings.begin();
     while (it != m_buildings.end()) {
 
-        // Eðer bina/aðaç ölü ise
         if (!(*it)->getIsAlive()) {
+            sf::FloatRect bounds = (*it)->getBounds();
+            int tx = static_cast<int>(bounds.left / m_tileSize);
+            int ty = static_cast<int>(bounds.top / m_tileSize);
 
-            // Konumunu bul
-            sf::Vector2f pos = (*it)->getPosition();
-            int tx = static_cast<int>(pos.x / m_tileSize);
-            int ty = static_cast<int>(pos.y / m_tileSize);
+            int w = 4, h = 4;
+            if ((*it)->buildingType == BuildTypes::House) { w = 2; h = 2; }
+            else if ((*it)->buildingType == BuildTypes::TownCenter) { w = 6; h = 6; }
+            // --- GÜNCELLEME: Ölü aðaçlar temizlenirken 2x2 alan açýlsýn ---
+            else if ((*it)->buildingType == BuildTypes::Tree) { w = 2; h = 2; }
 
-            // Aðacýn kapladýðý alaný (1x1) temizle (0 yap)
-            int size = 1;
-            // Eðer büyük bina ise size'ý deðiþtirebilirsin
-            if ((*it)->buildingType == BuildTypes::Barrack) size = 2;
-
-            for (int x = 0; x < size; x++) {
-                for (int y = 0; y < size; y++) {
-                    // updateTile ile haritadaki engeli kaldýrýyoruz
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
                     updateTile(tx + x, ty + y, 0);
                 }
             }
-            // Listeden sil
             it = m_buildings.erase(it);
         }
         else {
