@@ -163,6 +163,35 @@ void Game::processEvents() {
                         }
                     }
                 }
+
+                if (event.key.code == sf::Keyboard::D) {
+                    if (!localPlayer.selected_entities.empty()) {
+                        // Seçili olan her þeye bak (Genelde bina seçimi teklidir ama garanti olsun)
+                        bool buildingDestroyed = false;
+
+                        for (auto& entity : localPlayer.selected_entities) {
+                            // Sadece Binalarý yýk, askerleri öldürme (Ýstersen onu da açabilirsin)
+                            if (auto building = std::dynamic_pointer_cast<Building>(entity)) {
+
+                                // Binayý ölü olarak iþaretle
+                                building->isAlive = false;
+                                // Veya building->takeDamage(99999); de diyebilirsin
+
+                                buildingDestroyed = true;
+                                std::cout << "[GAME] Bina yikildi (Refund yok).\n";
+
+                                // TODO: Ýleride buraya Refund (Geri Ödeme) kodu eklenecek.
+                                // Örn: localPlayer.addWood(cost.wood / 2);
+                            }
+                        }
+
+                        // Eðer bir bina yýkýldýysa seçimi temizle ki panel kapansýn
+                        if (buildingDestroyed) {
+                            localPlayer.selected_entities.clear();
+                            hud.selectedPanel.setVisible(false);
+                        }
+                    }
+                }
             }
 
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
