@@ -16,6 +16,8 @@ public:
 
 	void renderEntities(sf::RenderWindow& window);
 
+	void removeDeadEntities();
+
 	~Player(); // Yenilgide ortaya çýkacak
 
 	std::vector<std::shared_ptr<Entity>> entities; // oyuncunun sahip olduðu bütün karakterler
@@ -45,12 +47,15 @@ public:
 	
 	ResourceManager playerResources; // --------------------------- bunu private yap getter kullan
 
+	TeamColors getTeamColor() const { return Color; }
+	void setTeamColor(TeamColors c) { Color = c; }
+
 private:
 	
 	
 	bool hasBase = true;
 
-	TeamColors Color; //Diðer oyunculardan ayýrt eden özellik 
+	TeamColors Color = TeamColors::Blue; //Diðer oyunculardan ayýrt eden özellik 
 	
 	// Bunun ne iþ yaptýðýný bilmiyorum ama muhtemelen iþ yapar :)
 	int networkID; 

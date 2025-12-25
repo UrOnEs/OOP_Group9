@@ -69,6 +69,7 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt) {
         // 3. Türü ve Özellikleri Ata
         // (Soldier::setType içinde texture atamasý ve stat ayarlarý yapýlýyor)
         newSoldier->setType(type);
+        newSoldier->setTeam(player.getTeamColor());
 
         // 4. Konumlandýrma (Kýþlanýn kapýsýnda doðsun)
         sf::Vector2f spawnPos = barracks.getPosition();
@@ -133,6 +134,7 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt) {
         sf::Vector2f spawnPos = tc.getPosition();
         spawnPos.y += 150.0f; // Biraz aþaðýsý
         newVillager->setPosition(spawnPos);
+        newVillager->setTeam(player.getTeamColor());
 
         // 4. Oyuncuya Ekle
         player.addEntity(newVillager);

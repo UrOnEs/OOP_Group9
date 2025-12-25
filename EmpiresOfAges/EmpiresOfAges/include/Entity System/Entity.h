@@ -19,6 +19,9 @@ protected:
     // 2. YEDEK OYUNCU: Yuvarlak (Resim yoksa bu çizilecek)
     sf::CircleShape shape;
 
+    // TAKIM RENGÝ
+    TeamColors m_team = TeamColors::Blue;
+
 public:
     int entityID;
     float health;
@@ -80,6 +83,23 @@ public:
         sprite.setOrigin(size.x / 2.f, size.y / 2.f);
         hasTexture = true;
     }
+
+    void setTeam(TeamColors newTeam) {
+        m_team = newTeam;
+
+        // Rengi þekle de yansýt (Sprite yoksa yuvarlaðýn rengi deðiþsin)
+        sf::Color c = sf::Color::White;
+        if (m_team == TeamColors::Red) c = sf::Color::Red;
+        else if (m_team == TeamColors::Blue) c = sf::Color(0, 100, 255); // Güzel bir mavi
+        else if (m_team == TeamColors::Green) c = sf::Color::Green;
+        else if (m_team == TeamColors::Purple) c = sf::Color::Magenta;
+
+        shape.setFillColor(c);
+        // Ýstersen sprite'ý da hafif boyayabilirsin:
+        if (hasTexture) sprite.setColor(c); 
+    }
+
+    TeamColors getTeam() const { return m_team; }
 
     // "getModel" hatasý için (Eski kodlar shape'e model diyordu)
     sf::CircleShape& getShape() { return shape; }

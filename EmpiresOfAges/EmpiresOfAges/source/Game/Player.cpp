@@ -2,6 +2,7 @@
 #include "Entity System/Entity Type/Unit.h"     
 #include "Entity System/Entity Type/Building.h"
 #include <iostream>
+#include <algorithm>
 
 Player::Player() {
     // Baþlangýç kaynaklarý
@@ -14,6 +15,7 @@ Player::Player() {
     unitLimit = 5;
     buildLimit = 999;
 }
+
 
 Player::~Player() {
     entities.clear();
@@ -53,6 +55,27 @@ void Player::renderEntities(sf::RenderWindow& window) {
             entity->render(window);
         }
     }
+}
+
+void Player::removeDeadEntities() {
+    entities.erase(
+        std::remove_if(
+            entities.begin(),
+            entities.end(),
+            [](const std::shared_ptr<Entity>& e) { return !e->getIsAlive(); }
+        ),
+        entities.end()
+    );
+
+    // Seçili olanlar listesinden de temizle (Ölen askeri seçili tutmayalým)
+    selected_entities.erase(
+        std::remove_if(
+            selected_entities.begin(),
+            selected_entities.end(),
+            [](const std::shared_ptr<Entity>& e) { return !e->getIsAlive(); }
+        ),
+        selected_entities.end()
+    );
 }
 
 // --- LÝMÝT VE SAYIM FONKSÝYONLARI (Eksik olanlar bunlardý) ---

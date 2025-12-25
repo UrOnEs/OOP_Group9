@@ -288,3 +288,33 @@ void MapManager::removeDeadBuildings() {
         }
     }
 }
+
+void MapManager::clearArea(int startX, int startY, int w, int h) {
+    // 1. Alaný kapsayan bir dikdörtgen oluþtur (Piksel cinsinden)
+    sf::FloatRect clearRect(
+        startX * m_tileSize,
+        startY * m_tileSize,
+        w * m_tileSize,
+        h * m_tileSize
+    );
+
+    // 2. Bu alana denk gelen binalarý/aðaçlarý listeden sil
+    auto it = m_buildings.begin();
+    while (it != m_buildings.end()) {
+        // Eðer binanýn sýnýrlarý, temizlenecek alanla kesiþiyorsa -> SÝL
+        if ((*it)->getBounds().intersects(clearRect)) {
+            it = m_buildings.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    // 3. Harita verisini (TileMap) temizle (Duvarlarý kaldýr, çim yap)
+    for (int x = 0; x < w; ++x) {
+        for (int y = 0; y < h; ++y) {
+            // Sýnýr kontrolü ve güncelleme
+            updateTile(startX + x, startY + y, 0);
+        }
+    }
+}

@@ -40,6 +40,7 @@ private:
 
     // --- OYUN NESNELERÝ ---
     Player localPlayer;
+    Player enemyPlayer;
     HUD hud;
 
     // ----- Sesler ----------
@@ -56,11 +57,20 @@ private:
     void initUI();
     void handleInput(float dt);
 
+    void handleKeyboardInput(const sf::Event& event);
+    void handleMouseInput(const sf::Event& event);
+
+    void onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPos);
+    void onRightClick(const sf::Vector2f& worldPos);
+
     // Ýnþaat modunu açýp kapatan yardýmcý fonksiyon
     void enterBuildMode(BuildTypes type, const std::string& textureName);
     void cancelBuildMode();
 
     bool isSelecting = false;        // Mouse basýlý mý?
     sf::Vector2f selectionStartPos;  // Ýlk týkladýðýmýz yer (Dünya koordinatý)
-    sf::RectangleShape selectionBox; // Çizilecek yeþil kutu
+    sf::RectangleShape selectionBox; // çizilecek yeþil kutu
+
+    //Oyun ne kadar süredir aktif
+    float gameDuration = 0.0f;
 };
