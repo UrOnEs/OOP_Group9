@@ -23,6 +23,8 @@
 const unsigned short GAME_PORT = 54000;
 const unsigned short DISCOVERY_PORT = 50000;
 const std::string SERVER_NAME = "RTS Host Lobby";
+bool g_isEnteringIP = false;
+std::string g_ipInputString = "";
 
 // --- Oyun Durumlarý (GameState'e taþýndý)---
 
@@ -98,6 +100,32 @@ void connectToServer(const LANDiscovery::ServerInfo& info) {
 
         g_lobbyManager->setOnGameStart([]() { g_currentState = GameState::Playing; });
         g_currentState = GameState::LobbyRoom;
+    }
+}
+// main.cpp içine ekleyin
+void connectToDirectIP(const std::string& ipStr) {
+    g_netManager.discovery()->stop();
+
+    // Port'u GAME_PORT (54000) olarak sabit alýyoruz
+    if (g_netManager.startClient(ipStr, GAME_PORT)) {
+        g_lobbyManager = new LobbyManager(&g_netManager, false);
+        std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
+        g_lobbyManager->start(0, randomName);
+
+        g_netManager.client()->setOnPacket([](sf::Packet& pkt) {
+            if (g_lobbyManager) g_lobbyManager->handleIncomingPacket(0, pkt);
+            });
+
+        g_netManager.client()->setOnDisconnected([]() {
+            if (g_lobbyManager) { delete g_lobbyManager; g_lobbyManager = nullptr; }
+            g_currentState = GameState::Menu;
+            });
+
+        g_lobbyManager->setOnGameStart([]() { g_currentState = GameState::Playing; });
+        g_currentState = GameState::LobbyRoom;
+    }
+    else {
+        std::cerr << "Baglanti hatasi: IP adresi gecersiz veya sunucu kapali!" << std::endl;
     }
 }
 
@@ -244,7 +272,21 @@ int main() {
 
     // 2. Seçim Ekraný (Lobby Selection)
     // SOL MENÜ HÝZALAMASI BURADA YAPILDI
+
     UIPanel selectionMenu({ 0, 0 }, { 50, 50 });
+
+    // main.cpp içindeki selectionMenu.addButton kýsýmlarýnýn oraya ekleyin
+    UIButton btnDirectConnect;
+    btnDirectConnect.setPosition(25, 360); // Back butonunun altýna veya arasýna hizalayýn
+    btnDirectConnect.setSize(280, 65);
+    btnDirectConnect.setTexture(btnTexture, 280, 65);
+    btnDirectConnect.setText("IP ile Baglan", menuFont);
+    btnDirectConnect.setCallback([&]() {
+        g_isEnteringIP = true;
+        g_ipInputString = ""; // Kutuyu temizle
+        });
+
+    selectionMenu.addButton(btnDirectConnect);
 
     UIButton btnCreate;
     btnCreate.setPosition(25, 120);          // Ýlk Buton
@@ -321,6 +363,24 @@ int main() {
         // Event
         sf::Event event;
         while (window.pollEvent(event)) {
+            if (g_isEnteringIP) {
+                if (event.type == sf::Event::TextEntered) {
+                    if (event.text.unicode == 8) { // Backspace
+                        if (!g_ipInputString.empty()) g_ipInputString.pop_back();
+                    }
+                    else if (event.text.unicode == 13) { // Enter
+                        if (!g_ipInputString.empty()) {
+                            connectToDirectIP(g_ipInputString);
+                            g_isEnteringIP = false;
+                        }
+                    }
+                    else if (event.text.unicode < 128) { // ASCII karakterler (Sayý ve nokta)
+                        g_ipInputString += static_cast<char>(event.text.unicode);
+                    }
+                }
+                // IP girerken diðer butonlara basýlmasýný engellemek için continue diyebiliriz
+                if (event.type == sf::Event::MouseButtonPressed) g_isEnteringIP = false; // Boþa týklarsa kapat
+            }
             if (event.type == sf::Event::Closed) {
                 leaveLobby();
                 window.close();
@@ -433,7 +493,24 @@ int main() {
                     window.draw(ip);
                     y += 50;
                 }
+
             }
+            // main.cpp - Render kýsmýnda LobbySelection bloðunun içine
+            if (g_isEnteringIP) {
+                sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
+                overlay.setFillColor(sf::Color(0, 0, 0, 180));
+                window.draw(overlay);
+
+                sf::Text prompt("Baglanilacak IP Girin:\n(Enter ile onayla)", font, 24);
+                prompt.setPosition(WIN_W / 2 - 150, WIN_H / 2 - 50);
+                window.draw(prompt);
+
+                sf::Text inputDisplay(g_ipInputString + "_", font, 36);
+                inputDisplay.setFillColor(sf::Color::Yellow);
+                inputDisplay.setPosition(WIN_W / 2 - 150, WIN_H / 2 + 20);
+                window.draw(inputDisplay);
+            }
+
         }
         else if (g_currentState == GameState::LobbyRoom) {
             sf::Text title(g_isHost ? "Lobi (HOST)" : "Lobi (CLIENT)", font, 30);
@@ -473,7 +550,13 @@ int main() {
                     y += 40;
                 }
             }
-
+            if (g_isHost) {
+                sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
+                sf::Text ipText("Sunucu IP: " + localIP.toString(), font, 20);
+                ipText.setPosition(50, 90); // Baþlýðýn hemen altýna yerleþtiriyoruz
+                ipText.setFillColor(sf::Color::Yellow); // Dikkat çekmesi için sarý yaptýk
+                window.draw(ipText);
+            }
             btnReady.draw(window);
             btnLeave.draw(window);
             if (g_isHost) btnStartGame.draw(window);
@@ -497,6 +580,7 @@ int main() {
             t.setFillColor(sf::Color::White);
             window.draw(t);
         }
+
 
         window.display();
     }

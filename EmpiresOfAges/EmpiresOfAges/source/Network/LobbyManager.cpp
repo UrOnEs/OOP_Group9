@@ -2,6 +2,7 @@
 #include "Network/NetworkManager.h"
 #include "Network/NetServer.h"
 #include "Network/NetClient.h"
+#include <SFML/Network/IpAddress.hpp> 
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
@@ -13,7 +14,12 @@ void LobbyManager::start(uint64_t selfId, const std::string& name) {
     m_selfId = selfId;
     // Varsayılan renk 0 (Kırmızı)
     addPlayer(selfId, name, false, 0);
-
+    if (m_isHost) {
+        // Sunucunun yerel IP adresini al
+        sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
+        std::cout << "SUNUCU ACILDI! Yerel IP Adresin: " << localIP.toString() << std::endl;
+        std::cout << "Arkadaslarin bu IP'yi girerek baglanabilir." << std::endl;
+    }
     if (!m_isHost) {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::JoinRequest) << name;
