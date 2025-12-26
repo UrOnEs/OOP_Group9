@@ -39,7 +39,7 @@ bool NetClient::connect(const std::string& addr, unsigned short port) {
 
     // 3. Ba�ar�l� oldu
     m_connected = true;
-    std::cout << "�stemci ba�ar�yla ba�lat�ld� ve sunucu adresi kaydedildi: "
+    std::cout <<    "�stemci ba�ar�yla ba�lat�ld� ve sunucu adresi kaydedildi: "
         << addr << ":" << port << std::endl;
 
     // Ba�lant� callback'ini �a��r (UDP'de bu, ileti�im ba�latmaya haz�r oldu�umuz anlam�na gelir)

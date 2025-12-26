@@ -2,7 +2,8 @@
 
 enum class GameState {
     Menu,
-    Lobby,
+    LobbyRoom,
+    LobbySelection,
     Playing,
     GameOver
 };

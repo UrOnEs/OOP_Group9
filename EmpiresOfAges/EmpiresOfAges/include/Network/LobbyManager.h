@@ -1,7 +1,4 @@
-﻿// LobbyManager.h
-
-#pragma once
-
+﻿#pragma once
 #include <vector>
 #include <string>
 #include <map>
@@ -9,74 +6,71 @@
 #include <SFML/Network/Packet.hpp>
 #include <SFML/Network/IpAddress.hpp>
 
-// İleri Bildirim (Forward Declarations)
 class NetworkManager;
 
-// Lobi İletişim Komutları
+// 1. GÜNCELLEME: ChangeColor komutu eklendi
 enum class LobbyCommand : sf::Int32 {
-    JoinRequest,
-    LobbyStateSync,
-    ToggleReady,      // Hazır durumunu değiştirmek (EVET/HAYIR)
-    StartGameSignal,
-    LeaveLobby        // <-- Lobiden ayrılma isteği
-    // ... diğer komutlar
+    JoinRequest = 0,
+    LobbyStateSync = 1,
+    ToggleReady = 2,
+    StartGameSignal = 3,
+    LeaveLobby = 4,
+    LobbyClosed = 5,
+    ChangeColor = 6  // <--- YENİ: Renk Değiştirme Komutu
 };
 
-// Oyuncu Bilgisi Yapısı
+// 2. GÜNCELLEME: Renk indeksi eklendi
 struct PlayerInfo {
     uint64_t id;
     std::string name;
     bool ready;
-    // ... diğer lobi bilgileri
+    int colorIndex; // 0: Kırmızı, 1: Mavi, 2: Yeşil...
 };
 
 class LobbyManager {
 public:
-    // Yapıcı
     LobbyManager(NetworkManager* netManager, bool isHost);
 
-    // Ağ ve Lobi Başlatma
     void start(uint64_t selfId, const std::string& name);
-
-    // Dış dünya ile etkileşim
     void toggleReady(bool isReady);
-    void startGame();
 
-    // Gelen Paket İşleme
+    // 3. GÜNCELLEME: Renk değiştirme fonksiyonu
+    void changeColor(int colorIndex);
+
+    void startGame();
+    void closeLobby();
     void handleIncomingPacket(uint64_t senderId, sf::Packet& pkt);
 
-    // Getter'lar
     uint64_t selfId() const { return m_selfId; }
     const std::vector<PlayerInfo>& players() const { return m_players; }
     bool canStartGame() const;
 
-    // KRİTİK GETTER: netManager'a erişim sağlar
-    NetworkManager* netManager() const { return m_netManager; }
-
-    // Callback Ayarları
     using PlayerChangeCallback = std::function<void()>;
     using GameStartCallback = std::function<void()>;
     void setOnPlayerChange(PlayerChangeCallback cb);
     void setOnGameStart(GameStartCallback cb);
 
+    void removePlayer(uint64_t id);
+    void syncLobbyToClients();
+
 private:
-    // Lobi Yönetimi (Sunucu Tarafı)
     void processJoinRequest(uint64_t senderId, sf::Packet& pkt);
     void processToggleReady(uint64_t senderId, sf::Packet& pkt);
-    void syncLobbyToClients(); // Tüm istemcilere lobi durumunu gönder
 
-    // Yardımcı Metotlar
-    void addPlayer(uint64_t id, const std::string& name, bool ready = false);
-    void removePlayer(uint64_t id);
+    // 4. GÜNCELLEME: Sunucu tarafında renk işleme
+    void processChangeColor(uint64_t senderId, sf::Packet& pkt);
+
+    void addPlayer(uint64_t id, const std::string& name, bool ready = false, int colorIndex = 0);
     void setReady(uint64_t id, bool ready);
 
-    // Üye Değişkenleri
+    // Yardımcı: Sadece rengi set etme
+    void setColor(uint64_t id, int colorIndex);
+
     NetworkManager* m_netManager;
     bool m_isHost;
-    uint64_t m_selfId; // Kendi ID'miz (Host için 1, Client için Sunucudan gelen ID)
+    uint64_t m_selfId;
     std::vector<PlayerInfo> m_players;
 
-    // Callback'ler
     PlayerChangeCallback m_onChange;
     GameStartCallback m_onGameStart;
     bool m_isGameStarted = false;
