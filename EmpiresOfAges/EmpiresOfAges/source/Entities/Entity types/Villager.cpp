@@ -40,6 +40,8 @@ std::string Villager::stats() {
     return "Yuk: " + std::to_string(currentCargo) + "/" + std::to_string(maxCargo);
 }
 
+
+
 int Villager::getMaxHealth() const { return GameRules::HP_Villager; }
 
 // --- HASAT BAÞLATMA ---
@@ -281,6 +283,11 @@ void Villager::findNearestResource(const std::vector<std::shared_ptr<Building>>&
         // Yakýnda kaynak yoksa dur
         stopHarvesting();
     }
+}
+
+std::string Villager::getName() {
+    // ID'yi ismin yanýna ekliyoruz: "Villager #1", "Villager #2" gibi
+    return "Villager #" + std::to_string(entityID);
 }
 
 void Villager::render(sf::RenderWindow& window) {

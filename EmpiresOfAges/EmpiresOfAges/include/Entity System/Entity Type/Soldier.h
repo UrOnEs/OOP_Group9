@@ -36,6 +36,7 @@ public:
     int getMaxHealth() const override;
     std::string stats() override;
     
+    
     void setTarget(std::shared_ptr<Entity> target);
     void clearTarget();
 
@@ -45,6 +46,9 @@ public:
     // Askerin beyni (Her karede ne yapacaðýna karar verir)
     void updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>& potentialTargets);
     sf::CircleShape& getModel() { return getShape(); }
+
+    std::string getName() override;
+    sf::Texture* getIcon() override;
 };
 
 #endif

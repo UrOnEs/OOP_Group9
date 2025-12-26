@@ -55,9 +55,7 @@ public:
 
     std::shared_ptr<ResourceGenerator> getTargetResource() { return targetResource.lock(); }
 
-    std::string getName() override {
-        return "Villager";
-    }
+    std::string getName() override;
 
     sf::Texture* getIcon() override {
         if (hasTexture) return (sf::Texture*)sprite.getTexture();

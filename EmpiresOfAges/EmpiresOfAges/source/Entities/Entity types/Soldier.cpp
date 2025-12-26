@@ -83,6 +83,24 @@ std::string Soldier::stats() {
     return "HP: " + std::to_string((int)health);
 }
 
+std::string Soldier::getName() {
+    std::string typeName = "Soldier";
+
+    switch (soldierType) {
+    case SoldierTypes::Barbarian: typeName = "Barbarian"; break;
+    case SoldierTypes::Archer:    typeName = "Archer"; break;
+    case SoldierTypes::Wizard:    typeName = "Wizard"; break;
+    }
+
+    // Ýstersen buna da ID ekleyebilirsin:
+    return typeName + " #" + std::to_string(entityID);
+}
+
+sf::Texture* Soldier::getIcon() {
+    if (hasTexture) return (sf::Texture*)sprite.getTexture();
+    return nullptr;
+}
+
 // =========================================================
 //                  SAVAÞ MANTIÐI (COMBAT AI)
 // =========================================================

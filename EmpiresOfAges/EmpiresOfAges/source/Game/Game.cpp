@@ -297,7 +297,15 @@ void Game::handleMouseInput(const sf::Event& event) {
                         if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
                             ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian); });
                     }
-                    // ... Diðer butonlar ...
+                    else if (ab.getId() == 12) { // Okçu
+                        if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
+                            ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Archer); });
+                    }
+                    else if (ab.getId() == 13) { // Wizard
+                        if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
+                            ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard); });
+                    }
+                    
                 }
 
                 hud.selectedPanel.updateSelection(
