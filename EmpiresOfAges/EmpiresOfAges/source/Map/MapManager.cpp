@@ -7,6 +7,9 @@
 #include "Entity System/Entity Type/Barracks.h"
 #include "Entity System/Entity Type/TownCenter.h"
 #include "Entity System/Entity Type/Tree.h"
+#include "Entity System/Entity Type/Stone.h" // <-- YENÝ: Include eklendi
+#include "Entity System/Entity Type/Gold.h" // <-- YENÝ: Include eklendi
+
 #include "UI/AssetManager.h"
 
 #include <iostream>
@@ -26,25 +29,16 @@ void MapManager::initialize() {
 
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    // 1. DUVAR OLUÞTURMA (%3 Oranýnda)
-    int totalTiles = m_width * m_height;
-    int wallCount = (totalTiles * 3) / 100;
-
-    for (int i = 0; i < wallCount; i++) {
-        int rx = std::rand() % m_width;
-        int ry = std::rand() % m_height;
-
-        if (m_level[rx + ry * m_width] == 0) {
-            m_level[rx + ry * m_width] = 1;
-        }
-    }
-
     if (!m_map.load("tileset.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
         std::cerr << "MapManager load hatasi!" << std::endl;
     }
 
-    // --- 3x3 ORMAN KÜMELERÝ (ARTIK AÐAÇLAR 2x2) ---
-    int forestClusterCount = (totalTiles * 2) / 100;
+    int totalTiles = m_width * m_height;
+
+    // =========================================================
+    // 1. AÐAÇ OLUÞTURMA (Gruplar Halinde - %0.5)
+    // =========================================================
+    int forestClusterCount = (totalTiles * 5) / 1000;
 
     for (int i = 0; i < forestClusterCount; i++) {
         int startX = std::rand() % m_width;
@@ -52,53 +46,139 @@ void MapManager::initialize() {
 
         for (int x = 0; x < 3; x++) {
             for (int y = 0; y < 3; y++) {
-                // Aðaçlar artýk 2x2 olduðu için koordinatlarý 2'þer 2'þer atlatýyoruz
-                // Böylece iç içe girmezler.
                 int tx = startX + x * 2;
                 int ty = startY + y * 2;
 
-                // Harita sýnýrlarý ve 2x2 alan kontrolü
                 if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
-
-                    // 2x2'lik alanýn tamamý boþ mu?
                     bool isSpaceFree = true;
                     if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
                     else if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
                     else if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
                     else if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
 
-                    if (isSpaceFree) {
-                        if (std::rand() % 100 < 75) {
-                            std::shared_ptr<Tree> newTree = std::make_shared<Tree>();
-                            sf::Texture& tex = AssetManager::getTexture("assets/nature/tree.png");
-                            newTree->setTexture(tex);
+                    if (isSpaceFree && (std::rand() % 100 < 75)) {
+                        std::shared_ptr<Tree> newTree = std::make_shared<Tree>();
+                        sf::Texture& tex = AssetManager::getTexture("assets/nature/tree.png");
+                        newTree->setTexture(tex);
 
-                            // --- GÖRSEL VE FÝZÝKSEL BOYUT: 2x2 ---
-                            float targetSize = (float)m_tileSize * 2.0f;
-                            sf::Vector2u texSize = tex.getSize();
-                            if (texSize.x > 0 && texSize.y > 0) {
-                                newTree->setScale(targetSize / texSize.x, targetSize / texSize.y);
-                            }
-
-                            // Pozisyon (Merkeze hizala)
-                            float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
-                            float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
-                            newTree->setPosition(sf::Vector2f(centerX, centerY));
-
-                            m_buildings.push_back(newTree);
-
-                            // Haritada 4 kareyi de iþaretle
-                            m_level[tx + ty * m_width] = 1;
-                            m_level[(tx + 1) + ty * m_width] = 1;
-                            m_level[tx + (ty + 1) * m_width] = 1;
-                            m_level[(tx + 1) + (ty + 1) * m_width] = 1;
+                        float targetSize = (float)m_tileSize * 2.0f;
+                        sf::Vector2u texSize = tex.getSize();
+                        if (texSize.x > 0 && texSize.y > 0) {
+                            newTree->setScale(targetSize / texSize.x, targetSize / texSize.y);
                         }
+
+                        float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
+                        float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
+                        newTree->setPosition(sf::Vector2f(centerX, centerY));
+
+                        m_buildings.push_back(newTree);
+
+                        m_level[tx + ty * m_width] = 1;
+                        m_level[(tx + 1) + ty * m_width] = 1;
+                        m_level[tx + (ty + 1) * m_width] = 1;
+                        m_level[(tx + 1) + (ty + 1) * m_width] = 1;
                     }
                 }
             }
         }
     }
+
+    // =========================================================
+    // 2. TAÞ OLUÞTURMA (Tek Tek - %0.2 Oranýnda)
+    // =========================================================
+    // Binde 2 oranýnda taþ ekleyelim (Aðaçtan daha az olsun)
+    int stoneCount = (totalTiles * 2) / 1000;
+
+    for (int i = 0; i < stoneCount; i++) {
+        // Rastgele bir konum seç
+        int tx = std::rand() % m_width;
+        int ty = std::rand() % m_height;
+
+        // Taþ boyutu da 2x2 olsun (Görünür olmasý için)
+        // Harita sýnýrlarýný kontrol et
+        if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
+
+            // 2x2 alan boþ mu kontrol et
+            bool isSpaceFree = true;
+            if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
+            else if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
+            else if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
+            else if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
+
+            if (isSpaceFree) {
+                std::shared_ptr<Stone> newStone = std::make_shared<Stone>();
+                // Varsa stone.png, yoksa yine tree.png veya baþka bir placeholder kullanýn
+                sf::Texture& tex = AssetManager::getTexture("assets/nature/stone.png");
+                newStone->setTexture(tex);
+
+                // --- GÖRSEL VE FÝZÝKSEL BOYUT: 2x2 ---
+                float targetSize = (float)m_tileSize * 2.0f;
+                sf::Vector2u texSize = tex.getSize();
+                if (texSize.x > 0 && texSize.y > 0) {
+                    newStone->setScale(targetSize / texSize.x, targetSize / texSize.y);
+                }
+
+                // Pozisyon (Merkeze hizala)
+                float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
+                float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
+                newStone->setPosition(sf::Vector2f(centerX, centerY));
+
+                m_buildings.push_back(newStone);
+
+                // Haritada alaný iþaretle (Yürünemez)
+                m_level[tx + ty * m_width] = 1;
+                m_level[(tx + 1) + ty * m_width] = 1;
+                m_level[tx + (ty + 1) * m_width] = 1;
+                m_level[(tx + 1) + (ty + 1) * m_width] = 1;
+            }
+        }
+    }
+
+    // =========================================================
+    // 3. ALTIN OLUÞTURMA (Tek Tek - %0.1 Oranýnda - Çok Nadir)
+    // =========================================================
+    // Binde 1 oranýnda altýn ekleyelim
+    int goldCount = (totalTiles * 1) / 1000;
+
+    for (int i = 0; i < goldCount; i++) {
+        int tx = std::rand() % m_width;
+        int ty = std::rand() % m_height;
+
+        // Altýn boyutu 2x2
+        if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
+            bool isSpaceFree = true;
+            if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
+            else if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
+            else if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
+            else if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
+
+            if (isSpaceFree) {
+                std::shared_ptr<Gold> newGold = std::make_shared<Gold>();
+                // Varsa gold.png, yoksa stone.png veya placeholder kullanýn
+                sf::Texture& tex = AssetManager::getTexture("assets/nature/gold.png");
+                newGold->setTexture(tex);
+
+                float targetSize = (float)m_tileSize * 2.0f;
+                sf::Vector2u texSize = tex.getSize();
+                if (texSize.x > 0 && texSize.y > 0) {
+                    newGold->setScale(targetSize / texSize.x, targetSize / texSize.y);
+                }
+
+                float centerX = (tx * m_tileSize) + (targetSize / 2.0f);
+                float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
+                newGold->setPosition(sf::Vector2f(centerX, centerY));
+
+                m_buildings.push_back(newGold);
+
+                m_level[tx + ty * m_width] = 1;
+                m_level[(tx + 1) + ty * m_width] = 1;
+                m_level[tx + (ty + 1) * m_width] = 1;
+                m_level[(tx + 1) + (ty + 1) * m_width] = 1;
+            }
+        }
+    }
 }
+
 
 void MapManager::createTilesetFile() {
     sf::Image tileset;
@@ -114,7 +194,7 @@ void MapManager::createTilesetFile() {
                 tileset.setPixel(x, y, sf::Color(50, 205, 50));
         }
     }
-    // Duvar
+    // Duvar (Aðaçlarýn altýndaki engel ID'si olarak hala kullanýlýyor)
     for (unsigned int x = ts; x < ts * 2; ++x) {
         for (unsigned int y = 0; y < ts; ++y) {
             tileset.setPixel(x, y, sf::Color(105, 105, 105));
@@ -218,8 +298,9 @@ void MapManager::removeBuilding(int tx, int ty) {
             int w = 4, h = 4;
             if ((*it)->buildingType == BuildTypes::House) { w = 2; h = 2; }
             else if ((*it)->buildingType == BuildTypes::TownCenter) { w = 6; h = 6; }
-            // --- GÜNCELLEME: Aðaç silinirken 2x2 alan temizlensin ---
             else if ((*it)->buildingType == BuildTypes::Tree) { w = 2; h = 2; }
+            else if ((*it)->buildingType == BuildTypes::Stone) { w = 2; h = 2; }
+            else if ((*it)->buildingType == BuildTypes::Gold) { w = 2; h = 2; } // <-- YENÝ EKLENDÝ
 
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < h; y++) {
@@ -273,7 +354,6 @@ void MapManager::removeDeadBuildings() {
             int w = 4, h = 4;
             if ((*it)->buildingType == BuildTypes::House) { w = 2; h = 2; }
             else if ((*it)->buildingType == BuildTypes::TownCenter) { w = 6; h = 6; }
-            // --- GÜNCELLEME: Ölü aðaçlar temizlenirken 2x2 alan açýlsýn ---
             else if ((*it)->buildingType == BuildTypes::Tree) { w = 2; h = 2; }
 
             for (int x = 0; x < w; x++) {
@@ -290,7 +370,6 @@ void MapManager::removeDeadBuildings() {
 }
 
 void MapManager::clearArea(int startX, int startY, int w, int h) {
-    // 1. Alaný kapsayan bir dikdörtgen oluþtur (Piksel cinsinden)
     sf::FloatRect clearRect(
         startX * m_tileSize,
         startY * m_tileSize,
@@ -298,10 +377,8 @@ void MapManager::clearArea(int startX, int startY, int w, int h) {
         h * m_tileSize
     );
 
-    // 2. Bu alana denk gelen binalarý/aðaçlarý listeden sil
     auto it = m_buildings.begin();
     while (it != m_buildings.end()) {
-        // Eðer binanýn sýnýrlarý, temizlenecek alanla kesiþiyorsa -> SÝL
         if ((*it)->getBounds().intersects(clearRect)) {
             it = m_buildings.erase(it);
         }
@@ -310,10 +387,8 @@ void MapManager::clearArea(int startX, int startY, int w, int h) {
         }
     }
 
-    // 3. Harita verisini (TileMap) temizle (Duvarlarý kaldýr, çim yap)
     for (int x = 0; x < w; ++x) {
         for (int y = 0; y < h; ++y) {
-            // Sýnýr kontrolü ve güncelleme
             updateTile(startX + x, startY + y, 0);
         }
     }

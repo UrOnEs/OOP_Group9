@@ -1,16 +1,17 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-
 enum class BuildTypes {
 	Barrack,
 	Farm,
 	WoodPlace,
 	StoneMine,
-	GoldMine,
+	GoldMine, // Bu bina olan maden
 	House,
 	Tree,
-	TownCenter
+	TownCenter,
+	Stone,
+	Gold // <-- YENÝ EKLENDÝ (Yerdeki Altýn Kaynaðý)
 };
 
 enum class SoldierTypes {

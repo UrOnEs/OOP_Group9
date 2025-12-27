@@ -86,5 +86,7 @@
     <ClInclude Include="include\UI\UIPanel.h" />
     <ClInclude Include="include\Entity System\Entity Type\TownCenter.h" />
     <ClInclude Include="include\UI\Ability.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Stone.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Gold.h" />
   </ItemGroup>
 </Project>
