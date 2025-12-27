@@ -177,10 +177,12 @@
     <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
     <ClInclude Include="include\Entity System\Entity Type\Building.h" />
     <ClInclude Include="include\Entity System\Entity Type\Farm.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Gold.h" />
     <ClInclude Include="include\Entity System\Entity Type\GoldMine.h" />
     <ClInclude Include="include\Entity System\Entity Type\House.h" />
     <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h" />
     <ClInclude Include="include\Entity System\Entity Type\Soldier.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Stone.h" />
     <ClInclude Include="include\Entity System\Entity Type\StoneMine.h" />
     <ClInclude Include="include\Entity System\Entity Type\TownCenter.h" />
     <ClInclude Include="include\Entity System\Entity Type\Tree.h" />

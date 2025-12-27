@@ -7,8 +7,9 @@ namespace GameRules {
     // ==========================================
     // 1. GENEL AYARLAR & HARÝTA
     // ==========================================
-    constexpr int MapWidth = 100;
-    constexpr int MapHeight = 100;
+    // --- GÜNCELLEME: Harita Boyutu 4 Katýna Çýkarýldý (200x200) ---
+    constexpr int MapWidth = 200;
+    constexpr int MapHeight = 200;
     constexpr int TileSize = 32;
     constexpr float UnitRadius = 8.0f;
     constexpr int MaxPopulation = 200;
@@ -49,8 +50,8 @@ namespace GameRules {
     constexpr Cost Cost_Villager = { 0, 50, 0, 0 };
 
     // ==========================================
-    // 3. SAÐLIK DEÐERLERÝ
-    // ==========================================
+     // 3. SAÐLIK DEÐERLERÝ
+     // ==========================================
     constexpr float BuildingHealth = 250.f;
     constexpr float HP_House = 250.f;
     constexpr float HP_Barracks = 1200.f;
@@ -58,8 +59,8 @@ namespace GameRules {
     constexpr float HP_TownCenter = 2500.f;
     constexpr float HP_Wall = 1500.f;
     constexpr float HP_Tree = 50.f;
-
-    //Gemini eðer goldmine a can eklemek istersem buradan söz et
+    constexpr float HP_Stone = 500.f; // <-- YENÝ: Taþýn caný (Kýrýlmasý daha zor olsun)
+    constexpr float HP_Gold = 300.f; // <-- YENÝ: Altýn caný
 
     constexpr float HP_Villager = 25.f;
     constexpr float HP_Barbarian = 100.f;
@@ -102,6 +103,11 @@ namespace GameRules {
     const sf::Vector2f Size_Farm = sf::Vector2f(128.f, 128.f);    // 2x2 (Mill)
     const sf::Vector2f Size_TownCenter = sf::Vector2f(192.f, 192.f); // 3x3
 
+
     constexpr int Resources_Per_Tree = 100;
+    constexpr int Resources_Per_Stone = 300;
+    constexpr int Resources_Per_Gold = 500;  // <-- YENÝ: Bir altýnda ne kadar kaynak var?
     constexpr int Wood_Per_Tick = 10;
+    constexpr int Stone_Per_Tick = 10;
+    constexpr int Gold_Per_Tick = 10;        // <-- YENÝ: Toplama hýzý
 }
