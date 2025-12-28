@@ -3,16 +3,11 @@
 
 #include "Entity System/Entity Type/types.h"
 #include "Entity System/Entity Type/Unit.h"
-#include <memory> // weak_ptr için
+#include "Game/GameRules.h"
+#include <memory>
 #include <vector>
 
-// Askerin Ruh Halleri
-enum class SoldierState {
-    Idle,       // Boþta, emir bekliyor
-    Moving,     // Bir konuma yürüyor (Saldýrmadan)
-    Chasing,    // Bir hedefi kovalýyor
-    Attacking   // Vuruyor
-};
+enum class SoldierState { Idle, Moving, Chasing, Attacking };
 
 class Soldier : public Unit {
 private:
@@ -20,13 +15,17 @@ private:
     static int counter;
     SoldierTypes soldierType;
 
-    // --- SAVAÞ DEÐÝÞKENLERÝ ---
     SoldierState state = SoldierState::Idle;
-    std::weak_ptr<Entity> targetEntity; // Hedef (Düþman, Bina vs.)
+    std::weak_ptr<Entity> targetEntity;
 
-    float attackTimer = 0.0f;     // Vurmak için geri sayým
-    float attackInterval = 1.0f;  // Saldýrý hýzý (Saniyede kaç vuruþ?)
-    float attackRange = 20.0f;    // Vuruþ menzili
+    float attackTimer = 0.0f;
+    float attackInterval = 1.0f;
+    float attackRange = 20.0f;
+
+    // Büyücü Deðiþkenleri
+    float wizardChargeTimer = 0.0f;
+    float wizardMaxChargeTime = GameRules::AttackSpeed_Wizard;
+    bool isCharging = false;
 
 public:
     Soldier();
@@ -35,17 +34,15 @@ public:
     void setType(SoldierTypes type);
     int getMaxHealth() const override;
     std::string stats() override;
-    
-    
+
     void setTarget(std::shared_ptr<Entity> target);
     void clearTarget();
-
-    // Askerin þu an bir hedefi var mý?
     bool hasTarget() const { return state != SoldierState::Idle; }
 
-    // Askerin beyni (Her karede ne yapacaðýna karar verir)
     void updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>& potentialTargets);
-    sf::CircleShape& getModel() { return getShape(); }
+
+    void render(sf::RenderWindow& window) override;
+    void renderEffects(sf::RenderWindow& window) override;
 
     std::string getName() override;
     sf::Texture* getIcon() override;

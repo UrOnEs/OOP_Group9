@@ -16,6 +16,11 @@ namespace GameRules {
     constexpr float GameSpeed = 1.0f;
 
     // ==========================================
+    //               SES AYARLARI    
+    // ==========================================
+    constexpr float BackgroundMusicVolume = 50.0f;
+
+    // ==========================================
     // 2. MALÝYET SÝSTEMÝ
     // ==========================================
     struct Cost {
@@ -82,8 +87,8 @@ namespace GameRules {
 
     constexpr float Speed_Villager = 100.f;
     constexpr float Speed_Barbarian = 150.f;
-    constexpr float Speed_Archer = 45.f;
-    constexpr float Speed_Wizard = 20.f;
+    constexpr float Speed_Archer = 145.f;
+    constexpr float Speed_Wizard = 120.f;
 
     constexpr float Range_Melee = 20.f;
     constexpr float Range_Archer = 200.f;

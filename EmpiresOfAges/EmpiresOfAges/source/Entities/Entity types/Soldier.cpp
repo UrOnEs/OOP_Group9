@@ -1,6 +1,6 @@
 #include "Entity System/Entity Type/Soldier.h"
 #include "Game/GameRules.h"
-#include "Systems/CombatSystem.h" // Saldýrý sistemi için gerekli
+#include "Systems/CombatSystem.h" 
 #include <iostream>
 #include <cmath>
 
@@ -10,32 +10,23 @@ int Soldier::counter = 0;
 Soldier::Soldier() {
     this->entityID = ++IDcounter;
     counter++;
-
-    // Baþlangýç pozisyonu
     shape.setPosition(100.f, 100.f);
-
-    // --- TAKIM ARKADAÞININ EKLEDÝÐÝ GÖRSEL KODLAR (KORUNDU) ---
     this->setTexture(AssetManager::getTexture("assets/units/barbarian.png"));
+
     // Görsel boyutlandýrma
     if (this->sprite.getTexture()) {
         float scaleX = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().x;
         float scaleY = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().y;
         this->setScale(scaleX, scaleY);
     }
-    // -----------------------------------------------------------
-
-    // Varsayýlan Tip
     setType(SoldierTypes::Barbarian);
 }
 
-Soldier::~Soldier() {
-    counter--;
-}
+Soldier::~Soldier() { counter--; }
 
 void Soldier::setType(SoldierTypes type) {
     this->soldierType = type;
 
-    // Deðerleri GameRules'dan çekiyoruz
     switch (type) {
     case SoldierTypes::Barbarian:
         health = GameRules::HP_Barbarian;
@@ -43,8 +34,6 @@ void Soldier::setType(SoldierTypes type) {
         attackInterval = GameRules::AttackSpeed_Barbarian;
         attackRange = GameRules::Range_Melee;
         this->damage = GameRules::Dmg_Barbarian;
-        // Görsel güncelleme (Eðer her tip için farklýysa burayý açabilirsin)
-        // this->setTexture(AssetManager::getTexture("assets/units/barbarian.png"));
         this->range = attackRange;
         break;
 
@@ -53,9 +42,9 @@ void Soldier::setType(SoldierTypes type) {
         travelSpeed = GameRules::Speed_Archer;
         attackInterval = GameRules::AttackSpeed_Archer;
         attackRange = GameRules::Range_Archer;
-        this->setTexture(AssetManager::getTexture("assets/units/archer.png"));
-        this->range = attackRange;
         this->damage = GameRules::Dmg_Archer;
+        this->range = attackRange;
+        this->setTexture(AssetManager::getTexture("assets/units/archer.png"));
         break;
 
     case SoldierTypes::Wizard:
@@ -63,9 +52,13 @@ void Soldier::setType(SoldierTypes type) {
         travelSpeed = GameRules::Speed_Wizard;
         attackInterval = GameRules::AttackSpeed_Wizard;
         attackRange = GameRules::Range_Wizard;
-        this->setTexture(AssetManager::getTexture("assets/units/wizard.png"));
-        this->range = attackRange;
         this->damage = GameRules::Dmg_Wizard;
+        this->range = attackRange;
+
+        // Þarj süresini GameRules'dan alýyoruz
+        this->wizardMaxChargeTime = attackInterval;
+
+        this->setTexture(AssetManager::getTexture("assets/units/wizard.png"));
         break;
     }
 }
@@ -75,147 +68,101 @@ int Soldier::getMaxHealth() const {
     case SoldierTypes::Barbarian: return (int)GameRules::HP_Barbarian;
     case SoldierTypes::Archer:    return (int)GameRules::HP_Archer;
     case SoldierTypes::Wizard:    return (int)GameRules::HP_Wizard;
-    default:                      return 100;
+    default: return 100;
     }
 }
 
-std::string Soldier::stats() {
-    return "HP: " + std::to_string((int)health);
-}
+std::string Soldier::stats() { return "HP: " + std::to_string((int)health); }
 
 std::string Soldier::getName() {
-    std::string typeName = "Soldier";
-
     switch (soldierType) {
-    case SoldierTypes::Barbarian: typeName = "Barbarian"; break;
-    case SoldierTypes::Archer:    typeName = "Archer"; break;
-    case SoldierTypes::Wizard:    typeName = "Wizard"; break;
+    case SoldierTypes::Barbarian: return "Barbarian";
+    case SoldierTypes::Archer:    return "Archer";
+    case SoldierTypes::Wizard:    return "Wizard";
+    default: return "Soldier";
     }
-
-    // Ýstersen buna da ID ekleyebilirsin:
-    return typeName + " #" + std::to_string(entityID);
 }
 
-sf::Texture* Soldier::getIcon() {
-    if (hasTexture) return (sf::Texture*)sprite.getTexture();
-    return nullptr;
-}
-
-// =========================================================
-//                  SAVAÞ MANTIÐI (COMBAT AI)
-// =========================================================
-
+// --- HEDEFLEME ---
 void Soldier::setTarget(std::shared_ptr<Entity> target) {
     if (target) {
-        // --- DOST ATEÞÝ KONTROLÜ -----------
-        // Eðer hedef benim takýmdansa SALDIRMA.
-        if (target->getTeam() == this->getTeam()) {
-            // Ýstersen buraya bir log koyabilirsin:
-            // std::cout << "[SOLDIER] Dost birim, saldirilamaz!\n";
-            return;
-        }
+        if (target->getTeam() == this->getTeam()) return; // Dost ateþi yok
 
-        // Eðer zaten ayný hedefe saldýrýyorsam tekrar emir verme (Log kirliliðini önler)
-        auto currentTarget = targetEntity.lock();
-        if (currentTarget && currentTarget == target) {
-            return;
-        }
+        // Zaten ayný hedefe saldýrýyorsak tekrar atama yapma
+        auto current = targetEntity.lock();
+        if (current && current == target) return;
 
         targetEntity = target;
         state = SoldierState::Chasing;
-        std::cout << "[SOLDIER #" << entityID << "] Hedef belirlendi! Kovaliyorum...\n";
     }
 }
 
 void Soldier::clearTarget() {
     targetEntity.reset();
     state = SoldierState::Idle;
+    isCharging = false;
     m_path.clear();
     m_isMoving = false;
 }
 
-void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>& potentialTargets) {    // Saldýrý sayacýný her zaman çalýþtýr (Cooldown)
-    // ---  ZOMBÝ KONTROLÜ ---
-    // Eðer asker öldüyse hiçbir iþlem yapma!
+// --- UPDATE LOOP (BEYÝN) ---
+void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>& potentialTargets) {
     if (!getIsAlive()) {
         state = SoldierState::Idle;
         return;
     }
-    // -----------------------------------
-    
+
     if (attackTimer > 0) attackTimer -= dt;
 
-    // =========================================================
-    //           0. Durum: IDLE (Boþta) -> OTOMATÝK HEDEF ARAMA
-    // =========================================================
+    // 0. IDLE: Otomatik Hedef Arama
     if (state == SoldierState::Idle) {
-        // Görüþ Menzili (GameRules::Range_Sight_Normal = 300.f varsayalým)
-        float scanRange = 50.0f;
+        float scanRange = 300.0f; // Görüþ mesafesi
         float bestDist = scanRange;
         std::shared_ptr<Entity> bestTarget = nullptr;
 
         for (const auto& target : potentialTargets) {
-            // Ölüleri ve kendi takýmýmýzý es geç
             if (!target || !target->getIsAlive()) continue;
             if (target->getTeam() == this->getTeam()) continue;
 
-            // Mesafe kontrolü
-            sf::Vector2f diff = target->getPosition() - getPosition();
-            float distSq = diff.x * diff.x + diff.y * diff.y;
-
-            // Karekök iþlemi pahalýdýr, o yüzden kareleriyle kýyaslamak daha performanslýdýr
-            if (distSq < bestDist * bestDist) {
-                bestDist = std::sqrt(distSq);
+            float d = std::sqrt(std::pow(target->getPosition().x - getPosition().x, 2) +
+                std::pow(target->getPosition().y - getPosition().y, 2));
+            if (d < bestDist) {
+                bestDist = d;
                 bestTarget = target;
             }
         }
-
-        // Eðer uygun bir düþman bulduysak SALDIR!
-        if (bestTarget) {
-            setTarget(bestTarget);
-        }
+        if (bestTarget) setTarget(bestTarget);
     }
 
-    // 1. Durum: HEDEF KOVALAMA (Chasing)
-    if (state == SoldierState::Chasing) {
+    // 1. CHASING: Kovalama
+    else if (state == SoldierState::Chasing) {
         auto target = targetEntity.lock();
-
-        // Hedef yok olduysa veya öldüyse
         if (!target || !target->getIsAlive()) {
-            std::cout << "[SOLDIER #" << entityID << "] Hedefim yok oldu. Beklemeye geciyorum.\n";
             clearTarget();
             return;
         }
 
-        // Mesafe Kontrolü
         sf::Vector2f diff = target->getPosition() - getPosition();
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-
-        // Hedefin görsel geniþliðinin yarýsýný al (Kabaca yarýçap)
         float targetRadius = target->getBounds().width / 2.0f;
+        if (targetRadius < 15.f) targetRadius = 15.f;
 
-        // Çok küçük hedefler için minimum bir deðer belirle (Hata payý)
-        if (targetRadius < 15.0f) targetRadius = 15.0f;
+        // Menzil Hesabý (Uzakçýlar için radius ekleme)
+        float attackReach;
+        if (range > 30.0f) attackReach = range + 10.0f; // Okçu/Büyücü
+        else attackReach = range + targetRadius + 5.0f; // Barbar
 
-        // Menzil içinde miyiz? (Saldýrý Menzili + Biraz tolerans)
-        float attackReach = attackRange + targetRadius + 10.0f;
         if (dist <= attackReach) {
-            // Menzildeyiz -> Saldýrý Moduna Geç
             state = SoldierState::Attacking;
-
-            // Hareketi durdur (Vururken yürümesin)
             m_path.clear();
             m_isMoving = false;
-
-            std::cout << "[SOLDIER #" << entityID << "] Menzilde! Saldiriya geciliyor.\n";
         }
         else {
-            // Menzilde deðiliz -> Yürümeye devam et
             moveTo(target->getPosition());
         }
     }
 
-    // 2. Durum: SALDIRI (Attacking)
+    // 2. ATTACKING: Saldýrý
     else if (state == SoldierState::Attacking) {
         auto target = targetEntity.lock();
         if (!target || !target->getIsAlive()) {
@@ -223,32 +170,106 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
             return;
         }
 
-        // Menzilden çýkma kontrolü (Hysteresis)
         sf::Vector2f diff = target->getPosition() - getPosition();
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
         float targetRadius = target->getBounds().width / 2.0f;
-        if (targetRadius < 15.0f) targetRadius = 15.0f;
+        if (targetRadius < 15.f) targetRadius = 15.f;
 
-        // Saldýrýdan kopma mesafesi
-        float stopAttackDist = attackRange + targetRadius + 20.0f;
+        // Menzilden Çýkma Hesabý
+        float stopDist;
+        if (range > 30.0f) stopDist = range + 20.0f;
+        else stopDist = range + targetRadius + 20.0f;
 
-        if (dist > stopAttackDist) {
-            state = SoldierState::Chasing; // Tekrar kovalamaya dön
+        if (dist > stopDist) {
+            state = SoldierState::Chasing;
+            isCharging = false;
             return;
         }
 
-        if (attackTimer <= 0) {
-            // --- 2. DÜZELTME: VURUÞ BAÞARISIZSA YÜRÜ ---
-            // CombatSystem menzil kontrolü yapar. Eðer menzil yetmezse false döner.
-            bool hitSuccess = CombatSystem::attack(*this, *target);
-
-            if (hitSuccess) {
-                attackTimer = attackInterval;
+        // --- BÜYÜCÜ ÖZEL MANTIÐI ---
+        if (soldierType == SoldierTypes::Wizard) {
+            if (!isCharging) {
+                isCharging = true;
+                wizardChargeTimer = wizardMaxChargeTime;
             }
-            else {
-                // Menzil yetmediyse (CombatSystem reddettiyse) durma, KOVALA!
-                state = SoldierState::Chasing;
+            wizardChargeTimer -= dt;
+
+            if (wizardChargeTimer <= 0) {
+                isCharging = false;
+                // Hasar Vur
+                // Eðer binaysa tekli yüksek hasar, askerse alan hasarý
+                // (Basitlik için þimdilik direkt vuruyoruz)
+                if (CombatSystem::attack(*this, *target)) {
+                    // Alan hasarý eklenebilir buraya
+                }
             }
         }
+        // --- DÝÐERLERÝ ---
+        else {
+            if (attackTimer <= 0) {
+                if (CombatSystem::attack(*this, *target)) {
+                    attackTimer = attackInterval;
+                }
+                else {
+                    state = SoldierState::Chasing; // Menzil yetmedi, yürü
+                }
+            }
+        }
+    }
+}
+
+// --- RENDER (Sadece Karakter) ---
+void Soldier::render(sf::RenderWindow& window) {
+    if (!getIsAlive()) return;
+    Unit::render(window);
+}
+
+// --- RENDER EFFECTS (Yýldýrým vb.) ---
+void Soldier::renderEffects(sf::RenderWindow& window) {
+    if (!getIsAlive()) return;
+
+    // Büyücü Yýldýrým Efekti
+    if (soldierType == SoldierTypes::Wizard && isCharging) {
+        auto target = targetEntity.lock();
+        if (target) {
+            sf::Sprite lightning;
+            sf::Texture& tex = AssetManager::getTexture("assets/icons/lightning.png");
+            lightning.setTexture(tex);
+
+            float iconScale = 0.1f;
+            lightning.setScale(iconScale, iconScale);
+
+            // Dolma Efekti
+            float percent = 1.0f - (wizardChargeTimer / wizardMaxChargeTime);
+            if (percent < 0) percent = 0; if (percent > 1) percent = 1;
+
+            sf::Vector2u texSize = tex.getSize();
+            int visibleHeight = static_cast<int>(texSize.y * percent);
+
+            lightning.setTextureRect(sf::IntRect(0, texSize.y - visibleHeight, texSize.x, visibleHeight));
+
+            sf::Vector2f pos = target->getPosition();
+            float topPoint = pos.y - 100.0f;
+            float visualHeight = visibleHeight * iconScale;
+            float totalHeight = texSize.y * iconScale;
+
+            lightning.setPosition(pos.x - (texSize.x * iconScale / 2.0f), topPoint + (totalHeight - visualHeight));
+
+            window.draw(lightning);
+        }
+    }
+}
+
+sf::Texture* Soldier::getIcon() {
+    switch (soldierType) {
+    case SoldierTypes::Barbarian:
+        // Þimdilik birimlerin kendi görsellerini ikon olarak kullanalým
+        return &AssetManager::getTexture("assets/units/barbarian.png");
+    case SoldierTypes::Archer:
+        return &AssetManager::getTexture("assets/units/archer.png");
+    case SoldierTypes::Wizard:
+        return &AssetManager::getTexture("assets/units/wizard.png");
+    default:
+        return &AssetManager::getTexture("assets/units/barbarian.png");
     }
 }

@@ -116,15 +116,27 @@ bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& ma
 }
 
 void Unit::render(sf::RenderWindow& window) {
-    if (isSelected) {
-        shape.setOutlineThickness(2);
-        shape.setOutlineColor(sf::Color::Green);
-    }
-    else {
-        shape.setOutlineThickness(0);
-    }
-    window.draw(shape);
+    // Önce Entity'nin render'ýný çaðýr (Can barý ve sprite için)
     Entity::render(window);
+
+    // --- YENÝ: SALDIRI MENZÝLÝ GÖSTERGESÝ ---
+    // Sadece seçiliyse ve menzili varsa (Köylülerde Range_Melee 20 civarýdýr, onlarý hariç tutabiliriz)
+    if (isSelected && range > 25.0f) { // 25'ten büyükse okçu/büyücü/barbar'dýr
+        sf::CircleShape rangeCircle(range);
+        rangeCircle.setOrigin(range, range); // Merkezi ortala
+        rangeCircle.setPosition(getPosition());
+
+        // Sadece içi boþ çizgi
+        rangeCircle.setFillColor(sf::Color::Transparent);
+        rangeCircle.setOutlineColor(sf::Color(255, 255, 255, 100)); // Yarý saydam beyaz
+        rangeCircle.setOutlineThickness(1.0f);
+        rangeCircle.setPointCount(50); // Pürüzsüz daire
+
+        // Ýzometrik perspektif için biraz bastýr
+        rangeCircle.setScale(1.0f, 0.6f);
+
+        window.draw(rangeCircle);
+    }
 }
 
 Point Unit::getGridPoint() const {

@@ -103,9 +103,10 @@ Game::Game()
     selectionBox.setOutlineThickness(1.0f);
     selectionBox.setOutlineColor(sf::Color::Green);
 
+    //----------------------------- ArkaPlan Müziði ----------------------------------------
     if (bgMusic.openFromFile("assets/sounds/background_music.ogg")) {
         bgMusic.setLoop(true);
-        bgMusic.setVolume(30.f);
+        bgMusic.setVolume(GameRules::BackgroundMusicVolume);
         bgMusic.play();
     }
 }
@@ -328,10 +329,9 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
     int gridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
     if (isInBuildMode) {
-        // --- ÝNÞAAT YAPMA ---
+        // --- ÝNÞAAT YAPMA (Mevcut kodlarýn ayný) ---
         GameRules::Cost cost = GameRules::getBuildingCost(pendingBuildingType);
 
-        // Kaynak Kontrolü (Daha temiz hale getirilebilir)
         bool canAfford = localPlayer.getResources()[0] >= cost.wood &&
             localPlayer.getResources()[1] >= cost.gold &&
             localPlayer.getResources()[2] >= cost.stone &&
@@ -361,7 +361,52 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
         }
     }
     else {
-        // --- SEÇÝM KUTUSU BAÞLAT ---
+        bool shift = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+
+        // 1. Önce KENDÝ birimlerimizi seçmeyi dene
+        localPlayer.selectUnit(window, camera, shift);
+
+        // 2. Eðer bizden kimse seçilmediyse (veya boþluða týklandýysa), DÜÞMANLARA bak
+        if (localPlayer.selected_entities.empty()) {
+            enemyPlayer.selectUnit(window, camera, false); // Düþman için shift yok
+
+            if (!enemyPlayer.selected_entities.empty()) {
+                // Düþman seçildi!
+                auto entity = enemyPlayer.selected_entities[0];
+                std::vector<Ability> emptyAbilities; // Düþmanýn yeteneklerini gösterme
+
+                hud.selectedPanel.setVisible(true);
+                hud.selectedPanel.updateSelection(
+                    "[DUSMAN] " + entity->getName(),
+                    (int)entity->health, entity->getMaxHealth(),
+                    entity->getIcon(),
+                    emptyAbilities
+                );
+            }
+            else {
+                hud.selectedPanel.setVisible(false);
+            }
+        }
+        else {
+            // Bizim birimimiz seçildiyse düþman seçimini temizle
+            enemyPlayer.selected_entities.clear();
+
+            // HUD Güncelle (Bizim birim için)
+            auto entity = localPlayer.selected_entities[0];
+            hud.selectedPanel.setVisible(true);
+
+            // Butonlarý güncellemek için handleMouseInput içinde yaptýðýn mantýðý 
+            // burada da çaðýrabilirsin veya HUD update'e býrakabilirsin.
+            // Þimdilik temel bilgileri gösterelim:
+            hud.selectedPanel.updateSelection(
+                entity->getName(),
+                (int)entity->health, entity->getMaxHealth(),
+                entity->getIcon(),
+                entity->getAbilities()
+            );
+        }
+
+        // 3. SEÇÝM KUTUSU BAÞLAT (Her zaman çalýþsýn ki sürükleyebilelim)
         isSelecting = true;
         selectionStartPos = worldPos;
         selectionBox.setPosition(selectionStartPos);
@@ -545,6 +590,7 @@ void Game::update(float dt) {
         }
 
         // --- UI GÜNCELLEME ---
+        // Önce kendi seçimimize bak
         if (!localPlayer.selected_entities.empty()) {
             auto entity = localPlayer.selected_entities[0];
             if (entity->getIsAlive()) {
@@ -554,6 +600,18 @@ void Game::update(float dt) {
             else {
                 hud.selectedPanel.setVisible(false);
                 localPlayer.selected_entities.clear();
+            }
+        }
+        // Eðer bizde seçim yoksa düþmana bak
+        else if (!enemyPlayer.selected_entities.empty()) {
+            auto entity = enemyPlayer.selected_entities[0];
+            if (entity->getIsAlive()) {
+                hud.selectedPanel.setVisible(true);
+                hud.selectedPanel.updateHealth((int)entity->health, entity->getMaxHealth());
+            }
+            else {
+                hud.selectedPanel.setVisible(false);
+                enemyPlayer.selected_entities.clear();
             }
         }
         else {
@@ -644,6 +702,13 @@ void Game::render() {
         mapManager.draw(window);
         localPlayer.renderEntities(window);
         enemyPlayer.renderEntities(window); //düþman
+
+        for (auto& entity : localPlayer.getEntities()) {
+            if (entity->getIsAlive()) entity->renderEffects(window);
+        }
+        for (auto& entity : enemyPlayer.getEntities()) {
+            if (entity->getIsAlive()) entity->renderEffects(window);
+        }
 
         if (isSelecting) {
             window.draw(selectionBox);
