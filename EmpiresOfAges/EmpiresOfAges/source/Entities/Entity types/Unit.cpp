@@ -74,12 +74,15 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
     nextPosX.x += velocity.x;
 
     if (checkCollision(nextPosX, mapData, width, height)) {
-        if (velocity.y != 0) velocity.y = (velocity.y > 0 ? 1.f : -1.f) * travelSpeed * dt;
+        // X ekseninde çarptýk.
+        // HATA OLABÝLECEK KISIM: velocity.y'yi deðiþtiren kodu kaldýr.
+        // Sadece X hareketini yapma (else bloðuna girmez), Y hareketi aþaðýda zaten iþlenecek.
     }
     else {
         currentPos.x = nextPosX.x;
     }
 
+    // Y EKSENÝ HAREKETÝ
     sf::Vector2f nextPosY = currentPos;
     nextPosY.y += velocity.y;
 
@@ -88,7 +91,6 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
     }
 
     this->setPosition(currentPos);
-    //shape.setPosition(currentPos);
 }
 
 bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& mapData, int width, int height) {
