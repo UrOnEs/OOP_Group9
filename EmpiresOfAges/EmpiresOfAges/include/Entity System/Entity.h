@@ -150,8 +150,39 @@ public:
             window.draw(shape);
         }
 
-        // (Eðer varsa can barý vb. burada çizilir)
+        if (isAlive && (isSelected || health < getMaxHealth())) {
+            float barWidth = 40.0f;
+            float barHeight = 5.0f;
+
+            sf::Vector2f pos = getPosition();
+            // Sprite'ýn tepesine koy
+            if (hasTexture) pos.y -= sprite.getGlobalBounds().height / 2.0f + 10.0f;
+            else pos.y -= 25.0f;
+
+            // Arka Plan (Kýrmýzý)
+            sf::RectangleShape backBar(sf::Vector2f(barWidth, barHeight));
+            backBar.setOrigin(barWidth / 2, barHeight / 2);
+            backBar.setPosition(pos);
+            backBar.setFillColor(sf::Color(100, 0, 0));
+
+            // Ön Plan (Yeþil/Sarý)
+            float hpPercent = (float)health / getMaxHealth();
+            if (hpPercent < 0) hpPercent = 0;
+
+            sf::RectangleShape frontBar(sf::Vector2f(barWidth * hpPercent, barHeight));
+            frontBar.setOrigin(barWidth / 2, barHeight / 2);
+            frontBar.setPosition(pos.x - (barWidth * (1 - hpPercent)) / 2.0f, pos.y); // Soldan hizala
+
+            if (hpPercent > 0.5f) frontBar.setFillColor(sf::Color::Green);
+            else if (hpPercent > 0.25f) frontBar.setFillColor(sf::Color::Yellow);
+            else frontBar.setFillColor(sf::Color::Red);
+
+            window.draw(backBar);
+            window.draw(frontBar);
+        }
     }
+
+    virtual void renderEffects(sf::RenderWindow& window) {}
 
     // --- DURUM YÖNETÝMÝ ---
 
