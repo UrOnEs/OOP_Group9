@@ -83,7 +83,6 @@ Game::Game()
         // Düþman entity listesine ekle (Render ve logic için)
         enemyPlayer.addEntity(enemyBarracks);
 
-        // 2. DÜZELTME: 'enemyBarracks->setPosition(...)' SATIRINI SÝL.
         // MapManager zaten onu doðru yere (Grid 15,5'e) koydu. 
         // Eðer setPosition ile oynarsan binanýn görüntüsü kayar ama duvarlarý eski yerinde kalýr.
 
@@ -431,7 +430,7 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
     std::shared_ptr<Building> clickedBuilding = mapManager.getBuildingAt(gridX, gridY);
     auto resGen = std::dynamic_pointer_cast<ResourceGenerator>(clickedBuilding);
 
-    // Týklanan sey bir UNIT mi ?
+    // 2. Týklanan sey bir UNIT mi? (Düþman kontrolü)
     std::shared_ptr<Entity> clickedEnemyUnit = nullptr;
     for (auto& ent : enemyPlayer.getEntities()) {
 
@@ -447,6 +446,8 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             break;
         }
     }
+
+    // --- KARAR MEKANÝZMASI ---
 
     if (clickedBuilding) {
         // --- A. BÝR BÝNAYA TIKLANDI ---
@@ -475,7 +476,7 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
 
     }
     else if (clickedEnemyUnit) {
-        // --- DÜÞMAN ASKERÝNE SALDIRI -------------
+        // --- B. DÜÞMAN ASKERÝNE SALDIRI ---
         std::cout << "[GAME] Dusman askerine saldiri emri!\n";
         for (auto& entity : localPlayer.selected_entities) {
             if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
@@ -484,20 +485,16 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
         }
     }
     else {
-        // --- B. BOÞ YERE TIKLANDI (Hareket Et) ---
+        // --- C. BOÞ YERE TIKLANDI (FORCE MOVE / HAREKET) ---
 
-        // 1. Köylüleri durdur (Hasatý býrak)
+        // 1. Köylüleri durdur
         for (auto& entity : localPlayer.selected_entities) {
             if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
                 villager->stopHarvesting();
             }
-            // 2. Askerlerin hedefini sil (Saldýrýyý býrak)
-            if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                soldier->clearTarget();
-            }
         }
 
-        // 3. Pathfinding ve Hareket (Gruplu Hareket Mantýðý)
+        // 2. Asker Hareket Mantýðý
         if (gridX >= 0 && gridX < mapManager.getWidth() &&
             gridY >= 0 && gridY < mapManager.getHeight()) {
 
@@ -505,41 +502,55 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             std::set<Point> reservedTiles;
             const auto& levelData = mapManager.getLevelData();
 
-            // Kendi askerlerimiz üst üste binmesin diye dolu yerleri iþaretle
+            // Sadece sabit engelleri ve "seçili olmayan" birimleri rezerve et.
+            // Seçili olanlar zaten yürüyeceði için birbirini engellemesin.
             for (const auto& entity : localPlayer.getEntities()) {
-                if (auto u = std::dynamic_pointer_cast<Unit>(entity)) {
-                    if (!u->isSelected) reservedTiles.insert(u->getGridPoint());
+                if (entity->getIsAlive() && !entity->isSelected) {
+                    reservedTiles.insert(entity->getGridPoint());
                 }
             }
 
-            // Seçili birimlere yol çiz
             for (auto& entity : localPlayer.selected_entities) {
                 if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
-                    // Her birim için en yakýn boþ kareyi bul
+
+                    // Askerler için özel durum ayarla
+                    if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
+                        soldier->setForceMove(); // State = Moving yapar
+                    }
+
+                    // Hedef bul
                     Point specificGridTarget = PathFinder::findClosestFreeTile(
                         baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
                     );
-                    reservedTiles.insert(specificGridTarget); // Orayý rezerve et
+                    reservedTiles.insert(specificGridTarget); // Burayý kaptýk
 
-                    // Yolu hesapla
+                    // Yol Hesapla
                     std::vector<Point> gridPath = PathFinder::findPath(
                         unit->getGridPoint(), specificGridTarget, levelData, mapManager.getWidth(), mapManager.getHeight()
                     );
 
-                    // Dünya koordinatýna çevir
-                    std::vector<sf::Vector2f> worldPath;
-                    for (const auto& p : gridPath) {
-                        float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                        float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
-                        worldPath.push_back(sf::Vector2f(px, py));
+                    // Eðer yol bulunamadýysa (boþ vektörse) hareket etmeyecektir.
+                    // Bu durumda askeri Moving modundan çýkarmamýz lazým yoksa takýlý kalýr.
+                    if (gridPath.empty()) {
+                        if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
+                            soldier->state = SoldierState::Idle; // Yol yoksa IDLE kal
+                        }
                     }
-                    unit->setPath(worldPath);
+                    else {
+                        // Yol bulundu, çevir ve ata
+                        std::vector<sf::Vector2f> worldPath;
+                        for (const auto& p : gridPath) {
+                            float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                            float py = p.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+                            worldPath.push_back(sf::Vector2f(px, py));
+                        }
+                        unit->setPath(worldPath);
+                    }
                 }
             }
         }
     }
 }
-
 void Game::update(float dt) {
     networkManager.update(dt);
     if (stateManager.getState() == GameState::Playing) {
@@ -571,10 +582,10 @@ void Game::update(float dt) {
 
             // 4. Binalar
             if (auto barracks = std::dynamic_pointer_cast<Barracks>(entity)) {
-                ProductionSystem::update(localPlayer, *barracks, dt);
+                ProductionSystem::update(localPlayer, *barracks, dt, mapManager);
             }
             if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity)) {
-                ProductionSystem::updateTC(localPlayer, *tc, dt);
+                ProductionSystem::updateTC(localPlayer, *tc, dt, mapManager);
             }
         }
 
@@ -648,17 +659,7 @@ void Game::update(float dt) {
                     }
 
                     // B. Üretim Bittiyse Askeri Çýkar
-                    if (barracks->isReady()) {
-                        SoldierTypes type = barracks->finishTraining();
-
-                        std::shared_ptr<Soldier> newEnemy = std::make_shared<Soldier>();
-                        newEnemy->setType(type);
-                        newEnemy->setTeam(TeamColors::Red);
-                        newEnemy->setPosition(barracks->getPosition() + sf::Vector2f(0, 80));
-
-                        enemyPlayer.addEntity(newEnemy);
-                        std::cout << "[DUSMAN] Yeni asker sahaya indi!\n";
-                    }
+                    ProductionSystem::update(enemyPlayer, *barracks, dt, mapManager);
                 }
             }
         }

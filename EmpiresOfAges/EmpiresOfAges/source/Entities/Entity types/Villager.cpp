@@ -74,7 +74,7 @@ void Villager::stopHarvesting() {
 // --- ANA DÖNGÜ (State Machine) ---
 void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player) {
 
-    // 0. Durum: GARRISONED (Binanýn Ýçinde - Saklanmýþ)
+    // 0. GARRISON (Saklanma Durumu)
     if (state == VillagerState::Garrisoned) {
         auto res = targetResource.lock();
         if (!res || !res->getIsAlive()) {
@@ -84,70 +84,60 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
         return;
     }
 
-    // 1. Durum: KAYNAÐA GÝDÝYOR
+    // 1. KAYNAÐA GÝDÝÞ
     if (state == VillagerState::MovingToResource) {
         auto res = targetResource.lock();
-
-        if (!res || !res->getIsAlive()) {
-            findNearestResource(buildings);
-            return;
-        }
+        if (!res || !res->getIsAlive()) { findNearestResource(buildings); return; }
 
         sf::Vector2f diff = res->getPosition() - getPosition();
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
+        // Kaynaðýn boyutuna göre durma mesafesi ayarla
         float targetRadius = res->getBounds().width / 2.0f;
-        if (targetRadius < 32.0f) targetRadius = 32.0f;
+        if (targetRadius < 20.0f) targetRadius = 20.0f;
 
-        float interactionDist = targetRadius + 15.0f;
+        float stopDist = targetRadius + 10.0f; // Tam dibine girme
 
-        if (dist <= interactionDist) {
+        if (dist <= stopDist) {
+            // Çiftlik kontrolü
             if (res->buildingType == BuildTypes::Farm) {
                 if (res->garrisonWorker()) {
                     state = VillagerState::Garrisoned;
-                    m_path.clear();
-                    m_isMoving = false;
+                    m_path.clear(); m_isMoving = false;
                     isSelected = false;
                 }
-                else {
-                    stopHarvesting();
-                }
+                else stopHarvesting();
             }
-            // --- NORMAL KAYNAK (AÐAÇ/MADEN/TAÞ) ---
+            // Normal Kaynak
             else {
                 if (res->garrisonWorker()) {
                     state = VillagerState::Harvesting;
-                    m_path.clear();
-                    m_isMoving = false;
+                    m_path.clear(); m_isMoving = false; // Hareketi durdur
                 }
-                else {
-                    findNearestResource(buildings);
-                }
+                else findNearestResource(buildings);
             }
+        }
+        else {
+            // Eðer yürüme emri yoksa tekrar yürüt
+            if (!m_isMoving) moveTo(res->getPosition());
         }
     }
 
-    // 2. Durum: KAYNAK TOPLUYOR (Harvesting)
+    // 2. HASAT (Harvesting)
     else if (state == VillagerState::Harvesting) {
         auto res = targetResource.lock();
-
         if (!res || !res->getIsAlive()) {
-            if (currentCargo > 0) {
-                state = VillagerState::ReturningToBase;
-            }
-            else {
-                findNearestResource(buildings);
-            }
+            if (currentCargo > 0) state = VillagerState::ReturningToBase;
+            else findNearestResource(buildings);
             return;
         }
 
         int amount = res->updateGeneration(dt);
         if (amount > 0) {
             currentCargo += amount;
-
             if (currentCargo >= maxCargo) {
                 currentCargo = maxCargo;
-                res->releaseWorker();
+                res->releaseWorker(); // Kaynaktan çýk
 
                 auto base = findNearestBase(buildings);
                 if (base) {
@@ -156,35 +146,30 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
                     moveTo(base->getPosition());
                 }
                 else {
-                    std::cout << "[UYARI] Depo yok! Bekliyorum.\n";
                     stopHarvesting();
                 }
             }
         }
     }
 
-    // 3. Durum: EVE DÖNÜYOR (Returning)
+    // 3. EVE DÖNÜÞ (Returning)
     else if (state == VillagerState::ReturningToBase) {
         auto base = targetBase.lock();
-
+        // Base yýkýldýysa yenisini bul
         if (!base || !base->getIsAlive()) {
             base = findNearestBase(buildings);
-            if (base) {
-                targetBase = base;
-                moveTo(base->getPosition());
-            }
+            if (base) { targetBase = base; moveTo(base->getPosition()); }
             return;
         }
 
         sf::Vector2f diff = base->getPosition() - getPosition();
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
 
-        float buildingRadius = base->getBounds().width / 2.0f;
-        if (buildingRadius < 32.0f) buildingRadius = 32.0f;
-        float interactionRange = buildingRadius + 50.0f;
+        // Base yarýçapý (TownCenter büyük olduðu için ~90-100px)
+        float baseRadius = base->getBounds().width / 2.0f;
 
-        if (dist <= interactionRange) {
-            // Boþalt
+        if (dist <= baseRadius + 40.0f) {
+            // Kaynak Ekleme
             if (cargoType == ResourceType::Wood) player.addWood(currentCargo);
             else if (cargoType == ResourceType::Food) player.addFood(currentCargo);
             else if (cargoType == ResourceType::Gold) player.addGold(currentCargo);
@@ -192,7 +177,7 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
 
             currentCargo = 0;
 
-            // Tekrar Kaynaða Dön
+            // Geri Dön
             auto res = targetResource.lock();
             if (res && res->getIsAlive() && !res->isFull()) {
                 state = VillagerState::MovingToResource;
@@ -201,6 +186,10 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
             else {
                 findNearestResource(buildings);
             }
+        }
+        else {
+            // Takýldýysa tekrar yürüt
+            if (!m_isMoving) moveTo(base->getPosition());
         }
     }
 }

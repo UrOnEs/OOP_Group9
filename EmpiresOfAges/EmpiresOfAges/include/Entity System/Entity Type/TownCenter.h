@@ -19,12 +19,12 @@ public:
 
     int getMaxHealth() const override { return (int)GameRules::HP_TownCenter; }
 
-    void startProduction() {
+    void startProduction(float duration) {
         if (isProducing) {
             queuedVillagers++;
         }
         else {
-            productionDuration = GameRules::Time_Build_Villager;
+            productionDuration = duration; // Gelen süreyi kullan
             productionTimer = productionDuration;
             isProducing = true;
         }

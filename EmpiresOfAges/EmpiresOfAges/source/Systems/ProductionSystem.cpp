@@ -3,142 +3,129 @@
 #include "Entity System/Entity Type/Soldier.h"
 #include "Entity System/Entity Type/Villager.h"
 #include "Entity System/Entity Type/TownCenter.h"
+#include "Map/MapManager.h" 
+#include "Map/PathFinder.h"
 #include <iostream>
-
-// ======================================================================================
-//                                  ASKER ÜRETÝMÝ (BARRACKS)
-// ======================================================================================
+#include <set>
 
 bool ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
+    if (barracks.getIsProducing()) return false;
 
-    // 1. Nüfus Limiti Kontrolü
-    // (Ýdealde bekleyenler de sayýlmalý ama þimdilik mevcut askerlere bakýyoruz)
-    if (player.getUnitCount() >= player.getUnitLimit()) {
-        std::cout << "[INFO] Nufus limiti dolu! Ev insa etmelisin.\n";
-        return false;
-    }
+    // Maliyet Kontrolü
+    GameRules::Cost cost;
+    if (unitType == SoldierTypes::Barbarian) cost = GameRules::getUnitCost(SoldierTypes::Barbarian);
+    else if (unitType == SoldierTypes::Archer) cost = GameRules::getUnitCost(SoldierTypes::Archer);
+    else if (unitType == SoldierTypes::Wizard) cost = GameRules::getUnitCost(SoldierTypes::Wizard);
+    else return false;
 
-    // 2. Maliyet Hesaplama
-    GameRules::Cost cost = GameRules::getUnitCost(unitType);
+    std::vector<int> res = player.getResources();
+    if (res[0] >= cost.wood && res[1] >= cost.gold && res[2] >= cost.stone && res[3] >= cost.food) {
+        player.addWood(-cost.wood);
+        player.addGold(-cost.gold);
+        player.addStone(-cost.stone);
+        player.addFood(-cost.food);
 
-    // 3. Kaynak Kontrolü
-    std::vector<int> resources = player.getResources(); // { Wood, Gold, Stone, Food }
+        float time = 10.0f;
+        if (unitType == SoldierTypes::Barbarian) time = 5.0f;
 
-    // Wood=0, Gold=1, Stone=2, Food=3 (ResourceManager sýrasýna göre)
-    bool hasWood = resources[0] >= cost.wood;
-    bool hasGold = resources[1] >= cost.gold;
-    bool hasFood = resources[3] >= cost.food;
-
-    if (hasWood && hasGold && hasFood) {
-
-        // 4. Ödeme Yap (Kaynaklarý Düþ)
-        if (cost.wood > 0) player.addWood(-cost.wood);
-        if (cost.gold > 0) player.addGold(-cost.gold);
-        if (cost.food > 0) player.addFood(-cost.food);
-
-        // 5. Üretimi Baþlat veya Sýraya Ekle
-        // Barracks sýnýfý, eðer meþgulse bu isteði otomatik olarak kuyruða (queue) atacak þekilde güncellendi.
-        float buildTime = GameRules::Time_Build_Soldier;
-        barracks.startTraining(unitType, buildTime);
-
-        std::cout << "[BASARILI] Asker uretim emri verildi. (Tur: " << (int)unitType << ")\n";
+        barracks.startTraining(unitType, time);
         return true;
     }
-
-    std::cout << "[HATA] Yetersiz Kaynak! (Gereken: "
-        << cost.wood << " Odun, " << cost.food << " Yemek, " << cost.gold << " Altin)\n";
     return false;
 }
 
-void ProductionSystem::update(Player& player, Barracks& barracks, float dt) {
-    // Üretim yoksa iþlem yapma
+// ======================================================================================
+//                                  ASKER GÜNCELLEME VE SPAWN
+// ======================================================================================
+void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapManager& mapManager) {
     if (!barracks.getIsProducing()) return;
 
-    // Sayacý azalt
     barracks.updateTimer(dt);
 
-    // Süre bitti mi?
     if (barracks.isReady()) {
-
-        // 1. Üretilen türü al (Bina sýnýfý bu aþamada sýradaki üretime otomatik geçer)
         SoldierTypes type = barracks.finishTraining();
 
-        // 2. Yeni Asker Nesnesini Oluþtur
         std::shared_ptr<Soldier> newSoldier = std::make_shared<Soldier>();
-
-        // 3. Türü ve Özellikleri Ata
-        // (Soldier::setType içinde texture atamasý ve stat ayarlarý yapýlýyor)
         newSoldier->setType(type);
         newSoldier->setTeam(player.getTeamColor());
 
-        // 4. Konumlandýrma (Kýþlanýn kapýsýnda doðsun)
-        sf::Vector2f spawnPos = barracks.getPosition();
-        // Binanýn biraz saðýna ve aþaðýsýna koy (TileSize kadar)
-        spawnPos.x += GameRules::TileSize * 2.5f;
-        spawnPos.y += GameRules::TileSize * 2.5f;
-        newSoldier->setPosition(spawnPos);
+        // --- AKILLI SPAWN SÝSTEMÝ (DÜZELTÝLDÝ) ---
+        Point buildingGrid = barracks.getGridPoint();
 
-        // 5. Oyuncunun ordusuna ekle
+        // 1. REZERVE LÝSTESÝNÝ DOLDUR
+        // Sadece duvarlara deðil, haritadaki DÝÐER ASKERLERE de bakmalýyýz.
+        std::set<Point> reserved;
+        for (const auto& entity : player.getEntities()) {
+            if (entity->getIsAlive()) {
+                reserved.insert(entity->getGridPoint());
+            }
+        }
+
+        // 2. En yakýn boþ kareyi bul (Artýk askerlerin olduðu kareleri de dolu sayacak)
+        Point spawnGrid = PathFinder::findClosestFreeTile(
+            buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
+        );
+
+        // 3. Dünya koordinatýna çevir ve yerleþtir
+        float spawnX = spawnGrid.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+        float spawnY = spawnGrid.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+
+        newSoldier->setPosition(sf::Vector2f(spawnX, spawnY));
+        // -----------------------------------------
+
         player.addEntity(newSoldier);
-
-        std::cout << "[INFO] Asker egitimi tamamlandi!\n";
+        std::cout << "[INFO] Asker egitimi tamamlandi! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }
 
-// ======================================================================================
-//                                  KÖYLÜ ÜRETÝMÝ (TOWN CENTER)
-// ======================================================================================
-
 bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
+    if (tc.getIsProducing()) return false;
 
-    // 1. Nüfus Kontrolü
-    if (player.getUnitCount() >= player.getUnitLimit()) {
-        std::cout << "[INFO] Nufus dolu!\n";
-        return false;
-    }
-
-    // 2. Maliyet
-    GameRules::Cost cost = GameRules::Cost_Villager; // {0, 50, 0, 0}
-
-    // 3. Kaynak Kontrolü ve Ödeme
-    if (player.getResources()[3] >= cost.food) { // Index 3 = Food
-
-        // Parayý Peþin Al
-        player.addFood(-cost.food);
-
-        // 4. Üretimi Baþlat (veya Sýraya Ekle)
-        // TownCenter sýnýfý meþgulse sayacý (queuedVillagers) artýracak.
-        tc.startProduction();
-
-        std::cout << "[BASARILI] Koylu uretim emri alindi.\n";
+    // Köylü Maliyeti
+    int foodCost = 50;
+    if (player.getResources()[3] >= foodCost) {
+        player.addFood(-foodCost);
+        tc.startProduction(10.0f); // 10 saniye üretim
         return true;
     }
-
-    std::cout << "[HATA] Yetersiz Yemek! (50 Yemek Gerekli)\n";
     return false;
 }
 
-void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt) {
-    // TownCenter içindeki timer'ý güncelle
-    // (Eðer kuyrukta kimse yoksa ve üretim bittiyse burasý bir þey yapmaz)
+// ======================================================================================
+//                                  KÖYLÜ GÜNCELLEME VE SPAWN
+// ======================================================================================
+void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager) {
     tc.updateTimer(dt);
 
     if (tc.isReady()) {
-        // 1. Üretimi bitir (Sýradaki varsa onu baþlatýr)
         tc.finishProduction();
 
-        // 2. Köylüyü Oluþtur
         std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
-
-        // 3. Konum: Binanýn önüne koy
-        sf::Vector2f spawnPos = tc.getPosition();
-        spawnPos.y += 150.0f; // Biraz aþaðýsý
-        newVillager->setPosition(spawnPos);
         newVillager->setTeam(player.getTeamColor());
 
-        // 4. Oyuncuya Ekle
-        player.addEntity(newVillager);
+        // --- AKILLI SPAWN SÝSTEMÝ (DÜZELTÝLDÝ) ---
+        Point buildingGrid = tc.getGridPoint();
 
-        std::cout << "[INFO] Yeni koylu isbasi yapti!\n";
+        // 1. REZERVE LÝSTESÝNÝ DOLDUR
+        std::set<Point> reserved;
+        for (const auto& entity : player.getEntities()) {
+            if (entity->getIsAlive()) {
+                reserved.insert(entity->getGridPoint());
+            }
+        }
+
+        // 2. En yakýn boþ kareyi bul
+        Point spawnGrid = PathFinder::findClosestFreeTile(
+            buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
+        );
+
+        float spawnX = spawnGrid.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+        float spawnY = spawnGrid.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
+
+        newVillager->setPosition(sf::Vector2f(spawnX, spawnY));
+        // -----------------------------------------
+
+        player.addEntity(newVillager);
+        std::cout << "[INFO] Yeni koylu isbasi yapti! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }
