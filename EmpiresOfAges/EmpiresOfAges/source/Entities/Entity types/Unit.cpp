@@ -15,8 +15,6 @@ Unit::Unit()
     shape.setOrigin(GameRules::UnitRadius, GameRules::UnitRadius);
 }
 
-
-
 // Parametreli Yapýcý
 Unit::Unit(int startGridX, int startGridY, int tileSize)
     : m_tileSize(tileSize), m_isMoving(false), travelSpeed(100.f)

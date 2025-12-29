@@ -15,7 +15,7 @@ private:
     static int counter;
     SoldierTypes soldierType;
 
-    SoldierState state = SoldierState::Idle;
+    
     std::weak_ptr<Entity> targetEntity;
 
     float attackTimer = 0.0f;
@@ -28,6 +28,9 @@ private:
     bool isCharging = false;
 
 public:
+    
+    SoldierState state = SoldierState::Idle;
+    
     Soldier();
     ~Soldier();
 
@@ -44,8 +47,15 @@ public:
     void render(sf::RenderWindow& window) override;
     void renderEffects(sf::RenderWindow& window) override;
 
+    void commandMove(const sf::Vector2f& targetPos);
+    void setForceMove() {
+        clearTarget();
+        state = SoldierState::Moving;
+    }
+
     std::string getName() override;
     sf::Texture* getIcon() override;
+
 };
 
 #endif

@@ -8,6 +8,8 @@
 #include "Game/TeamColors.h"
 #include "UI/Ability.h"
 #include "UI/AssetManager.h"
+#include "Game/GameRules.h" // TileSize için gerekli
+#include "Map/Point.h"      // Point yapýsý için gerekli
 
 class Entity {
 protected:
@@ -74,6 +76,13 @@ public:
 
     virtual sf::Vector2f getPosition() const {
         return hasTexture ? sprite.getPosition() : shape.getPosition();
+    }
+
+    Point getGridPoint() const {
+        return {
+            static_cast<int>(getPosition().x / GameRules::TileSize),
+            static_cast<int>(getPosition().y / GameRules::TileSize)
+        };
     }
 
     // --- GÖRÜNÜM ---
