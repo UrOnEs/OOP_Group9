@@ -34,6 +34,7 @@
     <ClCompile Include="source\UI\UIManager.cpp" />
     <ClCompile Include="source\UI\UIPanel.cpp" />
     <ClCompile Include="source\UI\Ability.cpp" />
+    <ClCompile Include="source\Map\FogOfWar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
@@ -88,5 +89,6 @@
     <ClInclude Include="include\UI\Ability.h" />
     <ClInclude Include="include\Entity System\Entity Type\Stone.h" />
     <ClInclude Include="include\Entity System\Entity Type\Gold.h" />
+    <ClInclude Include="include\Map\FogOfWar.h" />
   </ItemGroup>
 </Project>

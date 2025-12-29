@@ -92,7 +92,11 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
 }
 
 bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& mapData, int width, int height) {
-    float r = shape.getRadius();
+    // --- DÜZELTME: HITBOX TOLERANSI ---
+    // Görsel yarýçapý (r) direkt kullanmak yerine, çarpýþma için biraz küçültüyoruz.
+    // Böylece birimler dar alanlardan veya köþelerden takýlmadan geçebilir.
+    float r = shape.getRadius() * 0.75f; // %25 küçültme (Daha akýcý hareket için)
+
     sf::FloatRect bounds(newPos.x - r, newPos.y - r, r * 2, r * 2);
 
     sf::Vector2f corners[4] = {
@@ -103,11 +107,13 @@ bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& ma
     };
 
     for (const auto& p : corners) {
-        // Burada m_tileSize (64) kullanýldýðý için grid hesabý doðru çalýþýr
         int tx = static_cast<int>(p.x) / m_tileSize;
         int ty = static_cast<int>(p.y) / m_tileSize;
 
+        // Harita dýþý kontrolü
         if (tx < 0 || ty < 0 || tx >= width || ty >= height) return true;
+
+        // Duvar kontrolü
         if (mapData[tx + ty * width] != 0) return true;
     }
     return false;

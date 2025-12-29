@@ -21,5 +21,7 @@ public:
 
     // BFS Algoritmasý ile en yakýn boþ kareyi bulma (Formasyon için)
     static Point findClosestFreeTile(Point target, const std::vector<int>& mapData, int width, int height, const std::set<Point>& reservedTiles);
+
+    static Point findBestTargetTile(Point startNode, Point targetCenter, int targetSizeInTiles, const std::vector<int>& mapData, int width, int height, const std::set<Point>& reservedTiles);
 };
 #endif

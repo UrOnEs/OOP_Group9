@@ -11,6 +11,9 @@
 #include "Entity System/Entity Type/Barracks.h"
 #include "Entity System/Entity Type/TownCenter.h"
 
+// --- YENÝ EKLENEN INCLUDE ---
+#include "Map/FogOfWar.h"
+
 #include <algorithm>
 #include <iostream>
 #include <vector>
@@ -38,6 +41,9 @@ Game::Game()
     stateManager.setState(GameState::Playing);
 
     mapManager.initialize();
+
+    // --- SAVAÞ SÝSÝNÝ BAÞLAT ---
+    m_fogOfWar = std::make_unique<FogOfWar>(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize);
 
     gameDuration = 0.0f;
 
@@ -77,15 +83,8 @@ Game::Game()
     std::shared_ptr<Building> enemyBarracks = mapManager.tryPlaceBuilding(enemyX, enemyY, BuildTypes::Barrack);
 
     if (enemyBarracks) {
-        // 1. DÜZELTME: Takým rengini ata! (Yoksa AI bunu görmez)
         enemyBarracks->setTeam(TeamColors::Red);
-
-        // Düþman entity listesine ekle (Render ve logic için)
         enemyPlayer.addEntity(enemyBarracks);
-
-        // MapManager zaten onu doðru yere (Grid 15,5'e) koydu. 
-        // Eðer setPosition ile oynarsan binanýn görüntüsü kayar ama duvarlarý eski yerinde kalýr.
-
         std::cout << "[SISTEM] Dusman kislasi (Kirmizi) haritaya eklendi.\n";
     }
     else {
@@ -283,7 +282,6 @@ void Game::handleMouseInput(const sf::Event& event) {
                 // Buton Callback'lerini Ayarla (Lambda ile)
                 std::vector<Ability> uiAbilities = entity->getAbilities();
                 for (auto& ab : uiAbilities) {
-                    // Buradaki ID'leri Ability eklerken verdiðin ID'lere göre ayarla
                     if (ab.getId() == 1) ab.setOnClick([this]() { this->enterBuildMode(BuildTypes::House, "assets/buildings/house.png"); });
                     else if (ab.getId() == 2) ab.setOnClick([this]() { this->enterBuildMode(BuildTypes::Barrack, "assets/buildings/barrack.png"); });
                     else if (ab.getId() == 3) ab.setOnClick([this]() { this->enterBuildMode(BuildTypes::Farm, "assets/buildings/mill.png"); });
@@ -305,7 +303,6 @@ void Game::handleMouseInput(const sf::Event& event) {
                         if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
                             ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard); });
                     }
-                    
                 }
 
                 hud.selectedPanel.updateSelection(
@@ -328,7 +325,7 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
     int gridY = static_cast<int>(worldPos.y / mapManager.getTileSize());
 
     if (isInBuildMode) {
-        // --- ÝNÞAAT YAPMA (Mevcut kodlarýn ayný) ---
+        // --- ÝNÞAAT YAPMA ---
         GameRules::Cost cost = GameRules::getBuildingCost(pendingBuildingType);
 
         bool canAfford = localPlayer.getResources()[0] >= cost.wood &&
@@ -370,9 +367,20 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
             enemyPlayer.selectUnit(window, camera, false); // Düþman için shift yok
 
             if (!enemyPlayer.selected_entities.empty()) {
-                // Düþman seçildi!
                 auto entity = enemyPlayer.selected_entities[0];
-                std::vector<Ability> emptyAbilities; // Düþmanýn yeteneklerini gösterme
+
+                // DÜZELTME: Eðer düþman görünmezse (sis içindeyse) seçimi iptal et
+                if (m_fogOfWar && !m_fogOfWar->isVisible(entity->getPosition().x, entity->getPosition().y)) {
+                    // Bina deðilse ve görünmüyorsa seçme. (Binalar explored alanda görülebilir, bu basit kontrol þimdilik yeterli)
+                    if (!std::dynamic_pointer_cast<Building>(entity)) {
+                        enemyPlayer.selected_entities.clear();
+                        hud.selectedPanel.setVisible(false);
+                        return; // Fonksiyondan çýk
+                    }
+                }
+
+                // Düþman seçildi ve görünür durumda
+                std::vector<Ability> emptyAbilities;
 
                 hud.selectedPanel.setVisible(true);
                 hud.selectedPanel.updateSelection(
@@ -394,9 +402,6 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
             auto entity = localPlayer.selected_entities[0];
             hud.selectedPanel.setVisible(true);
 
-            // Butonlarý güncellemek için handleMouseInput içinde yaptýðýn mantýðý 
-            // burada da çaðýrabilirsin veya HUD update'e býrakabilirsin.
-            // Þimdilik temel bilgileri gösterelim:
             hud.selectedPanel.updateSelection(
                 entity->getName(),
                 (int)entity->health, entity->getMaxHealth(),
@@ -405,7 +410,7 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
             );
         }
 
-        // 3. SEÇÝM KUTUSU BAÞLAT (Her zaman çalýþsýn ki sürükleyebilelim)
+        // 3. SEÇÝM KUTUSU BAÞLAT
         isSelecting = true;
         selectionStartPos = worldPos;
         selectionBox.setPosition(selectionStartPos);
@@ -434,11 +439,8 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
     std::shared_ptr<Entity> clickedEnemyUnit = nullptr;
     for (auto& ent : enemyPlayer.getEntities()) {
 
-        // --- SADECE CANLI OLANLARI HEDEF AL ---
         if (!ent->getIsAlive()) continue;
-        // ------------------------------------------------
 
-        // Týklanan noktaya 20 piksel yakýnlýkta bir düþman var mý?
         sf::Vector2f diff = ent->getPosition() - worldPos;
         float distSq = diff.x * diff.x + diff.y * diff.y;
         if (distSq < 20.0f * 20.0f) { // 20px yarýçap
@@ -446,6 +448,17 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             break;
         }
     }
+
+    // --- SAVAÞ SÝSÝ KONTROLÜ ---
+    // Eðer týklanan düþman askeri þu an görünmüyorsa (isVisible == false), ona týklanmamýþ sayarýz.
+    // Böylece oyuncu karanlýða týkladýðýnda oraya "Yürüme" emri verir, görünmez adama saldýrmaz.
+    if (clickedEnemyUnit && m_fogOfWar) {
+        if (!m_fogOfWar->isVisible(clickedEnemyUnit->getPosition().x, clickedEnemyUnit->getPosition().y)) {
+            clickedEnemyUnit = nullptr;
+        }
+    }
+    // Not: Binalar için de benzer kontrol yapýlabilir ama bina "Unexplored" (Simsiyah) alandaysa zaten týklayan kiþi göremez.
+    // "Explored" (Gri) alandaysa yerini bildiði için saldýrabilir. Bu yüzden bina kontrolü eklemiyoruz.
 
     // --- KARAR MEKANÝZMASI ---
 
@@ -502,8 +515,6 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             std::set<Point> reservedTiles;
             const auto& levelData = mapManager.getLevelData();
 
-            // Sadece sabit engelleri ve "seçili olmayan" birimleri rezerve et.
-            // Seçili olanlar zaten yürüyeceði için birbirini engellemesin.
             for (const auto& entity : localPlayer.getEntities()) {
                 if (entity->getIsAlive() && !entity->isSelected) {
                     reservedTiles.insert(entity->getGridPoint());
@@ -513,31 +524,25 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             for (auto& entity : localPlayer.selected_entities) {
                 if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
 
-                    // Askerler için özel durum ayarla
                     if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                        soldier->setForceMove(); // State = Moving yapar
+                        soldier->setForceMove();
                     }
 
-                    // Hedef bul
                     Point specificGridTarget = PathFinder::findClosestFreeTile(
                         baseTarget, levelData, mapManager.getWidth(), mapManager.getHeight(), reservedTiles
                     );
-                    reservedTiles.insert(specificGridTarget); // Burayý kaptýk
+                    reservedTiles.insert(specificGridTarget);
 
-                    // Yol Hesapla
                     std::vector<Point> gridPath = PathFinder::findPath(
                         unit->getGridPoint(), specificGridTarget, levelData, mapManager.getWidth(), mapManager.getHeight()
                     );
 
-                    // Eðer yol bulunamadýysa (boþ vektörse) hareket etmeyecektir.
-                    // Bu durumda askeri Moving modundan çýkarmamýz lazým yoksa takýlý kalýr.
                     if (gridPath.empty()) {
                         if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                            soldier->state = SoldierState::Idle; // Yol yoksa IDLE kal
+                            soldier->state = SoldierState::Idle;
                         }
                     }
                     else {
-                        // Yol bulundu, çevir ve ata
                         std::vector<sf::Vector2f> worldPath;
                         for (const auto& p : gridPath) {
                             float px = p.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
@@ -554,6 +559,12 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
 void Game::update(float dt) {
     networkManager.update(dt);
     if (stateManager.getState() == GameState::Playing) {
+
+        // --- SAVAÞ SÝSÝ GÜNCELLEMESÝ ---
+        if (m_fogOfWar) {
+            m_fogOfWar->update(localPlayer.getEntities());
+        }
+
         handleInput(dt);
         const auto& levelData = mapManager.getLevelData();
         int mapW = mapManager.getWidth();
@@ -563,22 +574,23 @@ void Game::update(float dt) {
         // --- ENTITY GÜNCELLEMELERÝ ---
         for (auto& entity : localPlayer.getEntities()) {
 
-            // 1. Fiziksel Hareket (Hepsi için)
+            // 1. Fiziksel Hareket
             if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
                 unit->update(dt, levelData, mapW, mapH);
             }
 
-            // 2. Köylü Mantýðý
+            // 2. KÖYLÜ MANTIÐI
             if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
-                villager->updateVillager(dt, allBuildings, localPlayer);
+                // ESKÝ HALÝ: villager->updateVillager(dt, allBuildings, localPlayer);
+
+                // YENÝ HALÝ (Harita verilerini ekliyoruz):
+                villager->updateVillager(dt, allBuildings, localPlayer, levelData, mapW, mapH);
             }
 
-            // 3. ASKER MANTIÐI (BU EKSÝKTÝ - SORUNU ÇÖZEN KISIM)
+            // 3. ASKER MANTIÐI
             if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                // Senin askerin -> Düþman Player'ýn birimlerine bakar
                 soldier->updateSoldier(dt, enemyPlayer.getEntities());
             }
-            // -----------------------------------------------------
 
             // 4. Binalar
             if (auto barracks = std::dynamic_pointer_cast<Barracks>(entity)) {
@@ -589,7 +601,7 @@ void Game::update(float dt) {
             }
         }
 
-        // --- KAYNAK SÝSTEMÝ (ÇÝFTLÝKLER) ---
+        // --- KAYNAK SÝSTEMÝ ---
         for (auto& building : mapManager.getBuildings()) {
             if (building) {
                 if (auto resGen = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
@@ -601,7 +613,6 @@ void Game::update(float dt) {
         }
 
         // --- UI GÜNCELLEME ---
-        // Önce kendi seçimimize bak
         if (!localPlayer.selected_entities.empty()) {
             auto entity = localPlayer.selected_entities[0];
             if (entity->getIsAlive()) {
@@ -613,7 +624,6 @@ void Game::update(float dt) {
                 localPlayer.selected_entities.clear();
             }
         }
-        // Eðer bizde seçim yoksa düþmana bak
         else if (!enemyPlayer.selected_entities.empty()) {
             auto entity = enemyPlayer.selected_entities[0];
             if (entity->getIsAlive()) {
@@ -633,62 +643,35 @@ void Game::update(float dt) {
         //                     DÜÞMAN YAPAY ZEKASI (AI)
         // =================================================================
 
-        // 0. Oyun Süresini Artýr
         gameDuration += dt;
 
-        // 1. Düþman Kýþlasýný Bul ve Üretim Yaptýr
         for (auto& building : mapManager.getBuildings()) {
             if (auto barracks = std::dynamic_pointer_cast<Barracks>(building)) {
 
                 if (barracks->getTeam() == TeamColors::Red) {
-
                     barracks->updateTimer(dt);
+                    if (gameDuration < 30.0f) continue;
 
-                    // ---------------- SÜRE KONTROLÜ ---------------------------
-                    // Oyunun ilk saniyeleri boyunca düþman üretim yapmasýn.
-                    // Bu sayede oyuncu geliþmek için zaman kazanýr.
-                    if (gameDuration < 30.0f) {
-                        continue;
-                    }
-                    // -----------------------------------
-
-                    // A. Boþsa Üretime Baþla
                     if (!barracks->getIsProducing()) {
-                        // Artýk üretim yavaþ yavaþ baþlasýn
                         barracks->startTraining(SoldierTypes::Barbarian, 10.0f);
                     }
-
-                    // B. Üretim Bittiyse Askeri Çýkar
                     ProductionSystem::update(enemyPlayer, *barracks, dt, mapManager);
                 }
             }
         }
 
-        // 2. Düþman Askerlerini Yönet
         for (auto& entity : enemyPlayer.getEntities()) {
             if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-
-                // Fiziksel hareket
                 soldier->update(dt, levelData, mapW, mapH);
-
-                // Zihinsel hareket: Düþman askeri -> Senin (LocalPlayer) birimlerine bakar
                 soldier->updateSoldier(dt, localPlayer.getEntities());
-
-                // NOT: Artýk buradaki "targetToAttack" arama döngüsüne gerek kalmadý!
-                // updateSoldier içinde zaten otomatik arýyor.
-                // Eski uzun döngüyü silebilirsin. Kod çok temizlendi.
             }
         }
 
         mapManager.removeDeadBuildings();
-
-        // --- ÖLÜ ASKER TEMÝZLÝÐÝ ---
         localPlayer.removeDeadEntities();
         enemyPlayer.removeDeadEntities();
-        // ----------------------------------
 
-        enemyPlayer.renderEntities(window);
-        localPlayer.renderEntities(window); // Render mantýðý render() içinde ama entity güncellemesi burada
+        // NOT: Render fonksiyonlarý Game::render içine taþýndý.
 
         std::vector<int> res = localPlayer.getResources();
         hud.resourceBar.updateResources(res[0], res[3], res[1], res[2], localPlayer);
@@ -701,16 +684,37 @@ void Game::render() {
 
     if (stateManager.getState() == GameState::Playing) {
         mapManager.draw(window);
-        localPlayer.renderEntities(window);
-        enemyPlayer.renderEntities(window); //düþman
 
+        // 1. Kendi Birimlerimiz (Her zaman çizilir)
+        localPlayer.renderEntities(window);
         for (auto& entity : localPlayer.getEntities()) {
             if (entity->getIsAlive()) entity->renderEffects(window);
         }
+
+        // 2. Düþman Birimleri (Sis Kontrollü)
         for (auto& entity : enemyPlayer.getEntities()) {
-            if (entity->getIsAlive()) entity->renderEffects(window);
+            if (!entity->getIsAlive()) continue;
+
+            bool isVisible = true;
+            if (m_fogOfWar) isVisible = m_fogOfWar->isVisible(entity->getPosition().x, entity->getPosition().y);
+
+            // Bina ise: Her zaman çiz (Sis üzerine binecek ve örtecek)
+            if (std::dynamic_pointer_cast<Building>(entity)) {
+                entity->render(window);
+                // Efektleri sadece görünürse çizmek daha þýk olur
+                if (isVisible) entity->renderEffects(window);
+            }
+            // Asker ise: SADECE Görünürse çiz
+            else if (isVisible) {
+                entity->render(window);
+                entity->renderEffects(window);
+            }
         }
 
+        // 3. Savaþ Sisi (En üst katman)
+        if (m_fogOfWar) m_fogOfWar->draw(window);
+
+        // 4. Seçim Kutusu ve Hayalet Bina
         if (isSelecting) {
             window.draw(selectionBox);
         }
@@ -728,10 +732,6 @@ void Game::render() {
             ghostBuildingSprite.setPosition(snapX, snapY);
             ghostGridRect.setPosition(snapX, snapY);
 
-            // --- YENÝ EKLENEN KISIM: Boyut Kontrolü ---
-            // Geniþlik ve yükseklik artýk type'a göre deðiþiyor (enterBuildMode'da ayarlanýyor)
-            // Ancak burada mapManager->tryPlaceBuilding ile ayný mantýðý kurmalýyýz.
-            // (Basitlik için ghostGridRect boyutunu kullanýyoruz)
             int widthInTiles = (int)(ghostGridRect.getSize().x / mapManager.getTileSize());
             int heightInTiles = (int)(ghostGridRect.getSize().y / mapManager.getTileSize());
 
@@ -825,19 +825,17 @@ void Game::enterBuildMode(BuildTypes type, const std::string& textureName) {
     sf::Texture& tex = AssetManager::getTexture(textureName);
     ghostBuildingSprite.setTexture(tex);
 
-    // --- DEÐÝÞEN KISIM: BOYUTLARI ÝKÝ KATINA ÇIKAR ---
-    float widthInTiles = 4.0f;   // Varsayýlan (Kýþla, Çiftlik vb.)
+    float widthInTiles = 4.0f;
     float heightInTiles = 4.0f;
 
     if (type == BuildTypes::House) {
-        widthInTiles = 2.0f; // Ev
+        widthInTiles = 2.0f;
         heightInTiles = 2.0f;
     }
     else if (type == BuildTypes::TownCenter) {
-        widthInTiles = 6.0f; // Ana Bina
+        widthInTiles = 6.0f;
         heightInTiles = 6.0f;
     }
-    // Diðerleri (Farm, Barrack) 4x4 kalýr
 
     float targetWidth = widthInTiles * mapManager.getTileSize();
     float targetHeight = heightInTiles * mapManager.getTileSize();

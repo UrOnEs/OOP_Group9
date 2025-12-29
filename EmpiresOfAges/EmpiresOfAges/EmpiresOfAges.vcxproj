@@ -149,6 +149,7 @@
     <ClCompile Include="source\Game\GameStateManager.cpp" />
     <ClCompile Include="source\Game\Player.cpp" />
     <ClCompile Include="source\Game\ResourceManager.cpp" />
+    <ClCompile Include="source\Map\FogOfWar.cpp" />
     <ClCompile Include="source\Map\MapManager.cpp" />
     <ClCompile Include="source\Map\PathFinder.cpp" />
     <ClCompile Include="source\Map\TileMap.cpp" />
@@ -199,6 +200,7 @@
     <ClInclude Include="include\Game\ResourceManager.h" />
     <ClInclude Include="include\Game\TeamColors.h" />
     <ClInclude Include="include\Game\WinLoseManager.h" />
+    <ClInclude Include="include\Map\FogOfWar.h" />
     <ClInclude Include="include\Map\MapManager.h" />
     <ClInclude Include="include\Map\PathFinder.h" />
     <ClInclude Include="include\Map\Point.h" />

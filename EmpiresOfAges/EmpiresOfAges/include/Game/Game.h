@@ -11,6 +11,7 @@
 #include "UI/UIManager.h"
 #include "UI/HUD.h"
 #include "Game/GameStateManager.h"
+#include "Map/FogOfWar.h"
 
 // --- ENTITIES ---
 #include "Game/Player.h"
@@ -70,6 +71,9 @@ private:
     bool isSelecting = false;        // Mouse basýlý mý?
     sf::Vector2f selectionStartPos;  // Ýlk týkladýðýmýz yer (Dünya koordinatý)
     sf::RectangleShape selectionBox; // çizilecek yeþil kutu
+
+    //--- SAVAÞ SÝSÝ ---
+    std::unique_ptr<FogOfWar> m_fogOfWar;
 
     //Oyun ne kadar süredir aktif
     float gameDuration = 0.0f;

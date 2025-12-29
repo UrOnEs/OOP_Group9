@@ -42,7 +42,8 @@ public:
 
     void startHarvesting(std::shared_ptr<ResourceGenerator> resource);
     void stopHarvesting();
-    void updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player);
+    void updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player, const std::vector<int>& mapData, int width, int height);
+    void smartMoveTo(sf::Vector2f targetPos, int targetSizeInTiles, const std::vector<int>& mapData, int width, int height);
 
     // Render fonksiyonunu eziyoruz (Ýçerdeyken çizilmesin diye)
     void render(sf::RenderWindow& window) override;

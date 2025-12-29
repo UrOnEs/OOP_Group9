@@ -99,6 +99,12 @@ namespace GameRules {
     constexpr float Time_Build_Soldier = 10.0f;
     constexpr float Time_Harvest_Tick = 1.0f;
 
+    // --- GÜNCELLENEN GÖRÜÞ MENZÝLLERÝ (FOG OF WAR) ---
+    constexpr float Range_Sight_Unit = 250.f;      // Askerler ve Köylüler için standart görüþ
+    constexpr float Range_Sight_Building = 350.f;  // Binalar için geniþ görüþ
+    constexpr float Range_Sight_TownCenter = 600.f;// Ana Bina için ekstra geniþ görüþ (Opsiyonel)
+
+
     // ==========================================
     // 9. OYUN ALANI (BÝNA BOYUTLARI)
     // ==========================================
