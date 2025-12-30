@@ -30,6 +30,8 @@ const unsigned short DISCOVERY_PORT = 50000;
 const std::string SERVER_NAME = "RTS Host Lobby";
 bool g_isEnteringIP = false;
 std::string g_ipInputString = "";
+bool g_isEnteringName = false;
+std::string g_playerCurrentName = "Player";
 
 // --- Oyun Durumlarý (GameState'e taþýndý)---
 
@@ -70,7 +72,7 @@ void startHost() {
 
     g_netManager.discovery()->startServer(GAME_PORT, DISCOVERY_PORT, SERVER_NAME);
     g_lobbyManager = new LobbyManager(&g_netManager, true);
-    g_lobbyManager->start(1, "Host Oyuncu");
+    g_lobbyManager->start(1, g_playerCurrentName);
     g_isHost = true;
 
     g_netManager.server()->setOnPacket([](uint64_t clientId, sf::Packet& pkt) {
@@ -92,7 +94,11 @@ void connectToServer(const LANDiscovery::ServerInfo& info) {
     if (g_netManager.startClient(info.address.toString(), info.port)) {
         g_lobbyManager = new LobbyManager(&g_netManager, false);
         std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
-        g_lobbyManager->start(0, randomName);
+        if (g_playerCurrentName != "Player") {
+            g_lobbyManager->start(0, g_playerCurrentName);
+        }
+        else
+            g_lobbyManager->start(0, randomName);
 
         g_netManager.client()->setOnPacket([](sf::Packet& pkt) {
             if (g_lobbyManager) g_lobbyManager->handleIncomingPacket(0, pkt);
@@ -179,7 +185,7 @@ int main() {
     const int WIN_W = 900;
     const int WIN_H = 600;
 
-    sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "RTS Proje - Final UI");
+    sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "RTS Proje - Final UI", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
 
     // --- 1. Font Yükleme ---
@@ -256,7 +262,13 @@ int main() {
     // Aralarýndaki boþluðu (Y ekseni) eþitliyoruz.
 
     // 1. Ana Menü
+
+
+    bool g_isEnteringName = true;
+    std::string g_nameInputString = "";
+
     UIPanel mainMenu({ 400, 300 }, { 250, 250 });
+
 
     UIButton btnStart;
     btnStart.setPosition(310, 300);       // Ortalamak için ayarlandý
@@ -274,24 +286,27 @@ int main() {
 
     mainMenu.addButton(btnStart);
     mainMenu.addButton(btnExit);
+    
+    
+    if (g_isEnteringName) {
+        sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
+        overlay.setFillColor(sf::Color(0, 0, 0, 180));
+        window.draw(overlay);
+
+        sf::Text prompt("Name:\n(Enter ile onayla)", font, 24);
+        prompt.setPosition(WIN_W / 2 - 150, WIN_H / 2 - 50);
+        window.draw(prompt);
+
+        sf::Text inputDisplay(g_nameInputString + "_", font, 36);
+        inputDisplay.setFillColor(sf::Color::Yellow);
+        inputDisplay.setPosition(WIN_W / 2 - 150, WIN_H / 2 + 20);
+        window.draw(inputDisplay);
+    }
 
     // 2. Seçim Ekraný (Lobby Selection)
     // SOL MENÜ HÝZALAMASI BURADA YAPILDI
 
     UIPanel selectionMenu({ 0, 0 }, { 50, 50 });
-
-    // main.cpp içindeki selectionMenu.addButton kýsýmlarýnýn oraya ekleyin
-    UIButton btnDirectConnect;
-    btnDirectConnect.setPosition(25, 360); // Back butonunun altýna veya arasýna hizalayýn
-    btnDirectConnect.setSize(280, 65);
-    btnDirectConnect.setTexture(btnTexture, 280, 65);
-    btnDirectConnect.setText("IP ile Baglan", menuFont);
-    btnDirectConnect.setCallback([&]() {
-        g_isEnteringIP = true;
-        g_ipInputString = ""; // Kutuyu temizle
-        });
-
-    selectionMenu.addButton(btnDirectConnect);
 
     UIButton btnCreate;
     btnCreate.setPosition(25, 120);          // Ýlk Buton
@@ -317,9 +332,20 @@ int main() {
         g_currentState = GameState::Menu;
         });
 
+    UIButton btnDirectConnect;
+    btnDirectConnect.setPosition(25, 360);
+    btnDirectConnect.setSize(280, 65);
+    btnDirectConnect.setTexture(btnTexture, 280, 65);
+    btnDirectConnect.setText("IP ile Baglan", menuFont);
+    btnDirectConnect.setCallback([&]() {
+        g_isEnteringIP = true;
+        g_ipInputString = ""; // Kutuyu temizle
+        });
+
     selectionMenu.addButton(btnCreate);
     selectionMenu.addButton(btnSearch);
     selectionMenu.addButton(btnBack);
+    selectionMenu.addButton(btnDirectConnect);
 
     // 3. Lobi Odasý Butonlarý
     UIButton btnReady;
@@ -368,6 +394,28 @@ int main() {
         // Event
         sf::Event event;
         while (window.pollEvent(event)) {
+            //NAME Input
+            if (g_isEnteringName) {
+                if (event.type == sf::Event::TextEntered) {
+                    if (event.text.unicode == 8) { // Backspace (Silme)
+                        if (!g_nameInputString.empty()) g_nameInputString.pop_back();
+                    }
+                    else if (event.text.unicode == 13) { // Enter (Onaylama)
+                        if (!g_nameInputString.empty()) {
+                            g_playerCurrentName = g_nameInputString; // Ýsmi kaydet
+                            g_isEnteringName = false; // Paneli kapat
+                            std::cout << "[UI] Isim ayarlandi: " << g_playerCurrentName << std::endl;
+                        }
+                    }
+                    else if (event.text.unicode < 128) { // ASCII Karakterler
+                        // Ýsim çok uzun olmasýn diye sýnýr koyabilirsin (örn: 12 karakter)
+                        if (g_nameInputString.length() < 12) {
+                            g_nameInputString += static_cast<char>(event.text.unicode);
+                        }
+                    }
+                }
+            }
+            //IP Input
             if (g_isEnteringIP) {
                 if (event.type == sf::Event::TextEntered) {
                     if (event.text.unicode == 8) { // Backspace
@@ -515,6 +563,28 @@ int main() {
                 inputDisplay.setPosition(WIN_W / 2 - 150, WIN_H / 2 + 20);
                 window.draw(inputDisplay);
             }
+            //NameInput
+            if (g_isEnteringName) {
+                // Arka planý karart
+                sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
+                overlay.setFillColor(sf::Color(0, 0, 0, 220)); // Arka planý neredeyse tamamen kapat
+                window.draw(overlay);
+
+                // Baþlýk
+                sf::Text prompt("Kullanici Adinizi Girin:\n(Enter ile onayla)", font, 24);
+                sf::FloatRect textRect = prompt.getLocalBounds();
+                prompt.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+                prompt.setPosition(WIN_W / 2.0f, WIN_H / 2.0f - 50);
+                window.draw(prompt);
+
+                // Girilen Yazý
+                sf::Text inputDisplay(g_nameInputString + "_", font, 36);
+                inputDisplay.setFillColor(sf::Color::Cyan); // Farklý renk olsun
+                sf::FloatRect inputRect = inputDisplay.getLocalBounds();
+                inputDisplay.setOrigin(inputRect.left + inputRect.width / 2.0f, inputRect.top + inputRect.height / 2.0f);
+                inputDisplay.setPosition(WIN_W / 2.0f, WIN_H / 2.0f + 20);
+                window.draw(inputDisplay);
+            }
 
         }
         else if (g_currentState == GameState::LobbyRoom) {
@@ -558,8 +628,17 @@ int main() {
             if (g_isHost) {
                 sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
                 sf::Text ipText("Sunucu IP: " + localIP.toString(), font, 20);
-                ipText.setPosition(50, 90); // Baþlýðýn hemen altýna yerleþtiriyoruz
-                ipText.setFillColor(sf::Color::Yellow); // Dikkat çekmesi için sarý yaptýk
+                
+                //NEW ADDED IP PLACEMENT
+                sf::FloatRect textRect = ipText.getLocalBounds();
+
+                // Matematik: (Pencere Geniþliði) - (Yazý Geniþliði) - (Kenar Boþluðu)
+                // window.getSize().x = 900
+                float xPos = window.getSize().x - textRect.width - 60;
+                float yPos = 450; // Sol taraftaki "Lobi (HOST)" yazýsýyla ayný hizada olsun
+
+                ipText.setPosition(xPos, yPos);
+                ipText.setFillColor(sf::Color::Yellow); // Dikkat çeksin diye sarý
                 window.draw(ipText);
             }
             btnReady.draw(window);

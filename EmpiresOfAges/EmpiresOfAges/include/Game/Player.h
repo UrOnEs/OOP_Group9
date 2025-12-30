@@ -50,9 +50,13 @@ public:
 	TeamColors getTeamColor() const { return Color; }
 	void setTeamColor(TeamColors c) { Color = c; }
 
+	void setName(const std::string& name) { m_name = name; }
+	std::string getName() const { return m_name; }
+
 private:
 	
-	
+	std::string m_name = "Player";
+
 	bool hasBase = true;
 
 	TeamColors Color = TeamColors::Blue; //Diðer oyunculardan ayýrt eden özellik 
