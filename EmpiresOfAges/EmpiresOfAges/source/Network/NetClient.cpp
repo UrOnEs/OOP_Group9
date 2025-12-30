@@ -91,16 +91,59 @@ void NetClient::update(float dt) {
     }
 
     // Not: Bu k�sma Keep-Alive/Timeout kontrol� eklenebilir.
+
+    for (auto& pair : m_pendingPackets) {
+        // Eğer paket gönderileli 200ms geçmişse ve hala onay gelmemişse tekrar gönder
+        if (pair.second.timer.getElapsedTime().asMilliseconds() > 200) {
+            m_socket.send(pair.second.packet, m_serverAddress, m_serverPort);
+            pair.second.timer.restart(); // Sayacı sıfırla ki bir 200ms daha beklesin
+        }
+    }
 }
 
 // --- Gelen Paket ��leme ---
 
 void NetClient::handleIncomingPacket(sf::Packet& packet) {
+    // 1. Paketin tipini oku
+    sf::Uint8 typeRaw;
+    if (!(packet >> typeRaw)) return; // Boş paket koruması
+
+    PacketType type = static_cast<PacketType>(typeRaw);
+
+    // 2. ACK İşlemi (Sistem mesajı, oyuna gitmez)
+    if (type == PacketType::ACK) {
+        sf::Uint32 confirmedSeq;
+        if (packet >> confirmedSeq) {
+            m_pendingPackets.erase(confirmedSeq);
+        }
+        return;
+    }
+
+    // 3. Reliable İşlemi
+    if (type == PacketType::Reliable) {
+        sf::Uint32 seq;
+        if (packet >> seq) {
+            // Sunucuya "Aldım" (ACK) gönder
+            sf::Packet ackPkt;
+            ackPkt << static_cast<sf::Uint8>(PacketType::ACK) << seq;
+            m_socket.send(ackPkt, m_serverAddress, m_serverPort);
+
+            // Buradan sonra packet'in imleci payload'ın başındadır.
+            // Oyun mantığına devam et.
+        }
+        else {
+            return; // Hatalı paket
+        }
+    }
+
+    // 4. Unreliable İşlemi
+    // (type == Unreliable ise sadece typeRaw okundu, imleç verinin başında, devam et)
+
+    // 5. Oyun Mantığına Teslim Et
     if (m_onPacketCallback) {
-        // Callback'e paketi ilet. Oyun mant��� burada veriyi okuyacakt�r.
+        // Packet şu an tam olarak Command ID'nin olduğu yerde duruyor.
         m_onPacketCallback(packet);
     }
-    // �rn: sf::Int32 commandType; if (packet >> commandType) { ... }
 }
 
 
@@ -109,12 +152,41 @@ void NetClient::handleIncomingPacket(sf::Packet& packet) {
 bool NetClient::send(sf::Packet& pkt) {
     if (!m_connected) return false;
 
-    // UDP soketi �zerinden, kay�tl� sunucu adresine ve portuna g�nder.
-    sf::Socket::Status status = m_socket.send(pkt, m_serverAddress, m_serverPort);
+    // 1. Yeni bir paket oluştur
+    sf::Packet finalPacket;
 
+    // 2. Başlık ekle (Unreliable = 0)
+    finalPacket << static_cast<sf::Uint8>(PacketType::Unreliable);
+
+    // 3. Orijinal veriyi ekle
+    finalPacket.append(pkt.getData(), pkt.getDataSize());
+
+    // 4. Gönder
+    sf::Socket::Status status = m_socket.send(finalPacket, m_serverAddress, m_serverPort);
     return status == sf::Socket::Done;
 }
 
+// source/Network/NetClient.cpp içine eklenecek fonksiyon
+bool NetClient::sendReliable(sf::Packet& pkt) {
+    if (!m_connected) return false;
+
+    uint32_t seq = ++m_lastSequenceSent;
+
+    sf::Packet reliablePkt;
+    // Header: Reliable (1) + Sequence
+    reliablePkt << static_cast<sf::Uint8>(PacketType::Reliable) << seq;
+
+    // Orijinal veriyi ekle
+    reliablePkt.append(pkt.getData(), pkt.getDataSize());
+
+    PendingPacket pending;
+    pending.packet = reliablePkt;
+    pending.sequence = seq;
+    pending.timer.restart();
+    m_pendingPackets[seq] = pending;
+
+    return m_socket.send(reliablePkt, m_serverAddress, m_serverPort) == sf::Socket::Done;
+}
 // --- Yard�mc� Fonksiyonlar ve Callback'ler ---
 
 bool NetClient::isConnected() const {

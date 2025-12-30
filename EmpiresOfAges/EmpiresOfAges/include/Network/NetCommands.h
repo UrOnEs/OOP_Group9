@@ -2,6 +2,9 @@
 #pragma once
 #pragma once
 #include <cstdint>
+#include <map>
+#include <SFML/System/Clock.hpp>
+#include <SFML/Network/Packet.hpp>
 
 enum class NetCommand : uint16_t {
     None = 0,
@@ -11,4 +14,15 @@ enum class NetCommand : uint16_t {
     IssueOrder = 20,
     ChatMessage = 30,
     // ... oyun ihtiya�lar�na g�re
+};
+enum class PacketType : uint8_t {
+    Unreliable = 0, // Pozisyon güncellemeleri gibi kaybolsa da sorun olmayanlar
+    Reliable = 1,   // Emirler gibi mutlaka gitmesi gerekenler
+    ACK = 2         // "Aldım" onayı
+};
+
+struct PendingPacket {
+    sf::Packet packet;
+    sf::Clock timer;
+    uint32_t sequence;
 };

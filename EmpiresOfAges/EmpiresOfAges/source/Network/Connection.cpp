@@ -28,3 +28,20 @@ std::string Connection::endpoint() const {
     // �rnek: "192.168.1.1:54000"
     return m_address.toString() + ":" + std::to_string(m_port);
 }
+
+void Connection::addPendingPacket(uint32_t seq, sf::Packet pkt) {
+    m_pendingPackets[seq] = { pkt, sf::Clock(), seq };
+}
+
+void Connection::processACK(uint32_t seq) {
+    m_pendingPackets.erase(seq); // Onay geldi, listeden çıkar
+}
+
+void Connection::resendMissingPackets(sf::UdpSocket& socket) {
+    for (auto& pair : m_pendingPackets) {
+        if (pair.second.timer.getElapsedTime().asMilliseconds() > 200) { // 200ms zaman aşımı
+            socket.send(pair.second.packet, m_address, m_port);
+            pair.second.timer.restart();
+        }
+    }
+}

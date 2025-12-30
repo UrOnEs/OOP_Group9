@@ -45,23 +45,72 @@ void NetServer::stop() {
 
 // --- Ana G�ncelleme D�ng�s� ---
 
+// source/Network/NetServer.cpp - update() fonksiyonunu güncelle
 void NetServer::update() {
-    sf::Packet receivedPacket;
-    sf::IpAddress senderAddress;
-    unsigned short senderPort;
+    sf::Packet packet;
+    sf::IpAddress sender;
+    unsigned short port;
 
-    // Engellemeyen modda, bu d�ng� t�m mevcut paketleri bir kerede al�r.
-    while (m_socket.receive(receivedPacket, senderAddress, senderPort) == sf::Socket::Done) {
+    while (m_socket.receive(packet, sender, port) == sf::Socket::Done) {
+        // İstemci ID'sini bul veya oluştur
+        uint64_t clientId = ensureConnectionAndGetId(sender, port);
 
-        // 1. Gelen adrese kar��l�k gelen Client ID'yi bul veya yeni bir tane olu�tur/ata.
-        uint64_t clientId = ensureConnectionAndGetId(senderAddress, senderPort);
+        // 1. Header Oku
+        sf::Uint8 typeRaw;
+        if (packet >> typeRaw) {
+            PacketType type = static_cast<PacketType>(typeRaw);
 
-        // 2. Paketi i�le ve callback fonksiyonunu �a��r.
-        handleIncomingPacket(receivedPacket, senderAddress, senderPort);
+            // --- ACK KONTROLÜ ---
+            if (type == PacketType::ACK) {
+                sf::Uint32 seq;
+                if (packet >> seq) {
+                    if (m_connections.find(clientId) != m_connections.end()) {
+                        m_connections[clientId]->processACK(seq);
+                    }
+                }
+                // ACK işlendi, sonraki pakete geç
+                packet.clear();
+                continue;
+            }
 
-        // �NEML�: SFML, receive() sonras�nda paketin i�eri�ini temizlemez. 
-        // D�ng�n�n bir sonraki iterasyonunda yeni paketi almadan �nce paketin yeniden kullan�ma haz�r olmas� gerekir.
-        receivedPacket.clear();
+            // --- RELIABLE KONTROLÜ ---
+            if (type == PacketType::Reliable) {
+                sf::Uint32 seq;
+                if (packet >> seq) {
+                    // ACK Cevabı Gönder
+                    sf::Packet ackPkt;
+                    ackPkt << static_cast<sf::Uint8>(PacketType::ACK) << seq;
+                    // Not: ACK paketlerini reliable sarmaya gerek yok, direkt gönder
+                    m_connections[clientId]->send(m_socket, ackPkt);
+                }
+                else {
+                    packet.clear(); continue; // Hatalı paket
+                }
+            }
+
+            // --- UNRELIABLE ---
+            // Unreliable ise sadece type okundu, veri hazır.
+
+            // 2. Paketin geri kalanını (Payload) oyun mantığına ver
+            // handleIncomingPacket fonksiyonu ID bulup callback'i çağırır.
+            // Ancak handleIncomingPacket tekrar ensureConnection yapmasın diye
+            // direkt callback'i çağırmak daha performanslıdır ama yapıyı bozmayalım:
+
+            // Mevcut yapıda handleIncomingPacket fonksiyonunu modifiye etmeden kullanmak için:
+            // "handleIncomingPacket" fonksiyonu "endpointToId" kullanıyor.
+            // Paket imleci şu an verinin (Command) başında.
+
+            if (m_onPacketCallback) {
+                m_onPacketCallback(clientId, packet);
+            }
+        }
+
+        packet.clear();
+    }
+
+    // Bekleyen paketleri tekrar gönder
+    for (auto& pair : m_connections) {
+        pair.second->resendMissingPackets(m_socket);
     }
 }
 
@@ -124,11 +173,15 @@ void NetServer::handleIncomingPacket(sf::Packet& packet, const sf::IpAddress& se
 bool NetServer::sendTo(uint64_t clientId, sf::Packet& pkt) {
     auto it = m_connections.find(clientId);
     if (it != m_connections.end()) {
-        // �lgili Connection nesnesi �zerinden, NetServer'�n tek soketini kullanarak g�nderim yap.
-        sf::Socket::Status status = it->second->send(m_socket, pkt);
+
+        // Sarmalayıcı paket
+        sf::Packet finalPacket;
+        finalPacket << static_cast<sf::Uint8>(PacketType::Unreliable);
+        finalPacket.append(pkt.getData(), pkt.getDataSize());
+
+        sf::Socket::Status status = it->second->send(m_socket, finalPacket);
         return status == sf::Socket::Done;
     }
-    // Ba�lant� (ID) bulunamad�.
     return false;
 }
 
@@ -156,25 +209,24 @@ void NetServer::sendToAll(sf::Packet& pkt) { // void olarak kalabilir, ��nk�
             connPtr->send(m_socket, pkt);
         }
     }
+    broadcast(pkt);
 }
 
 
 
 void NetServer::broadcast(sf::Packet& pkt) {
-    // T�m ba�l� Connection'lara yay�n yap.
-    // Geleneksel iterat�r kullanarak hatay� ��z�yoruz:
+    // Sarmalayıcı paket (Sadece bir kez oluşturuyoruz)
+    sf::Packet finalPacket;
+    finalPacket << static_cast<sf::Uint8>(PacketType::Unreliable);
+    finalPacket.append(pkt.getData(), pkt.getDataSize());
+
     for (auto const& pair : m_connections) {
-        // 'pair' �imdi std::pair<const uint64_t, std::unique_ptr<Connection>> t�r�ndedir.
-
-        // uint64_t clientId = pair.first; // clientId'ye eri�im (iste�e ba�l�)
-        Connection* connPtr = pair.second.get(); // unique_ptr i�indeki ham pointer'� al
-
+        Connection* connPtr = pair.second.get();
         if (connPtr) {
-            connPtr->send(m_socket, pkt);
+            connPtr->send(m_socket, finalPacket);
         }
     }
 }
-
 // --- Callback Ayarlay�c�lar ---
 
 void NetServer::setOnPacket(OnPacketFn cb) {

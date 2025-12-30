@@ -8,7 +8,7 @@
 
 class Player {
 public:
-	Player(); // Oyun Baþlayýnca ortaya çýkacak
+	Player(); // Oyun Ba?lay?nca ortaya ç?kacak
 
 	void selectUnit(sf::RenderWindow& window, const sf::View& camera, bool isShiftHeld); // karakterleri seçme fonksiyonu
 
@@ -18,12 +18,12 @@ public:
 
 	void removeDeadEntities();
 
-	~Player(); // Yenilgide ortaya çýkacak
+	~Player(); // Yenilgide ortaya ç?kacak
 
-	std::vector<std::shared_ptr<Entity>> entities; // oyuncunun sahip olduðu bütün karakterler
-	
+	std::vector<std::shared_ptr<Entity>> entities; // oyuncunun sahip oldu?u bütün karakterler
+
 	std::vector<std::shared_ptr<Entity>> selected_entities; // Oyuncunun seçilen karakterleri
-		
+
 	std::vector<int> getResources();
 
 	std::vector<std::shared_ptr<Entity>> getEntities();
@@ -44,28 +44,31 @@ public:
 	int getUnitCount();
 
 	bool setUnitLimit(int);
-	
+
 	ResourceManager playerResources; // --------------------------- bunu private yap getter kullan
 
 	TeamColors getTeamColor() const { return Color; }
 	void setTeamColor(TeamColors c) { Color = c; }
 
+	void setName(const std::string& name) { m_name = name; }
+	std::string getName() const { return m_name; }
+
 private:
-	
-	
+
+	std::string m_name = "Player";
+
 	bool hasBase = true;
 
-	TeamColors Color = TeamColors::Blue; //Diðer oyunculardan ayýrt eden özellik 
-	
-	// Bunun ne iþ yaptýðýný bilmiyorum ama muhtemelen iþ yapar :)
-	int networkID; 
+	TeamColors Color = TeamColors::Blue; //Di?er oyunculardan ay?rt eden özellik 
 
-	// limitler burda,her oyuncu için özel belki ev eklersek yükseltmelerde iþ yapar
-	int unitLimit = 10;	
-	int buildLimit = 5; 
+	// Bunun ne i? yapt???n? bilmiyorum ama muhtemelen i? yapar :)
+	int networkID;
+
+	// limitler burda,her oyuncu için özel belki ev eklersek yükseltmelerde i? yapar
+	int unitLimit = 10;
+	int buildLimit = 5;
 
 
 
 
 };
-

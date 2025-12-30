@@ -5,6 +5,8 @@
 
 #include <SFML/Network.hpp>
 #include <string>
+#include <map>
+#include "NetCommands.h"
 
 // Eski enum'u koruyoruz, ancak UDP'de ConnectionState'in kullan�m� farkl� olacakt�r.
 enum class ConnectionState { Disconnected, Connected };
@@ -32,6 +34,11 @@ public:
     sf::IpAddress getAddress() const { return m_address; }
     unsigned short getPort() const { return m_port; }
 
+    uint32_t getNextSequence() { return ++m_lastSequenceSent; }
+    void addPendingPacket(uint32_t seq, sf::Packet pkt);
+    void processACK(uint32_t seq);
+    void resendMissingPackets(sf::UdpSocket& socket);
+
 private:
     sf::IpAddress m_address;
     unsigned short m_port;
@@ -39,4 +46,6 @@ private:
     // �statistikler i�in ekleyebiliriz (opsiyonel)
     uint64_t m_bytesSent = 0;
     // uint64_t m_bytesReceived = 0; // Bu istatistik sunucu/istemci seviyesinde tutulur
+    uint32_t m_lastSequenceSent = 0;
+    std::map<uint32_t, PendingPacket> m_pendingPackets; // Onay bekleyen paketler
 };

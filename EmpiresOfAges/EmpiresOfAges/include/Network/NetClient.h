@@ -6,7 +6,8 @@
 #include <SFML/Network.hpp> // sf::UdpSocket ve sf::Packet i�in
 #include <functional>
 #include <string>
-
+#include <map>           // Map kullanmak için gerekli
+#include "NetCommands.h"
 // Not: Eski yap�n�zdaki 'Packet.h' yerine, sf::Packet kullanaca��z.
 
 class NetClient {
@@ -26,6 +27,7 @@ public:
 
     // Paketi sunucuya g�nderir.
     bool send(sf::Packet& pkt);
+    bool sendReliable(sf::Packet& pkt);
 
     // --- Callback Ayarlay�c�lar ---
     void setOnPacket(OnPacketFn cb);
@@ -50,4 +52,7 @@ private:
 
     // Gelen bir paketi i�leyen metot
     void handleIncomingPacket(sf::Packet& packet);
+
+    uint32_t m_lastSequenceSent = 0; // Her paket için artan sayaç
+    std::map<uint32_t, PendingPacket> m_pendingPackets; // Onay bekleyenler listesi
 };
