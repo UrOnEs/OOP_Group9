@@ -9,8 +9,11 @@
 #include <set>
 
 bool ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
-    if (barracks.getIsProducing()) return false;
-
+    if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
+        std::cout << "[Production] Nufus limiti dolu! ("
+            << player.getCurrentPopulation() << "/" << player.getUnitLimit() << ")\n";
+        return false;
+    }
     // Maliyet Kontrolü
     GameRules::Cost cost;
     if (unitType == SoldierTypes::Barbarian) cost = GameRules::getUnitCost(SoldierTypes::Barbarian);
@@ -24,6 +27,8 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
         player.addGold(-cost.gold);
         player.addStone(-cost.stone);
         player.addFood(-cost.food);
+
+        player.addQueuedUnit(1);
 
         float time = 10.0f;
         if (unitType == SoldierTypes::Barbarian) time = 5.0f;
@@ -74,17 +79,23 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
         // -----------------------------------------
 
         player.addEntity(newSoldier);
+        player.addQueuedUnit(-1);
         std::cout << "[INFO] Asker egitimi tamamlandi! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }
 
 bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
-    if (tc.getIsProducing()) return false;
+    
 
+    if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
+        std::cout << "[Production] Nufus limiti dolu!\n";
+        return false;
+    }
     // Köylü Maliyeti
     int foodCost = 50;
     if (player.getResources()[3] >= foodCost) {
         player.addFood(-foodCost);
+        player.addQueuedUnit(1);
         tc.startProduction(10.0f); // 10 saniye üretim
         return true;
     }
@@ -126,6 +137,7 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
         // -----------------------------------------
 
         player.addEntity(newVillager);
+        player.addQueuedUnit(-1);
         std::cout << "[INFO] Yeni koylu isbasi yapti! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }

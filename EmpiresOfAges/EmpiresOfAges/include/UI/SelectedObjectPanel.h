@@ -15,6 +15,8 @@ public:
 
     void updateHealth(int health, int maxHealth);
 
+    void updateQueue(const std::vector<sf::Texture*>& icons, float progress);
+
     void handleEvent(const sf::Event& event);
     void draw(sf::RenderWindow& window);
 
@@ -57,4 +59,7 @@ private:
     bool showTooltip;
 
     void setupTooltip(const Ability& info);
+
+    std::vector<sf::Texture*> productionIcons; // Kuyruktaki resimler
+    float productionProgress = 0.0f;           // %0 ile %100 arasý
 };

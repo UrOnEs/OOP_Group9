@@ -115,6 +115,11 @@ void SelectedObjectPanel::setupTooltip(const Ability& info) {
     tooltipText.setPosition(tx + 5, ty + 5);
 }
 
+void SelectedObjectPanel::updateQueue(const std::vector<sf::Texture*>& icons, float progress) {
+    productionIcons = icons;
+    productionProgress = progress;
+}
+
 void SelectedObjectPanel::draw(sf::RenderWindow& window) {
     if (!isVisible) return;
     window.draw(panelBackground);
@@ -125,6 +130,53 @@ void SelectedObjectPanel::draw(sf::RenderWindow& window) {
     window.draw(hpBarFront);
 
     for (auto& btn : buttons) btn.draw(window);
+
+    // =============================================================
+    //               ÜRETÝM KUYRUÐU ÇÝZÝMÝ (YENÝ)
+    // =============================================================
+    if (!productionIcons.empty()) {
+        float iconSize = 30.0f;
+        float padding = 5.0f;
+        // Panelin sað tarafýnda, can barýnýn (y+80 civarý) altýnda boþluk var.
+        float startX = position.x;
+        float startY = position.y - iconSize - 10.0f;
+
+        for (size_t i = 0; i < productionIcons.size(); ++i) {
+            // Ýkon Arka Planý
+            float currentX = startX + i * (iconSize + padding);
+            sf::RectangleShape iconRect(sf::Vector2f(iconSize, iconSize));
+            iconRect.setPosition(startX + i * (iconSize + padding), startY);
+
+            if (productionIcons[i]) {
+                iconRect.setTexture(productionIcons[i]);
+                iconRect.setFillColor(sf::Color::White);
+            }
+            else {
+                iconRect.setFillColor(sf::Color(80, 80, 80)); // Texture yoksa gri
+            }
+
+            // Ýnce bir çerçeve
+            iconRect.setOutlineThickness(1.0f);
+            iconRect.setOutlineColor(sf::Color(150, 150, 150));
+
+            window.draw(iconRect);
+
+            // --- ÝLERLEME ÇUBUÐU (Sadece ilk sýradaki için) ---
+            if (i == 0) {
+                // Siyah arka plan
+                sf::RectangleShape barBack(sf::Vector2f(iconSize, 4.0f));
+                barBack.setPosition(startX, startY + iconSize + 2);
+                barBack.setFillColor(sf::Color::Black);
+                window.draw(barBack);
+
+                // Mavi doluluk oraný
+                sf::RectangleShape barFront(sf::Vector2f(iconSize * productionProgress, 4.0f));
+                barFront.setPosition(startX, startY + iconSize + 2);
+                barFront.setFillColor(sf::Color(0, 200, 255)); // Canlý Mavi
+                window.draw(barFront);
+            }
+        }
+    }
 
     if (showTooltip) {
         window.draw(tooltipBackground);

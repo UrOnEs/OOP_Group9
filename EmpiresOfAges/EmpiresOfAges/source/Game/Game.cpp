@@ -618,6 +618,25 @@ void Game::update(float dt) {
             if (entity->getIsAlive()) {
                 hud.selectedPanel.setVisible(true);
                 hud.selectedPanel.updateHealth((int)entity->health, entity->getMaxHealth());
+
+                //Yeni ekledim Test
+                bool showQueue = false;
+
+                if (entity->getTeam() == localPlayer.getTeamColor()) {
+
+                    // 2. Kural: Seçilen birim BÝNA MI?
+                    if (auto building = std::dynamic_pointer_cast<Building>(entity)) {
+                        hud.selectedPanel.updateQueue(
+                            building->getProductionQueueIcons(),
+                            building->getProductionProgress()
+                        );
+                        showQueue = true; // Evet, kuyruðu göster!
+                    }
+                }
+                if (!showQueue) {
+                    hud.selectedPanel.updateQueue({}, 0.0f);
+                }
+                //Deneme buraya kadardý
             }
             else {
                 hud.selectedPanel.setVisible(false);

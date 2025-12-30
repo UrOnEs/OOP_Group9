@@ -1,7 +1,9 @@
 #pragma once
 #include "Entity System/Entity.h"
 #include "types.h"
-#include "Game/GameRules.h" // GameRules eklendi
+#include "Game/GameRules.h" 
+#include <vector>            
+#include "UI/AssetManager.h" 
 
 class Building : public Entity {
 public:
@@ -42,5 +44,14 @@ public:
         return nullptr;
     }
 
-    // ...
+    // Üretim sýrasýndaki birimlerin ikonlarýný döndürür.
+    // Ýlk eleman = Þu an üretilen. Diðerleri = Sýrada bekleyenler.
+    virtual std::vector<sf::Texture*> getProductionQueueIcons() {
+        return {}; // Varsayýlan boþ
+    }
+
+    // Þu anki üretimin ilerleme yüzdesi (0.0 ile 1.0 arasý)
+    virtual float getProductionProgress() {
+        return 0.0f;
+    }
 };

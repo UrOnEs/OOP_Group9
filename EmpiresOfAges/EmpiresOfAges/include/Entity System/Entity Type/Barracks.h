@@ -12,6 +12,15 @@ private:
 
     std::deque<SoldierTypes> productionQueue;
 
+    sf::Texture* getUnitTexture(SoldierTypes type) {
+        switch (type) {
+        case SoldierTypes::Barbarian: return &AssetManager::getTexture("assets/units/barbarian.png");
+        case SoldierTypes::Archer:    return &AssetManager::getTexture("assets/units/archer.png");
+        case SoldierTypes::Wizard:    return &AssetManager::getTexture("assets/units/wizard.png");
+        default: return nullptr;
+        }
+    }
+
 public:
     Barracks() {
         buildingType = BuildTypes::Barrack;
@@ -19,13 +28,39 @@ public:
         // Görselin origin noktasý (Görseli merkeze oturtmak için)
         this->sprite.setOrigin(64.f, 100.f);
 
-        addAbility(Ability(11, "Barbar Uret", "60 Yemek", "Temel Savasci", &AssetManager::getTexture("assets/units/barbarian.png")));
-        addAbility(Ability(12, "Okçu Üret", "CostArcher", "Menzilli Asker", &AssetManager::getTexture("assets/units/archer.png")));
-        addAbility(Ability(13, "Büyücü Üret", "CostWizard", "Uzun Menzilli Büyücü", &AssetManager::getTexture("assets/units/wizard.png")));
+        addAbility(Ability(11, "Barbar Uret", "60 Yemek", "Temel Savasci", getUnitTexture(SoldierTypes::Barbarian)));
+        addAbility(Ability(12, "Okçu Üret", "CostArcher", "Menzilli Asker", getUnitTexture(SoldierTypes::Archer)));
+        addAbility(Ability(13, "Büyücü Üret", "CostWizard", "Uzun Menzilli Büyücü", getUnitTexture(SoldierTypes::Wizard)));
     }
 
     // Class içine ekle:
     int getMaxHealth() const override { return (int)GameRules::HP_Barracks; }
+
+    //Production System için UI
+    std::vector<sf::Texture*> getProductionQueueIcons() override {
+        std::vector<sf::Texture*> icons;
+
+        // 1. Aktif Üretim (Listenin Baþý)
+        if (isProducing) {
+            icons.push_back(getUnitTexture(currentProduction));
+        }
+
+        // 2. Bekleyen Kuyruk
+        for (const auto& type : productionQueue) {
+            icons.push_back(getUnitTexture(type));
+        }
+        return icons;
+    }
+
+    float getProductionProgress() override {
+        if (!isProducing || productionDuration <= 0) return 0.0f;
+
+        // 0'dan 1'e doðru artan deðer döndürür
+        float progress = 1.0f - (productionTimer / productionDuration);
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+        return progress;
+    }
 
     // Üretimi Baþlat
     void startTraining(SoldierTypes type, float duration) {
@@ -61,7 +96,18 @@ public:
             productionQueue.pop_front();
 
             // Süreyi yeniden baþlat (Sabit süre kullanýyoruz þimdilik)
-            productionDuration = GameRules::Time_Build_Soldier;
+            if (currentProduction == SoldierTypes::Barbarian) {
+                productionDuration = 5.0f; // Barbarlar hýzlý
+            } 
+            else if(currentProduction == SoldierTypes::Archer) {
+                productionDuration = 7.0f; 
+            }
+            else if (currentProduction == SoldierTypes::Wizard) {
+                productionDuration = 10.0f;
+            }
+            else{
+                productionDuration = 10.0f;
+            }
             productionTimer = productionDuration;
 
             isProducing = true; // Üretim devam ediyor
@@ -148,6 +194,7 @@ public:
 
             window.draw(backBar);
             window.draw(frontBar);
+            Building::render(window);
         }
     }
 };

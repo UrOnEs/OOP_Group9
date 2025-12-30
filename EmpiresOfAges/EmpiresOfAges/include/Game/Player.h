@@ -45,6 +45,18 @@ public:
 
 	bool setUnitLimit(int);
 
+	// Sýrada bekleyen (üretilmeyi bekleyen) asker sayýsý
+	int queuedUnits = 0;
+
+	// Sýraya asker eklendiðinde veya sýradan çýktýðýnda bunu çaðýracaðýz
+	void addQueuedUnit(int amount) {
+		queuedUnits += amount;
+	}
+
+	int getCurrentPopulation() {
+		return getUnitCount() + queuedUnits;
+	}
+
 	ResourceManager playerResources; // --------------------------- bunu private yap getter kullan
 
 	TeamColors getTeamColor() const { return Color; }

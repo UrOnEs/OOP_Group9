@@ -19,6 +19,34 @@ public:
 
     int getMaxHealth() const override { return (int)GameRules::HP_TownCenter; }
 
+    //Production System UI
+    std::vector<sf::Texture*> getProductionQueueIcons() override {
+        std::vector<sf::Texture*> icons;
+        // Köylü ikonunu al
+        sf::Texture* villagerTex = &AssetManager::getTexture("assets/units/default.png");
+
+        // 1. Aktif Üretim
+        if (isProducing) {
+            icons.push_back(villagerTex);
+        }
+
+        // 2. Bekleyenler (Sayý kadar ikon ekle)
+        for (int i = 0; i < queuedVillagers; ++i) {
+            icons.push_back(villagerTex);
+        }
+
+        return icons;
+    }
+
+    float getProductionProgress() override {
+        if (!isProducing || productionDuration <= 0) return 0.0f;
+
+        float progress = 1.0f - (productionTimer / productionDuration);
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+        return progress;
+    }
+
     void startProduction(float duration) {
         if (isProducing) {
             queuedVillagers++;
@@ -123,6 +151,7 @@ public:
 
             window.draw(backBar);
             window.draw(frontBar);
+            Building::render(window);
         }
     }
 };
