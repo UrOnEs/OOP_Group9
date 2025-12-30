@@ -16,7 +16,12 @@ public:
 private:
     sf::Font font;
     sf::RectangleShape backgroundBar;
-
+    
+    sf::Sprite barSprite;
+    bool hasTexture = false;
+    
+    sf::Sprite iconWood, iconFood, iconGold, iconStone;
+    
     sf::Text woodText;
     sf::Text foodText;
     sf::Text goldText;

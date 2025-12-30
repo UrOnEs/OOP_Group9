@@ -36,6 +36,8 @@ private:
     sf::Font font;
     sf::Vector2f position;
     sf::RectangleShape panelBackground;
+    sf::Sprite panelSprite;
+    bool hasBackgroundTexture = false;
 
     // --- ÝÞTE EKSÝK OLAN DEÐÝÞKEN ---
     bool isVisible = false;

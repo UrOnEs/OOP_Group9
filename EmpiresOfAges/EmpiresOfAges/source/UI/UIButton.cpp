@@ -1,7 +1,7 @@
 #include "UI/UIButton.h"
 
 UIButton::UIButton()
-    : m_isHovered(false), m_hasTexture(false), m_callback(nullptr) // Callback varsayýlan boþ
+    : m_isHovered(false), m_hasBgTexture(false), m_hasTexture(false), m_callback(nullptr) // Callback varsayýlan boþ
 {
     m_shape.setFillColor(sf::Color(100, 100, 100));
     m_shape.setSize(sf::Vector2f(100, 50));
@@ -9,7 +9,17 @@ UIButton::UIButton()
 
 void UIButton::setPosition(float x, float y) {
     m_shape.setPosition(x, y);
-    m_sprite.setPosition(x, y);
+    if (m_hasBgTexture) m_bgSprite.setPosition(x, y);
+    if (m_hasTexture) {
+        sf::FloatRect bgBounds = m_shape.getGlobalBounds();
+        sf::FloatRect iconBounds = m_sprite.getGlobalBounds();
+        float iconW = iconBounds.width;
+        float iconH = iconBounds.height;
+
+        float iconX = x + (bgBounds.width - iconW) / 2.0f;
+        float iconY = y + (bgBounds.height - iconH) / 2.0f;
+        m_sprite.setPosition(iconX, iconY);
+    }
 
     // Yazýyý ortala
     sf::FloatRect textRect = m_text.getLocalBounds();
@@ -19,6 +29,34 @@ void UIButton::setPosition(float x, float y) {
 
 void UIButton::setSize(float width, float height) {
     m_shape.setSize(sf::Vector2f(width, height));
+
+    if (m_hasBgTexture) {
+        sf::Vector2u texSize = m_bgSprite.getTexture()->getSize();
+        if (texSize.x > 0) {
+            m_bgSprite.setScale(width / texSize.x, height / texSize.y);
+        }
+    }
+
+    if (m_hasTexture) {
+        sf::Vector2u texSize = m_sprite.getTexture()->getSize();
+        if (texSize.x > 0) {
+            float iconSize = std::min(width, height) * 0.7f; // Butonun %70'i kadar olsun
+            m_sprite.setScale(iconSize / texSize.x, iconSize / texSize.y);
+        }
+    }
+
+    setPosition(m_shape.getPosition().x, m_shape.getPosition().y);
+}
+
+void UIButton::setBackgroundTexture(const sf::Texture& texture) {
+    m_bgSprite.setTexture(texture);
+    m_hasBgTexture = true;
+    sf::Vector2f currentSize = m_shape.getSize();
+    sf::Vector2u texSize = texture.getSize();
+
+    if (texSize.x > 0 && currentSize.x > 0) {
+        m_bgSprite.setScale(currentSize.x / texSize.x, currentSize.y / texSize.y);
+    }
 }
 
 void UIButton::setText(const std::string& text, const sf::Font& font, unsigned int size) {
@@ -32,12 +70,16 @@ void UIButton::setText(const std::string& text, const sf::Font& font, unsigned i
 void UIButton::setTexture(const sf::Texture& texture, float width, float height) {
     m_sprite.setTexture(texture);
     m_hasTexture = true;
+    //BURDA HERÞEY BOK OLUYO
+    sf::Vector2f btnSize = m_shape.getSize();
+    sf::Vector2u texSize = texture.getSize();
 
-    if (width > 0 && height > 0) {
-        sf::Vector2u texSize = texture.getSize();
-        m_sprite.setScale(width / (float)texSize.x, height / (float)texSize.y);
-        m_shape.setSize(sf::Vector2f(width, height));
+    if (texSize.x > 0) {
+        m_sprite.setScale(btnSize.x / texSize.x, btnSize.y / texSize.y);
     }
+
+    // Tekrar konumlandýr
+    setPosition(m_shape.getPosition().x, m_shape.getPosition().y);
 }
 
 void UIButton::setFillColor(const sf::Color& color) {
@@ -86,10 +128,11 @@ bool UIButton::isMouseOver() const {
 }
 
 void UIButton::draw(sf::RenderWindow& window) {
+    if (m_hasBgTexture) window.draw(m_bgSprite);
+    else window.draw(m_shape); // Texture yoksa düz renk kutu
+
+    // Sonra ikonu çiz
     if (m_hasTexture) window.draw(m_sprite);
-    else {
-        window.draw(m_shape);
-    }
     window.draw(m_text);
 }
 

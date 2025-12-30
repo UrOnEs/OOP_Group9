@@ -12,6 +12,7 @@ public:
     void setSize(float width, float height);
     void setText(const std::string& text, const sf::Font& font, unsigned int size = 20);
 
+    void setBackgroundTexture(const sf::Texture& texture);
     // Resim (Sprite) Desteði
     void setTexture(const sf::Texture& texture, float width = 0, float height = 0);
 
@@ -35,9 +36,12 @@ public:
 private:
     sf::RectangleShape m_shape;
     sf::Text m_text;
+
+    sf::Sprite m_bgSprite;
     sf::Sprite m_sprite;
 
     bool m_isHovered;
+    bool m_hasBgTexture;
     bool m_hasTexture;
 
     // Týklandýðýnda çalýþacak fonksiyonu saklar
