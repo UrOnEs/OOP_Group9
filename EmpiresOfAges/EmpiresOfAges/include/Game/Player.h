@@ -54,7 +54,7 @@ public:
 	std::string getName() const { return m_name; }
 
 private:
-
+	
 	std::string m_name = "Player";
 
 	bool hasBase = true;
