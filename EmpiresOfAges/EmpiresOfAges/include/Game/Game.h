@@ -20,8 +20,9 @@
 
 class Game {
 public:
-    Game();
+    Game(bool isHost, std::string serverIp);
     void run();
+    void startMatch(unsigned int seed);
 
 private:
     void processEvents();
@@ -76,5 +77,8 @@ private:
     std::unique_ptr<FogOfWar> m_fogOfWar;
 
     //Oyun ne kadar süredir aktif
+
     float gameDuration = 0.0f;
+    bool m_isHost;
+    std::string m_serverIp;
 };

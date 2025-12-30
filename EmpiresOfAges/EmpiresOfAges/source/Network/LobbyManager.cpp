@@ -24,7 +24,7 @@ void LobbyManager::start(uint64_t selfId, const std::string& name) {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::JoinRequest) << name;
         if (m_netManager && m_netManager->client()) {
-            m_netManager->client()->send(pkt);
+            m_netManager->client()->sendReliable(pkt);
         }
     }
 }
@@ -68,8 +68,11 @@ void LobbyManager::toggleReady(bool isReady) {
 void LobbyManager::startGame() {
     if (!m_isHost || !canStartGame() || m_isGameStarted) return;
     m_isGameStarted = true;
+
+    m_gameSeed = static_cast<unsigned int>(std::time(nullptr));
+
     sf::Packet pkt;
-    pkt << static_cast<sf::Int32>(LobbyCommand::StartGameSignal);
+    pkt << static_cast<sf::Int32>(LobbyCommand::StartGameSignal) << m_gameSeed;
     if (m_netManager && m_netManager->server()) {
         m_netManager->server()->sendToAll(pkt);
         if (m_onGameStart) m_onGameStart();
@@ -126,7 +129,11 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
             }
         }
         else if (cmd == LobbyCommand::StartGameSignal) {
-            if (m_onGameStart) m_onGameStart();
+            unsigned int seed = 0;
+            if (pkt >> seed) {
+                m_gameSeed = seed; // Kaydet
+                if (m_onGameStart) m_onGameStart();
+            }
         }
         else if (cmd == LobbyCommand::LobbyClosed) {
             if (m_netManager && m_netManager->client()) m_netManager->client()->disconnect();
@@ -137,10 +144,26 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
 void LobbyManager::processJoinRequest(uint64_t senderId, sf::Packet& pkt) {
     std::string playerName;
     if (!(pkt >> playerName)) return;
-    // Yeni gelen oyuncuya varsayılan renk ata (Örn: Oyuncu sayısı kadar artan bir index)
+
+    // Yeni gelen oyuncuya varsayılan renk ata
     int defaultColor = static_cast<int>(m_players.size()) % 4;
     addPlayer(senderId, playerName, false, defaultColor);
     syncLobbyToClients();
+
+    // --- KRİTİK EKLEME: GEÇ KATILANLARA SEED GÖNDER ---
+    // Eğer oyun sunucuda zaten başladıysa, yeni gelen oyuncuya
+    // "Biz başladık, sen de başla" diyerek Seed'i göndermeliyiz.
+    if (m_isGameStarted) {
+        sf::Packet startPkt;
+        startPkt << static_cast<sf::Int32>(LobbyCommand::StartGameSignal) << m_gameSeed;
+
+        if (m_netManager && m_netManager->server()) {
+            // Sadece yeni gelen kişiye gönder (sendTo)
+            m_netManager->server()->sendTo(senderId, startPkt);
+            std::cout << "[LOBBY] Gec katilan oyuncuya seed gonderildi: " << senderId << std::endl;
+        }
+    }
+    // ---------------------------------------------------
 }
 
 void LobbyManager::processToggleReady(uint64_t senderId, sf::Packet& pkt) {

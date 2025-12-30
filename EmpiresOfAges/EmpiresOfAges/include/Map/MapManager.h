@@ -13,7 +13,7 @@ class MapManager {
 public:
     MapManager(int width, int height, int tileSize);
 
-    void initialize();
+    void initialize(unsigned int seed);
     std::shared_ptr<Building> tryPlaceBuilding(int tx, int ty, BuildTypes type);
     void removeBuilding(int tx, int ty);
     void updateBuildings(float dt);

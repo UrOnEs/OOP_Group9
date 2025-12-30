@@ -1,9 +1,8 @@
-
 // main.cpp
 #include "Game/Game.h"
 #include <iostream>
 
-// main.cpp - RTS Network: Hizalanm?? Scroll Butonlar
+// main.cpp - RTS Network: Hizalanmýþ Scroll Butonlar
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
@@ -15,7 +14,7 @@
 #include <chrono> 
 #include <thread>
 
-// --- Kendi Header Dosyalar?n?z ---
+// --- Kendi Header Dosyalarýnýz ---
 #include "Network/NetworkManager.h"
 #include "Network/LobbyManager.h"
 #include "Network/NetServer.h"
@@ -28,15 +27,16 @@
 const unsigned short GAME_PORT = 54000;
 const unsigned short DISCOVERY_PORT = 50000;
 const std::string SERVER_NAME = "RTS Host Lobby";
+
+// --- Global Deðiþkenler ---
 bool g_isEnteringIP = false;
 std::string g_ipInputString = "";
-bool g_isEnteringName = false;
+bool g_isEnteringName = true; // Baþlangýçta true olsun ki isim sorsun
+std::string g_nameInputString = "";
 std::string g_playerCurrentName = "Player";
+std::string g_targetIP = "127.0.0.1";
 
-// --- Oyun Durumlar? (GameState'e ta??nd?)---
-
-
-// --- Global Y?neticiler ---
+// --- Global Yöneticiler ---
 NetworkManager g_netManager;
 LobbyManager* g_lobbyManager = nullptr;
 bool g_isHost = false;
@@ -44,7 +44,7 @@ GameState g_currentState = GameState::Menu;
 
 std::vector<LANDiscovery::ServerInfo> g_foundServers;
 
-// --- Yard?mc? Fonksiyonlar ---
+// --- Yardýmcý Fonksiyonlar ---
 
 sf::Color getColorFromIndex(int index) {
     switch (index) {
@@ -65,7 +65,7 @@ bool isSelfReady() {
     return false;
 }
 
-// 1. HOST BA?LATMA
+// 1. HOST BAÞLATMA
 void startHost() {
     std::cout << "[UI] Host baslatiliyor..." << std::endl;
     if (!g_netManager.startServer(GAME_PORT)) return;
@@ -87,18 +87,22 @@ void startHost() {
     g_currentState = GameState::LobbyRoom;
 }
 
-// 2. SUNUCUYA BA?LANMA
+// 2. SUNUCUYA BAÐLANMA
 void connectToServer(const LANDiscovery::ServerInfo& info) {
+    g_targetIP = info.address.toString();
     g_netManager.discovery()->stop();
 
     if (g_netManager.startClient(info.address.toString(), info.port)) {
         g_lobbyManager = new LobbyManager(&g_netManager, false);
-        std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
+
+        // Ýsmi ayarlýysa onu kullan, deðilse rastgele yap
         if (g_playerCurrentName != "Player") {
             g_lobbyManager->start(0, g_playerCurrentName);
         }
-        else
+        else {
+            std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
             g_lobbyManager->start(0, randomName);
+        }
 
         g_netManager.client()->setOnPacket([](sf::Packet& pkt) {
             if (g_lobbyManager) g_lobbyManager->handleIncomingPacket(0, pkt);
@@ -113,15 +117,22 @@ void connectToServer(const LANDiscovery::ServerInfo& info) {
         g_currentState = GameState::LobbyRoom;
     }
 }
-// main.cpp i?ine ekleyin
+
+// Main.cpp içine eklenen direct connect
 void connectToDirectIP(const std::string& ipStr) {
+    g_targetIP = ipStr;
     g_netManager.discovery()->stop();
 
-    // Port'u GAME_PORT (54000) olarak sabit al?yoruz
     if (g_netManager.startClient(ipStr, GAME_PORT)) {
         g_lobbyManager = new LobbyManager(&g_netManager, false);
-        std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
-        g_lobbyManager->start(0, randomName);
+
+        if (g_playerCurrentName != "Player") {
+            g_lobbyManager->start(0, g_playerCurrentName);
+        }
+        else {
+            std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
+            g_lobbyManager->start(0, randomName);
+        }
 
         g_netManager.client()->setOnPacket([](sf::Packet& pkt) {
             if (g_lobbyManager) g_lobbyManager->handleIncomingPacket(0, pkt);
@@ -160,7 +171,7 @@ void startDiscoveryMode() {
 void leaveLobby() {
     g_netManager.discovery()->stop();
     if (!g_isHost && g_netManager.client() && g_netManager.client()->isConnected()) {
-        sf::Packet pkt; pkt << static_cast<sf::Int32>(4);
+        sf::Packet pkt; pkt << static_cast<sf::Int32>(4); // LeaveLobby Command
         g_netManager.client()->send(pkt);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         g_netManager.client()->disconnect();
@@ -181,32 +192,29 @@ int main() {
     srand(static_cast<unsigned int>(time(NULL)));
     g_netManager.setLogger([](const std::string& msg) { /* std::cout << msg << std::endl; */ });
 
-    // Pencere Boyutu
     const int WIN_W = 900;
     const int WIN_H = 600;
 
     sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "RTS Proje - Final UI", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
 
-    // --- 1. Font Y?kleme ---
+    // --- 1. Font Yükleme ---
     sf::Font font;
     if (!font.loadFromFile("assets/MenuUI/arial.ttf")) {
         std::cerr << "HATA: assets/arial.ttf yok." << std::endl;
     }
     sf::Font menuFont;
     if (!menuFont.loadFromFile("assets/MenuUI/SuperPixel.ttf")) {
-        std::cerr << "HATA: asset bulunamad?" << std::endl;
+        std::cerr << "HATA: SuperPixel.ttf bulunamadi" << std::endl;
     }
 
-    // --- 2. Button Texture Y?kleme ---
+    // --- 2. Button Texture ---
     sf::Texture btnTexture;
     if (!btnTexture.loadFromFile("assets/MenuUI/button2.png")) {
         std::cerr << "HATA: assets/button2.png bulunamadi!" << std::endl;
     }
-    // P?r?zs?z g?r?n?m i?in (Gerekirse a?abilirsin)
-    // btnTexture.setSmooth(true); 
 
-    // --- 3. BACKGROUND (ARKA PLAN) Y?KLEME ---
+    // --- 3. BACKGROUND ---
     sf::Texture bgTexture;
     sf::Sprite bgSprite;
     sf::Texture lobbySelectionBgTexture;
@@ -223,8 +231,6 @@ int main() {
         sf::Vector2u texSize = bgTexture.getSize();
         bgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
     }
-
-    // E?er background.png yoksa .jpg dene
     else if (bgTexture.loadFromFile("assets/MenuUI/background.jpg")) {
         hasBg = true;
         bgSprite.setTexture(bgTexture);
@@ -246,39 +252,28 @@ int main() {
         lobbyBgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
     }
 
-    //Oyunun ismini koymaya ?al???yom
+    // Oyun Ýsmi Logosu
     sf::Texture gameNameTexture;
     sf::Sprite gameNameSprite;
     if (gameNameTexture.loadFromFile("assets/MenuUI/Empire of Ages1.png")) {
         gameNameSprite.setTexture(gameNameTexture);
         gameNameSprite.setOrigin(gameNameSprite.getLocalBounds().width / 2.0f, gameNameSprite.getLocalBounds().height / 2.0f);
         gameNameSprite.setPosition(450.0f, 120.0f);
-        gameNameSprite.setScale({ 0.25f,0.25f });
+        gameNameSprite.setScale({ 0.25f, 0.25f });
     }
 
-    // --- UI Buttonlar ---
-    // BUTON AYARLARI: 
-    // Scroll resmi oldu?u i?in biraz daha geni? ve y?ksek yap?yoruz (280x65).
-    // Aralar?ndaki bo?lu?u (Y ekseni) e?itliyoruz.
-
-    // 1. Ana Men?
-
-
-    bool g_isEnteringName = true;
-    std::string g_nameInputString = "";
-
+    // --- UI Butonlar ---
     UIPanel mainMenu({ 400, 300 }, { 250, 250 });
 
-
     UIButton btnStart;
-    btnStart.setPosition(310, 300);       // Ortalamak i?in ayarland?
-    btnStart.setSize(280, 65);            // Par??men boyutu
+    btnStart.setPosition(310, 300);
+    btnStart.setSize(280, 65);
     btnStart.setTexture(btnTexture, 280, 65);
     btnStart.setText("Play", menuFont);
     btnStart.setCallback([&]() { g_currentState = GameState::LobbySelection; });
 
     UIButton btnExit;
-    btnExit.setPosition(310, 380);        // 80 birim a?a??ya
+    btnExit.setPosition(310, 380);
     btnExit.setSize(280, 65);
     btnExit.setTexture(btnTexture, 280, 65);
     btnExit.setText("Exit", menuFont);
@@ -287,43 +282,25 @@ int main() {
     mainMenu.addButton(btnStart);
     mainMenu.addButton(btnExit);
 
-
-    if (g_isEnteringName) {
-        sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
-        overlay.setFillColor(sf::Color(0, 0, 0, 180));
-        window.draw(overlay);
-
-        sf::Text prompt("Name:\n(Enter ile onayla)", font, 24);
-        prompt.setPosition(WIN_W / 2 - 150, WIN_H / 2 - 50);
-        window.draw(prompt);
-
-        sf::Text inputDisplay(g_nameInputString + "_", font, 36);
-        inputDisplay.setFillColor(sf::Color::Yellow);
-        inputDisplay.setPosition(WIN_W / 2 - 150, WIN_H / 2 + 20);
-        window.draw(inputDisplay);
-    }
-
-    // 2. Se?im Ekran? (Lobby Selection)
-    // SOL MEN? H?ZALAMASI BURADA YAPILDI
-
+    // Lobi Seçim Ekraný
     UIPanel selectionMenu({ 0, 0 }, { 50, 50 });
 
     UIButton btnCreate;
-    btnCreate.setPosition(25, 120);          // ?lk Buton
+    btnCreate.setPosition(25, 120);
     btnCreate.setSize(280, 65);
     btnCreate.setTexture(btnTexture, 280, 65);
     btnCreate.setText("Lobi Kur (Host)", menuFont);
     btnCreate.setCallback(startHost);
 
     UIButton btnSearch;
-    btnSearch.setPosition(25, 200);          // 80 birim alt?
+    btnSearch.setPosition(25, 200);
     btnSearch.setSize(280, 65);
     btnSearch.setTexture(btnTexture, 280, 65);
     btnSearch.setText("Lobi Ara (Yenile)", menuFont);
     btnSearch.setCallback(startDiscoveryMode);
 
     UIButton btnBack;
-    btnBack.setPosition(25, 280);            // 80 birim alt? (Art?k en altta de?il, liste ?eklinde)
+    btnBack.setPosition(25, 280);
     btnBack.setSize(280, 65);
     btnBack.setTexture(btnTexture, 280, 65);
     btnBack.setText("Back", menuFont);
@@ -339,7 +316,7 @@ int main() {
     btnDirectConnect.setText("IP ile Baglan", menuFont);
     btnDirectConnect.setCallback([&]() {
         g_isEnteringIP = true;
-        g_ipInputString = ""; // Kutuyu temizle
+        g_ipInputString = "";
         });
 
     selectionMenu.addButton(btnCreate);
@@ -347,7 +324,7 @@ int main() {
     selectionMenu.addButton(btnBack);
     selectionMenu.addButton(btnDirectConnect);
 
-    // 3. Lobi Odas? Butonlar?
+    // Lobi Odasý Butonlarý
     UIButton btnReady;
     btnReady.setPosition(350, 500);
     btnReady.setSize(200, 60);
@@ -364,13 +341,13 @@ int main() {
 
     UIButton btnLeave;
     btnLeave.setPosition(50, 500);
-    btnLeave.setSize(120, 50); // ??k?? butonu biraz daha k???k olabilir
+    btnLeave.setSize(120, 50);
     btnLeave.setTexture(btnTexture, 120, 50);
     btnLeave.setText("Leave", menuFont);
     btnLeave.setCallback(leaveLobby);
 
 
-    // --- OYUN D?NG?S? ---
+    // --- OYUN DÖNGÜSÜ ---
     sf::Clock dtClock;
     sf::Clock discoveryTimer;
 
@@ -386,7 +363,7 @@ int main() {
             }
         }
 
-        // G?rsel Update
+        // Görsel Update
         if (g_currentState == GameState::LobbyRoom) {
             btnReady.setText(isSelfReady() ? "Readyn't" : "Ready", menuFont);
         }
@@ -394,52 +371,51 @@ int main() {
         // Event
         sf::Event event;
         while (window.pollEvent(event)) {
-            //NAME Input
+            // NAME Input
             if (g_isEnteringName) {
                 if (event.type == sf::Event::TextEntered) {
-                    if (event.text.unicode == 8) { // Backspace (Silme)
+                    if (event.text.unicode == 8) { // Backspace
                         if (!g_nameInputString.empty()) g_nameInputString.pop_back();
                     }
-                    else if (event.text.unicode == 13) { // Enter (Onaylama)
+                    else if (event.text.unicode == 13) { // Enter
                         if (!g_nameInputString.empty()) {
-                            g_playerCurrentName = g_nameInputString; // ?smi kaydet
-                            g_isEnteringName = false; // Paneli kapat
+                            g_playerCurrentName = g_nameInputString;
+                            g_isEnteringName = false;
                             std::cout << "[UI] Isim ayarlandi: " << g_playerCurrentName << std::endl;
                         }
                     }
-                    else if (event.text.unicode < 128) { // ASCII Karakterler
-                        // ?sim ?ok uzun olmas?n diye s?n?r koyabilirsin (?rn: 12 karakter)
+                    else if (event.text.unicode < 128) {
                         if (g_nameInputString.length() < 12) {
                             g_nameInputString += static_cast<char>(event.text.unicode);
                         }
                     }
                 }
             }
-            //IP Input
+            // IP Input
             if (g_isEnteringIP) {
                 if (event.type == sf::Event::TextEntered) {
-                    if (event.text.unicode == 8) { // Backspace
+                    if (event.text.unicode == 8) {
                         if (!g_ipInputString.empty()) g_ipInputString.pop_back();
                     }
-                    else if (event.text.unicode == 13) { // Enter
+                    else if (event.text.unicode == 13) {
                         if (!g_ipInputString.empty()) {
                             connectToDirectIP(g_ipInputString);
                             g_isEnteringIP = false;
                         }
                     }
-                    else if (event.text.unicode < 128) { // ASCII karakterler (Say? ve nokta)
+                    else if (event.text.unicode < 128) {
                         g_ipInputString += static_cast<char>(event.text.unicode);
                     }
                 }
-                // IP girerken di?er butonlara bas?lmas?n? engellemek i?in continue diyebiliriz
-                if (event.type == sf::Event::MouseButtonPressed) g_isEnteringIP = false; // Bo?a t?klarsa kapat
+                if (event.type == sf::Event::MouseButtonPressed) g_isEnteringIP = false;
             }
+
             if (event.type == sf::Event::Closed) {
                 leaveLobby();
                 window.close();
             }
 
-            if (g_currentState == GameState::Menu) mainMenu.handleEvent(event);
+            if (g_currentState == GameState::Menu && !g_isEnteringName) mainMenu.handleEvent(event);
             else if (g_currentState == GameState::LobbySelection) {
                 selectionMenu.handleEvent(event);
 
@@ -447,9 +423,9 @@ int main() {
                     int mouseX = event.mouseButton.x;
                     int mouseY = event.mouseButton.y;
 
-                    int y = 100;
+                    int y = 150; // Listedeki y ile ayný olmalý
                     for (const auto& server : g_foundServers) {
-                        sf::FloatRect btnRect(500, y, 300, 40);
+                        sf::FloatRect btnRect(475, (float)y, 300, 40);
                         if (btnRect.contains((float)mouseX, (float)mouseY)) {
                             connectToServer(server);
                             break;
@@ -470,7 +446,7 @@ int main() {
 
                         int y = 100;
                         for (const auto& p : g_lobbyManager->players()) {
-                            sf::FloatRect colorBoxRect(50, y + 5, 30, 30);
+                            sf::FloatRect colorBoxRect(50, (float)y + 5, 30, 30);
                             if (p.id == g_lobbyManager->selfId()) {
                                 if (colorBoxRect.contains((float)mx, (float)my)) {
                                     int nextColor = (p.colorIndex + 1) % 4;
@@ -484,10 +460,9 @@ int main() {
             }
         }
 
-        // --- DRAW (??Z?M) ---
+        // --- DRAW (ÇÝZÝM) ---
         window.clear(sf::Color(40, 40, 50));
 
-        // 1. ARKA PLAN
         if (g_currentState == GameState::Menu && hasBg) {
             window.draw(bgSprite);
             window.draw(gameNameSprite);
@@ -499,9 +474,29 @@ int main() {
             window.draw(lobbyBgSprite);
         }
 
-        // 2. UI ??Z?M?
+        // UI ÇÝZÝMÝ
         if (g_currentState == GameState::Menu) {
             mainMenu.draw(window);
+
+            // Name Input
+            if (g_isEnteringName) {
+                sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
+                overlay.setFillColor(sf::Color(0, 0, 0, 220));
+                window.draw(overlay);
+
+                sf::Text prompt("Kullanici Adinizi Girin:\n(Enter ile onayla)", font, 24);
+                sf::FloatRect textRect = prompt.getLocalBounds();
+                prompt.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+                prompt.setPosition(WIN_W / 2.0f, WIN_H / 2.0f - 50);
+                window.draw(prompt);
+
+                sf::Text inputDisplay(g_nameInputString + "_", font, 36);
+                inputDisplay.setFillColor(sf::Color::Cyan);
+                sf::FloatRect inputRect = inputDisplay.getLocalBounds();
+                inputDisplay.setOrigin(inputRect.left + inputRect.width / 2.0f, inputRect.top + inputRect.height / 2.0f);
+                inputDisplay.setPosition(WIN_W / 2.0f, WIN_H / 2.0f + 20);
+                window.draw(inputDisplay);
+            }
         }
         else if (g_currentState == GameState::LobbySelection) {
             selectionMenu.draw(window);
@@ -509,7 +504,6 @@ int main() {
             sf::Text header("BULUNAN LOBILER", font, 24);
             header.setPosition(475, 75);
             header.setStyle(sf::Text::Bold | sf::Text::Underlined);
-            // Yaz? rengini par??men/tahta uyumlu yapal?m (A??k renk)
             header.setFillColor(sf::Color(240, 240, 240));
             window.draw(header);
 
@@ -525,67 +519,42 @@ int main() {
 
                 for (const auto& server : g_foundServers) {
                     sf::RectangleShape row(sf::Vector2f(300, 40));
-                    row.setPosition(475, y);
+                    row.setPosition(475, (float)y);
 
-                    // Liste elemanlar? ?zerine gelince hafif ayd?nlans?n
                     if (row.getGlobalBounds().contains((float)mousePos.x, (float)mousePos.y))
                         row.setFillColor(sf::Color(80, 80, 120, 200));
                     else
-                        row.setFillColor(sf::Color(50, 50, 70, 200)); // Hafif ?effaf
+                        row.setFillColor(sf::Color(50, 50, 70, 200));
 
                     window.draw(row);
 
                     sf::Text t(server.name, font, 20);
-                    t.setPosition(485, y + 8);
+                    t.setPosition(485, (float)y + 8);
                     t.setFillColor(sf::Color::White);
                     window.draw(t);
 
                     sf::Text ip(server.address.toString(), font, 14);
-                    ip.setPosition(675, y + 12);
+                    ip.setPosition(675, (float)y + 12);
                     ip.setFillColor(sf::Color(200, 200, 200));
                     window.draw(ip);
                     y += 50;
                 }
-
             }
-            // main.cpp - Render k?sm?nda LobbySelection blo?unun i?ine
+
             if (g_isEnteringIP) {
                 sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
                 overlay.setFillColor(sf::Color(0, 0, 0, 180));
                 window.draw(overlay);
 
                 sf::Text prompt("Baglanilacak IP Girin:\n(Enter ile onayla)", font, 24);
-                prompt.setPosition(WIN_W / 2 - 150, WIN_H / 2 - 50);
+                prompt.setPosition(WIN_W / 2.0f - 150, WIN_H / 2.0f - 50);
                 window.draw(prompt);
 
                 sf::Text inputDisplay(g_ipInputString + "_", font, 36);
                 inputDisplay.setFillColor(sf::Color::Yellow);
-                inputDisplay.setPosition(WIN_W / 2 - 150, WIN_H / 2 + 20);
+                inputDisplay.setPosition(WIN_W / 2.0f - 150, WIN_H / 2.0f + 20);
                 window.draw(inputDisplay);
             }
-            //NameInput
-            if (g_isEnteringName) {
-                // Arka plan? karart
-                sf::RectangleShape overlay(sf::Vector2f(WIN_W, WIN_H));
-                overlay.setFillColor(sf::Color(0, 0, 0, 220)); // Arka plan? neredeyse tamamen kapat
-                window.draw(overlay);
-
-                // Ba?l?k
-                sf::Text prompt("Kullanici Adinizi Girin:\n(Enter ile onayla)", font, 24);
-                sf::FloatRect textRect = prompt.getLocalBounds();
-                prompt.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
-                prompt.setPosition(WIN_W / 2.0f, WIN_H / 2.0f - 50);
-                window.draw(prompt);
-
-                // Girilen Yaz?
-                sf::Text inputDisplay(g_nameInputString + "_", font, 36);
-                inputDisplay.setFillColor(sf::Color::Cyan); // Farkl? renk olsun
-                sf::FloatRect inputRect = inputDisplay.getLocalBounds();
-                inputDisplay.setOrigin(inputRect.left + inputRect.width / 2.0f, inputRect.top + inputRect.height / 2.0f);
-                inputDisplay.setPosition(WIN_W / 2.0f, WIN_H / 2.0f + 20);
-                window.draw(inputDisplay);
-            }
-
         }
         else if (g_currentState == GameState::LobbyRoom) {
             sf::Text title(g_isHost ? "Lobi (HOST)" : "Lobi (CLIENT)", font, 30);
@@ -597,7 +566,7 @@ int main() {
                 int y = 100;
                 for (const auto& p : g_lobbyManager->players()) {
                     sf::RectangleShape colorBox(sf::Vector2f(30, 30));
-                    colorBox.setPosition(50, y + 5);
+                    colorBox.setPosition(50, (float)y + 5);
                     colorBox.setFillColor(getColorFromIndex(p.colorIndex));
 
                     if (p.id == g_lobbyManager->selfId()) {
@@ -612,13 +581,13 @@ int main() {
 
                     std::string line = std::to_string(p.id) + " | " + p.name + (p.ready ? " [HAZIR]" : " [Bekliyor]");
                     sf::Text pt(line, font, 24);
-                    pt.setPosition(90, y + 2);
+                    pt.setPosition(90, (float)y + 2);
                     pt.setFillColor(p.ready ? sf::Color::Green : sf::Color::White);
                     window.draw(pt);
 
                     if (p.id == g_lobbyManager->selfId()) {
                         sf::Text hint("(Tikla -> Renk Degis)", font, 14);
-                        hint.setPosition(450, y + 10);
+                        hint.setPosition(450, (float)y + 10);
                         hint.setFillColor(sf::Color(200, 200, 200));
                         window.draw(hint);
                     }
@@ -628,43 +597,44 @@ int main() {
             if (g_isHost) {
                 sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
                 sf::Text ipText("Sunucu IP: " + localIP.toString(), font, 20);
-
-                //NEW ADDED IP PLACEMENT
                 sf::FloatRect textRect = ipText.getLocalBounds();
-
-                // Matematik: (Pencere Geni?li?i) - (Yaz? Geni?li?i) - (Kenar Bo?lu?u)
-                // window.getSize().x = 900
                 float xPos = window.getSize().x - textRect.width - 60;
-                float yPos = 450; // Sol taraftaki "Lobi (HOST)" yaz?s?yla ayn? hizada olsun
-
+                float yPos = 450;
                 ipText.setPosition(xPos, yPos);
-                ipText.setFillColor(sf::Color::Yellow); // Dikkat ?eksin diye sar?
+                ipText.setFillColor(sf::Color::Yellow);
                 window.draw(ipText);
             }
             btnReady.draw(window);
             btnLeave.draw(window);
             if (g_isHost) btnStartGame.draw(window);
         }
+
+        // --- OYUN BAÞLATMA ---
         else if (g_currentState == GameState::Playing) {
-            sf::Text t("OYUN BASLADI!", font, 50);
+            window.close();
+
             try {
-                std::cout << "Empires of Ages baslatiliyor..." << std::endl;
+                std::cout << "[MAIN] Oyun baslatiliyor..." << std::endl;
 
-                Game game;
+                // 1. Önceki að servislerini durdur
+                g_netManager.discovery()->stop();
+                g_netManager.stop();
+                if (g_lobbyManager) { delete g_lobbyManager; g_lobbyManager = nullptr; }
+
+                // --- ÝÞTE ÇÖZÜM BURASI ---
+                std::cout << "[MAIN] Portun bosa cikmasi bekleniyor..." << std::endl;
+                // Portun tamamen boþa düþmesi için yarým saniye bekle
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+                Game game(g_isHost, g_targetIP);
                 game.run();
-
             }
             catch (const std::exception& e) {
                 std::cerr << "KRITIK HATA: " << e.what() << std::endl;
                 return -1;
             }
-
             return 0;
-            t.setPosition(250, 250);
-            t.setFillColor(sf::Color::White);
-            window.draw(t);
-        }
-
+}
 
         window.display();
     }

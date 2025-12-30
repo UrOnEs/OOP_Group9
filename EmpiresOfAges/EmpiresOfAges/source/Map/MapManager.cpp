@@ -20,7 +20,7 @@ MapManager::MapManager(int width, int height, int tileSize)
     m_level.resize(m_width * m_height, 0);
 }
 
-void MapManager::initialize() {
+void MapManager::initialize(unsigned int seed) {
     // 1. ADIM: createTilesetFile() ÇAÐRISINI KALDIRIYORUZ
     // createTilesetFile(); 
 
@@ -28,7 +28,10 @@ void MapManager::initialize() {
     // ama AssetManager üzerinden önbelleðe almak isterseniz burasý kalabilir.
     // if (!m_tilesetTexture.loadFromFile("tileset.png")) ... (Bunu da silebilir veya deðiþtirebilirsiniz)
 
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
+    std::srand(seed);
+
+    m_buildings.clear();
+    std::fill(m_level.begin(), m_level.end(), 0);
 
     // 2. ADIM: ARTIK "tileset.png" YERÝNE KENDÝ ASSETÝNÝZÝ YÜKLÜYORUZ
     // Varsayým: "assets/nature/grass.png" adýnda bir çimen görseliniz var.

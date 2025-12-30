@@ -11,6 +11,11 @@
 #include "Entity System/Entity Type/Barracks.h"
 #include "Entity System/Entity Type/TownCenter.h"
 
+#include <thread>             // std::this_thread::sleep_for için gerekli
+#include <chrono>             // std::chrono::milliseconds için gerekli
+#include "Network/NetServer.h" // NetServer fonksiyonlarýný (setOnPacket) kullanmak için gerekli
+#include "Network/NetClient.h" // NetClient fonksiyonlarýný kullanmak için gerekli
+
 // --- YENÝ EKLENEN INCLUDE ---
 #include "Map/FogOfWar.h"
 
@@ -25,73 +30,30 @@
 #include "UI/AssetManager.h"
 #include "Game/GameRules.h"
 
-Game::Game()
-    : mapManager(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize)
+Game::Game(bool isHost, std::string serverIp)
+    : mapManager(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize),
+    m_isHost(isHost),     // Kaydet
+    m_serverIp(serverIp)  // Kaydet
 {
+    // 1. Pencere ve Görünüm Ayarlarý
     sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
     window.create(desktopMode, "Empires of Ages - RTS", sf::Style::Fullscreen);
     window.setFramerateLimit(60);
 
     camera.setSize(static_cast<float>(desktopMode.width), static_cast<float>(desktopMode.height));
     camera.setCenter(desktopMode.width / 2.0f, desktopMode.height / 2.0f);
+
+    // 2. Arayüz ve Að Sistemlerini Baþlat
     hud.init(desktopMode.width, desktopMode.height);
-
     initUI();
-    initNetwork();
-    stateManager.setState(GameState::Playing);
+    initNetwork(); // Bu fonksiyon ileride startMatch'i tetikleyecek
 
-    mapManager.initialize();
-
-    // --- SAVAÞ SÝSÝNÝ BAÞLAT ---
+    // 3. Savaþ Sisi (Harita içeriðinden baðýmsýzdýr, güvenle oluþturulabilir)
     m_fogOfWar = std::make_unique<FogOfWar>(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize);
 
-    gameDuration = 0.0f;
-
-    //==================== BAÞLANGIÇ KAYNAKLARI ===================================
-    int startX = 6;
-    int startY = 5;
-
-    mapManager.clearArea(startX - 2, startY - 2, 12, 12);
-
-    std::shared_ptr<Building> startTC = mapManager.tryPlaceBuilding(startX, startY, BuildTypes::TownCenter);
-
-    if (startTC) {
-        localPlayer.addEntity(startTC);
-        std::shared_ptr<Villager> startVil = std::make_shared<Villager>();
-
-        sf::Vector2f spawnPos = startTC->getPosition();
-        spawnPos.y += 150.0f;
-
-        startVil->setPosition(spawnPos);
-        localPlayer.addEntity(startVil);
-
-        std::cout << "[SISTEM] Oyun baslatildi (1 Castle, 1 Villager).\n";
-    }
-    else {
-        std::cerr << "[HATA] Baslangic binasi yerlestirilemedi! (Alan dolu olabilir)\n";
-    }
-
-    // --- DÜÞMAN TEST BÝNASI ---
-    enemyPlayer.setTeamColor(TeamColors::Red);
-
-    int enemyX = 15;
-    int enemyY = 5;
-
-    mapManager.clearArea(enemyX - 2, enemyY - 2, 12, 12);
-
-    // Haritaya koy
-    std::shared_ptr<Building> enemyBarracks = mapManager.tryPlaceBuilding(enemyX, enemyY, BuildTypes::Barrack);
-
-    if (enemyBarracks) {
-        enemyBarracks->setTeam(TeamColors::Red);
-        enemyPlayer.addEntity(enemyBarracks);
-        std::cout << "[SISTEM] Dusman kislasi (Kirmizi) haritaya eklendi.\n";
-    }
-    else {
-        std::cerr << "[HATA] Enemy binasi yerlestirilemedi! (Alan dolu olabilir)\n";
-    }
-
+    // 4. Ýnþaat ve Seçim Görselleri (UI)
     ghostBuildingSprite.setColor(sf::Color(255, 255, 255, 150));
+
     ghostGridRect.setSize(sf::Vector2f(GameRules::TileSize, GameRules::TileSize));
     ghostGridRect.setFillColor(sf::Color::Transparent);
     ghostGridRect.setOutlineThickness(1);
@@ -101,25 +63,133 @@ Game::Game()
     selectionBox.setOutlineThickness(1.0f);
     selectionBox.setOutlineColor(sf::Color::Green);
 
-    //----------------------------- ArkaPlan Müziði ----------------------------------------
+    // 5. Arka Plan Müziði
     if (bgMusic.openFromFile("assets/sounds/background_music.ogg")) {
         bgMusic.setLoop(true);
         bgMusic.setVolume(GameRules::BackgroundMusicVolume);
         bgMusic.play();
     }
+
+    // --- DÝKKAT ---
+    // mapManager.initialize(), clearArea(), addEntity() gibi harita ve birim
+    // oluþturma kodlarýnýn tamamý buradan SÝLÝNDÝ ve startMatch() fonksiyonuna taþýndý.
+    // Bu sayede oyun, sunucudan seed gelmeden haritaya dokunmaz ve çökmez.
+}
+
+void Game::startMatch(unsigned int seed) {
+    std::cout << "[GAME] Mac baslatiliyor. Seed: " << seed << std::endl;
+
+    // A. Haritayý Seed ile Oluþtur
+    mapManager.initialize(seed);
+
+    // B. Önceki Entityleri Temizle (Varsa)
+    localPlayer.entities.clear();
+    localPlayer.selected_entities.clear();
+    enemyPlayer.entities.clear();
+    enemyPlayer.selected_entities.clear();
+    // ResourceManager sýfýrlama vb. gerekirse buraya eklersin.
+
+    // C. Baþlangýç Binalarýný Yerleþtir (Constructor'dan aldýðýmýz kodlar)
+    // ====================================================================
+    int startX = 6;
+    int startY = 5;
+
+    mapManager.clearArea(startX - 2, startY - 2, 12, 12);
+    std::shared_ptr<Building> startTC = mapManager.tryPlaceBuilding(startX, startY, BuildTypes::TownCenter);
+
+    if (startTC) {
+        localPlayer.addEntity(startTC);
+        std::shared_ptr<Villager> startVil = std::make_shared<Villager>();
+        sf::Vector2f spawnPos = startTC->getPosition();
+        spawnPos.y += 150.0f;
+        startVil->setPosition(spawnPos);
+        localPlayer.addEntity(startVil);
+    }
+
+    // Düþman Test Binasý
+    enemyPlayer.setTeamColor(TeamColors::Red);
+    int enemyX = 15;
+    int enemyY = 5;
+    mapManager.clearArea(enemyX - 2, enemyY - 2, 12, 12);
+    std::shared_ptr<Building> enemyBarracks = mapManager.tryPlaceBuilding(enemyX, enemyY, BuildTypes::Barrack);
+
+    if (enemyBarracks) {
+        enemyBarracks->setTeam(TeamColors::Red);
+        enemyPlayer.addEntity(enemyBarracks);
+    }
+
+    // Oyunu oynanýyor moduna al
+    stateManager.setState(GameState::Playing);
 }
 
 void Game::initNetwork() {
     networkManager.setLogger([](const std::string& msg) {
-        std::cout << "[NETWORK]: " << msg << std::endl;
-        });
+        // std::cout << "[NETWORK]: " << msg << std::endl;
+    });
 
-    lobbyManager = std::make_unique<LobbyManager>(&networkManager, false);
+    if (m_isHost) {
+        // --- HOST (SUNUCU) ---
+        unsigned short port = 54000;
+        if (networkManager.startServer(port)) {
+            // 1. LobbyManager Oluþtur
+            lobbyManager = std::make_unique<LobbyManager>(&networkManager, true);
+            
+            // 2. CALLBACK BAÐLANTISI (BU EKSÝKTÝ!)
+            // Gelen paketleri LobbyManager'a yönlendiriyoruz
+            networkManager.server()->setOnPacket([this](uint64_t id, sf::Packet& pkt) {
+                if (lobbyManager) lobbyManager->handleIncomingPacket(id, pkt);
+            });
 
-    lobbyManager->setOnGameStart([this]() {
-        std::cout << "OYUN BASLIYOR!\n";
-        stateManager.setState(GameState::Playing);
+            // 3. Lobby Baþlat
+            lobbyManager->start(1, "HostPlayer");
+            lobbyManager->toggleReady(true);
+        } else {
+            std::cerr << "[GAME] HATA: Sunucu baslatilamadi!" << std::endl;
+            return;
+        }
+    }
+    else {
+        // --- CLIENT (ÝSTEMCÝ) ---
+        std::cout << "[GAME] Sunucuya baglaniliyor: " << m_serverIp << "...\n";
+        
+        if (networkManager.startClient(m_serverIp, 54000)) {
+            // 1. LobbyManager Oluþtur
+            lobbyManager = std::make_unique<LobbyManager>(&networkManager, false);
+
+            // 2. CALLBACK BAÐLANTISI (BU EKSÝKTÝ!)
+            // Gelen paketleri LobbyManager'a yönlendiriyoruz
+            networkManager.client()->setOnPacket([this](sf::Packet& pkt) {
+                if (lobbyManager) lobbyManager->handleIncomingPacket(0, pkt); // Client için ID önemsiz (0)
+            });
+
+            // 3. Lobby Baþlat
+            lobbyManager->start(0, "ClientPlayer");
+            lobbyManager->toggleReady(true);
+            std::cout << "[GAME] Client baglandi. Oyun baslamasi bekleniyor...\n";
+        } else {
+             std::cerr << "[GAME] HATA: Sunucuya baglanilamadi!" << std::endl;
+             return;
+        }
+    }
+
+    // --- ORTAK Callback ---
+    // Oyun baþla sinyali gelince ne yapacaðýz?
+    if (lobbyManager) {
+        lobbyManager->setOnGameStart([this]() {
+            unsigned int seed = lobbyManager->getGameSeed();
+            this->startMatch(seed);
         });
+    }
+
+    // --- HOST ÝSE OYUNU HEMEN BAÞLAT ---
+    if (m_isHost && lobbyManager) {
+        // Client'ýn baðlanmasý için minik bir bekleme (UDP olduðu için)
+        // Ýdeal dünyada client'tan "Ben geldim" onayý bekleriz ama þimdilik sleep yeterli.
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+        
+        std::cout << "[GAME] Sunucu baslatildi. Sinyal gonderiliyor...\n";
+        lobbyManager->startGame();
+    }
 }
 
 void Game::initUI() {

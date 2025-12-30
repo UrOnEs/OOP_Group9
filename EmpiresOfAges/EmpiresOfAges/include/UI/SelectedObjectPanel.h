@@ -17,7 +17,7 @@ public:
 
     void updateQueue(const std::vector<sf::Texture*>& icons, float progress);
 
-    void handleEvent(const sf::Event& event);
+        void handleEvent(const sf::Event& event);
     void draw(sf::RenderWindow& window);
 
     // --- EKSÝK OLAN FONKSÝYON ---

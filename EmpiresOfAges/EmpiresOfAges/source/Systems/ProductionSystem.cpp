@@ -1,4 +1,4 @@
-#include "Systems/ProductionSystem.h"
+ï»¿#include "Systems/ProductionSystem.h"
 #include "Game/GameRules.h"
 #include "Entity System/Entity Type/Soldier.h"
 #include "Entity System/Entity Type/Villager.h"
@@ -14,7 +14,7 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
             << player.getCurrentPopulation() << "/" << player.getUnitLimit() << ")\n";
         return false;
     }
-    // Maliyet Kontrolü
+    // Maliyet KontrolÃ¼
     GameRules::Cost cost;
     if (unitType == SoldierTypes::Barbarian) cost = GameRules::getUnitCost(SoldierTypes::Barbarian);
     else if (unitType == SoldierTypes::Archer) cost = GameRules::getUnitCost(SoldierTypes::Archer);
@@ -40,7 +40,7 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
 }
 
 // ======================================================================================
-//                                  ASKER GÜNCELLEME VE SPAWN
+//                                  ASKER GÃœNCELLEME VE SPAWN
 // ======================================================================================
 void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapManager& mapManager) {
     if (!barracks.getIsProducing()) return;
@@ -54,11 +54,11 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
         newSoldier->setType(type);
         newSoldier->setTeam(player.getTeamColor());
 
-        // --- AKILLI SPAWN SÝSTEMÝ (DÜZELTÝLDÝ) ---
+        // --- AKILLI SPAWN SÄ°STEMÄ° (DÃœZELTÄ°LDÄ°) ---
         Point buildingGrid = barracks.getGridPoint();
 
-        // 1. REZERVE LÝSTESÝNÝ DOLDUR
-        // Sadece duvarlara deðil, haritadaki DÝÐER ASKERLERE de bakmalýyýz.
+        // 1. REZERVE LÄ°STESÄ°NÄ° DOLDUR
+        // Sadece duvarlara deÄŸil, haritadaki DÄ°ÄžER ASKERLERE de bakmalÄ±yÄ±z.
         std::set<Point> reserved;
         for (const auto& entity : player.getEntities()) {
             if (entity->getIsAlive()) {
@@ -66,12 +66,12 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
             }
         }
 
-        // 2. En yakýn boþ kareyi bul (Artýk askerlerin olduðu kareleri de dolu sayacak)
+        // 2. En yakÄ±n boÅŸ kareyi bul (ArtÄ±k askerlerin olduÄŸu kareleri de dolu sayacak)
         Point spawnGrid = PathFinder::findClosestFreeTile(
             buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
         );
 
-        // 3. Dünya koordinatýna çevir ve yerleþtir
+        // 3. DÃ¼nya koordinatÄ±na Ã§evir ve yerleÅŸtir
         float spawnX = spawnGrid.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
         float spawnY = spawnGrid.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
 
@@ -85,25 +85,25 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
 }
 
 bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
-    
+
 
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
         std::cout << "[Production] Nufus limiti dolu!\n";
         return false;
     }
-    // Köylü Maliyeti
+    // KÃ¶ylÃ¼ Maliyeti
     int foodCost = 50;
     if (player.getResources()[3] >= foodCost) {
         player.addFood(-foodCost);
         player.addQueuedUnit(1);
-        tc.startProduction(10.0f); // 10 saniye üretim
+        tc.startProduction(10.0f); // 10 saniye Ã¼retim
         return true;
     }
     return false;
 }
 
 // ======================================================================================
-//                                  KÖYLÜ GÜNCELLEME VE SPAWN
+//                                  KÃ–YLÃœ GÃœNCELLEME VE SPAWN
 // ======================================================================================
 void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager) {
     tc.updateTimer(dt);
@@ -114,10 +114,10 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
         std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
         newVillager->setTeam(player.getTeamColor());
 
-        // --- AKILLI SPAWN SÝSTEMÝ (DÜZELTÝLDÝ) ---
+        // --- AKILLI SPAWN SÄ°STEMÄ° (DÃœZELTÄ°LDÄ°) ---
         Point buildingGrid = tc.getGridPoint();
 
-        // 1. REZERVE LÝSTESÝNÝ DOLDUR
+        // 1. REZERVE LÄ°STESÄ°NÄ° DOLDUR
         std::set<Point> reserved;
         for (const auto& entity : player.getEntities()) {
             if (entity->getIsAlive()) {
@@ -125,7 +125,7 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
             }
         }
 
-        // 2. En yakýn boþ kareyi bul
+        // 2. En yakÄ±n boÅŸ kareyi bul
         Point spawnGrid = PathFinder::findClosestFreeTile(
             buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
         );

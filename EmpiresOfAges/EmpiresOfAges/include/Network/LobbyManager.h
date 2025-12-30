@@ -53,6 +53,8 @@ public:
     void removePlayer(uint64_t id);
     void syncLobbyToClients();
 
+    unsigned int getGameSeed() const { return m_gameSeed; }
+
 private:
     void processJoinRequest(uint64_t senderId, sf::Packet& pkt);
     void processToggleReady(uint64_t senderId, sf::Packet& pkt);
@@ -74,4 +76,6 @@ private:
     PlayerChangeCallback m_onChange;
     GameStartCallback m_onGameStart;
     bool m_isGameStarted = false;
+
+    unsigned int m_gameSeed = 0;
 };
