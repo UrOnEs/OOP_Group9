@@ -64,6 +64,11 @@ public:
 
     // Üretimi Baþlat
     void startTraining(SoldierTypes type, float duration) {
+        
+        if (!isConstructed) {
+            std::cout << "[BARRACKS] Insaat bitmeden uretim yapilamaz!\n";
+            return;
+        }
         if (isProducing) {
             // Zaten çalýþýyorsa sýraya at
             productionQueue.push_back(type);
@@ -158,15 +163,7 @@ public:
             window.draw(selectionCircle);
         }
 
-        // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
-        if (hasTexture) {
-            window.draw(sprite);
-        }
-        else {
-            // Texture yoksa þekli çiz (Failsafe)
-            window.draw(shape);
-        }
-
+        Building::render(window);
 
         //  Üretim Barý
         if (isProducing) {

@@ -34,6 +34,7 @@ Villager::Villager() : Unit() {
     this->isAlive = true;
     this->isSelected = false;
     this->entityID = ++IDcounter;
+    this->maxCargo = GameRules::Villager_MaxCargo;
     this->setTexture(AssetManager::getTexture("assets/units/default.png"));
 
     if (this->sprite.getTexture()) {
@@ -115,6 +116,61 @@ void Villager::smartMoveTo(sf::Vector2f targetPos, int targetSizeInTiles, const 
 
 // --- GÜNCELLENEN UPDATE DÖNGÜSÜ ---
 void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player, const std::vector<int>& mapData, int width, int height) {
+
+    // =========================================================
+    //           YENÝ DURUM: BUILDING (Ýnþaat)
+    // =========================================================
+    if (state == VillagerState::Building) {
+        auto building = targetConstruction.lock();
+
+        // Bina yok olduysa veya zaten bittiyse dur
+        if (!building || !building->getIsAlive() || building->isConstructed) {
+            state = VillagerState::Idle;
+            return;
+        }
+
+        // Mesafeyi ölç
+        sf::Vector2f diff = building->getPosition() - getPosition();
+        float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
+
+        // Binanýn boyutuna göre yaklaþma mesafesi (Yarýçap + 10px)
+        float workDist = (building->getBounds().width / 2.0f) + 20.0f;
+
+        if (dist <= workDist) {
+            // --- ÝNÞAAT VAKTÝ ---
+            m_path.clear(); m_isMoving = false;
+
+            float buildSpeed = GameRules::Villager_BuildSpeed;
+
+            float buildAmount = buildSpeed * dt;
+
+            if (building->health < building->getMaxHealth()) {
+                building->health += buildAmount;
+                if (GameRules::DebugMode) building->health += building->getMaxHealth();
+
+                // --- ÝNÞAAT TAMAMLANDI MI? ---
+                if (building->health >= building->getMaxHealth()) {
+                    building->health = (float)building->getMaxHealth();
+
+                    if (!building->isConstructed) { // Sadece bir kere çalýþsýn
+                        building->isConstructed = true;
+
+                        // ------ BÝTÝÞ FONKSÝYONUNU ÇAÐIR ----------
+                        building->onConstructionComplete(player);
+                        // ----------------------------------------------
+
+                        std::cout << "[VILLAGER] Insaat tamamlandi!\n";
+                    }
+
+                    state = VillagerState::Idle;
+                }
+            }
+        }
+        else {
+            // Uzaktayýz, binaya yürü
+            if (!m_isMoving) moveTo(building->getPosition());
+        }
+    }
 
     // 0. GARRISON
     if (state == VillagerState::Garrisoned) {
@@ -312,4 +368,13 @@ std::string Villager::getName() {
 void Villager::render(sf::RenderWindow& window) {
     if (state == VillagerState::Garrisoned) return;
     Unit::render(window);
+}
+
+void Villager::startBuilding(std::shared_ptr<Building> building) {
+    if (!building) return;
+    targetConstruction = building;
+    state = VillagerState::Building;
+
+    // Eðer uzaktaysa önce yürü (MoveTo mantýðý update içinde iþleyecek)
+    // Ama direkt moveTo çaðýrýrsak state deðiþebilir, o yüzden update içinde halledeceðiz.
 }

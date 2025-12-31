@@ -8,11 +8,9 @@
 class Building : public Entity {
 public:
     BuildTypes buildingType;
+    bool isConstructed = true;
 
     Building() {
-        // health = 500.f;  <-- BUNU SÝLÝYORUZ. 
-        // Artýk varsayýlan can yok, alt sýnýflar atayacak.
-        // Ama güvenlik için yine de bir baþlangýç deðeri verelim:
         health = GameRules::BuildingHealth;
     }
 
@@ -24,6 +22,7 @@ public:
 
     virtual std::string getInfo() = 0;
 
+    virtual void onConstructionComplete(class Player& owner) {}
 
     std::string getName() override {
         switch (buildingType) {
@@ -53,5 +52,113 @@ public:
     // Þu anki üretimin ilerleme yüzdesi (0.0 ile 1.0 arasý)
     virtual float getProductionProgress() {
         return 0.0f;
+    }
+
+    virtual void render(sf::RenderWindow& window) {
+        if (!isConstructed) {
+            sf::Sprite constructionSprite;
+            // "assets/buildings/construction.png" resmini kullanýyoruz
+            // Eðer bu resim yoksa varsayýlan bir þey döner, kod patlamaz.
+            sf::Texture& tex = AssetManager::getTexture("assets/buildings/construction.png");
+            constructionSprite.setTexture(tex);
+
+            // --- SPRITE BOYUTLANDIRMA (FIX) ---
+            // Asýl binanýn kapladýðý alaný alýyoruz
+            sf::FloatRect buildingBounds = this->getBounds(); // Kendi boyutumuz
+            sf::Vector2u texSize = tex.getSize();             // Ýnþaat resminin boyutu
+
+            // Ölçek hesapla: Hedef Boyut / Resim Boyutu
+            // Böylece resim ne kadar büyük olursa olsun binanýn içine sýðar.
+            float scaleX = buildingBounds.width / (float)texSize.x;
+            float scaleY = buildingBounds.height / (float)texSize.y;
+
+            constructionSprite.setScale(scaleX, scaleY);
+
+            // Pozisyonu ayarla (Merkezden merkeze)
+            constructionSprite.setOrigin(texSize.x / 2.0f, texSize.y / 2.0f);
+            constructionSprite.setPosition(getPosition());
+
+            window.draw(constructionSprite);
+        }
+        else {
+            // Normale dön
+            if (hasTexture) sprite.setColor(sf::Color::White);
+            else shape.setFillColor(sf::Color::White);
+        }
+        // 1. SEÇÝM HALKASINI ÇÝZ (Seçiliyse)
+        if (isSelected) {
+            float radius = 32.0f; // Varsayýlan bir boyut (Askerler için)
+
+            // Eðer bir texture (görsel) varsa, onun boyutuna göre ayarla
+            if (hasTexture) {
+                // Sprite'ýn ekranda kapladýðý alaný al (Ölçeklenmiþ hali)
+                sf::FloatRect bounds = sprite.getGlobalBounds();
+                // Yarýçapý geniþliðin yarýsý yap. Biraz taþmasý için 1.1 ile çarpabiliriz.
+                radius = (bounds.width / 2.0f) * 1.1f;
+            }
+
+            sf::CircleShape selectionCircle(radius);
+            selectionCircle.setPointCount(40); // Daha pürüzsüz bir daire
+
+            // Merkezi ayarla (Tam ayak bastýðý nokta)
+            selectionCircle.setOrigin(radius, radius - 10);
+            selectionCircle.setPosition(getPosition());
+
+            // --- ÝZOMETRÝK GÖRÜNÜM ---
+            // Daireyi dikey olarak bastýrarak elips yapýyoruz.
+            // Yere yatýrýlmýþ gibi görünmesini saðlar.
+            selectionCircle.setScale(1.0f, 0.6f);
+
+            // Renk ve þeffaflýk ayarlarý
+            selectionCircle.setFillColor(sf::Color(0, 255, 0, 50)); // Ýçi yarý saydam yeþil
+            selectionCircle.setOutlineColor(sf::Color::Green);      // Kenarý parlak yeþil
+            selectionCircle.setOutlineThickness(3.0f);            // Çizgi kalýnlýðý (Daha belirgin)
+
+            window.draw(selectionCircle);
+        }
+
+        // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
+        if (isConstructed) {
+            if (hasTexture) {
+                window.draw(sprite);
+            }
+            else {
+                // Texture yoksa þekli çiz (Failsafe)
+                window.draw(shape);
+            }
+        }
+
+        if (isAlive && (isSelected || health < getMaxHealth())) {
+            float barWidth = 40.0f;
+            float barHeight = 5.0f;
+
+            sf::Vector2f pos = getPosition();
+            // Sprite'ýn tepesine koy
+            if (hasTexture) pos.y -= sprite.getGlobalBounds().height / 2.0f + 10.0f;
+            else pos.y -= 25.0f;
+
+            // Arka Plan (Kýrmýzý)
+            sf::RectangleShape backBar(sf::Vector2f(barWidth, barHeight));
+            backBar.setOrigin(barWidth / 2, barHeight / 2);
+            backBar.setPosition(pos);
+            backBar.setFillColor(sf::Color(100, 0, 0));
+
+            // Ön Plan (Yeþil/Sarý)
+            float hpPercent = (float)health / getMaxHealth();
+            if (hpPercent < 0) hpPercent = 0;
+
+            sf::RectangleShape frontBar(sf::Vector2f(barWidth * hpPercent, barHeight));
+            frontBar.setOrigin(barWidth / 2, barHeight / 2);
+            frontBar.setPosition(pos.x - (barWidth * (1 - hpPercent)) / 2.0f, pos.y); // Soldan hizala
+
+            if (hpPercent > 0.5f) frontBar.setFillColor(sf::Color::Green);
+            else if (hpPercent > 0.25f) frontBar.setFillColor(sf::Color::Yellow);
+            else frontBar.setFillColor(sf::Color::Red);
+
+            window.draw(backBar);
+            window.draw(frontBar);
+
+
+        }
     }
 };

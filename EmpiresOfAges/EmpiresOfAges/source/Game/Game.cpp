@@ -30,6 +30,8 @@
 #include "UI/AssetManager.h"
 #include "Game/GameRules.h"
 
+//bool GameRules::DebugMode = false;
+
 Game::Game(bool isHost, std::string serverIp)
     : mapManager(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize),
     m_isHost(isHost),     // Kaydet
@@ -74,6 +76,7 @@ Game::Game(bool isHost, std::string serverIp)
     // mapManager.initialize(), clearArea(), addEntity() gibi harita ve birim
     // oluþturma kodlarýnýn tamamý buradan SÝLÝNDÝ ve startMatch() fonksiyonuna taþýndý.
     // Bu sayede oyun, sunucudan seed gelmeden haritaya dokunmaz ve çökmez.
+
 }
 
 void Game::startMatch(unsigned int seed) {
@@ -108,8 +111,8 @@ void Game::startMatch(unsigned int seed) {
 
     // Düþman Test Binasý
     enemyPlayer.setTeamColor(TeamColors::Red);
-    int enemyX = 15;
-    int enemyY = 5;
+    int enemyX = 100;
+    int enemyY = 20;
     mapManager.clearArea(enemyX - 2, enemyY - 2, 12, 12);
     std::shared_ptr<Building> enemyBarracks = mapManager.tryPlaceBuilding(enemyX, enemyY, BuildTypes::Barrack);
 
@@ -301,6 +304,30 @@ void Game::handleKeyboardInput(const sf::Event& event) {
             localPlayer.selected_entities[0]->takeDamage(10.0f);
         }
     }
+
+    if (event.type == sf::Event::KeyPressed) {
+        // Toggle Dev Mode: Ctrl + Shift + D
+        if (event.key.code == sf::Keyboard::D &&
+            sf::Keyboard::isKeyPressed(sf::Keyboard::LControl) &&
+            sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) {
+
+            isDevMode = !isDevMode; // Toggle on/off
+            GameRules::DebugMode = !GameRules::DebugMode;
+
+            if (isDevMode) {
+                std::cout << "[DEV MODE] ON - God Mode Active!\n";
+                localPlayer.addWood(9999);
+                localPlayer.addFood(9999);
+                localPlayer.addGold(9999);
+                localPlayer.addStone(9999);
+
+                localPlayer.addUnitLimit(50);
+            }
+            else {
+                std::cout << "[DEV MODE] OFF - Back to reality.\n";
+            }
+        }
+    }
 }
 
 // ======================================================================================
@@ -446,13 +473,26 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
         if (canAfford) {
             std::shared_ptr<Building> placed = mapManager.tryPlaceBuilding(gridX, gridY, pendingBuildingType);
             if (placed) {
+                // --- ÝNÞAAT SÝSTEMÝ BAÞLANGICI ---
+                placed->isConstructed = false; // Henüz bitmedi
+                placed->health = 1.0f;         // Caný 1 ile baþlasýn (Temel atýldý)
+                // ---------------------------------
+
                 localPlayer.addEntity(placed);
-                if (placed->buildingType == BuildTypes::House) localPlayer.addUnitLimit(5);
 
                 localPlayer.addWood(-cost.wood);
                 localPlayer.addGold(-cost.gold);
                 localPlayer.addStone(-cost.stone);
                 localPlayer.addFood(-cost.food);
+
+                std::cout << "[GAME] Temel atildi! Insaat bekliyor.\n";
+
+                // Eðer BÝR KÖYLÜ SEÇÝLÝYSE, otomatik inþaata baþlasýn (Kullanýcý Dostu Özellik)
+                if (localPlayer.selected_entities.size() == 1) {
+                    if (auto vil = std::dynamic_pointer_cast<Villager>(localPlayer.selected_entities[0])) {
+                        vil->startBuilding(placed);
+                    }
+                }
 
                 std::cout << "[GAME] Bina insa edildi!\n";
                 if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift)) cancelBuildMode();
@@ -587,6 +627,19 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
             if (sentVillager) std::cout << "[GAME] Koyluler hasada gonderildi.\n";
         }
 
+        // ---------- ÝNÞAAT EMRÝ ----------------------
+        // Týklanan bina bizim takýmýnsa ve henüz bitmemiþse
+        if (clickedBuilding->getTeam() == localPlayer.getTeamColor() && !clickedBuilding->isConstructed) {
+            for (auto& entity : localPlayer.selected_entities) {
+                if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
+                    villager->startBuilding(clickedBuilding);
+                }
+            }
+            std::cout << "[GAME] Koyluler insaata gonderildi.\n";
+            return; // Saldýrý koduna girmesin diye çýk
+        }
+        // -------------------------
+
         // 2. Askerleri Yönet (Düþman veya Bina ise Saldýr)
         bool sentSoldier = false;
         for (auto& entity : localPlayer.selected_entities) {
@@ -666,6 +719,7 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
         }
     }
 }
+
 void Game::update(float dt) {
     networkManager.update(dt);
     if (stateManager.getState() == GameState::Playing) {
@@ -804,6 +858,7 @@ void Game::update(float dt) {
 
         std::vector<int> res = localPlayer.getResources();
         hud.resourceBar.updateResources(res[0], res[3], res[1], res[2], localPlayer);
+
     }
 }
 

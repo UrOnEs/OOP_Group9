@@ -52,13 +52,7 @@ public:
         }
 
         // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
-        if (hasTexture) {
-            window.draw(sprite);
-        }
-        else {
-            // Texture yoksa þekli çiz (Failsafe)
-            window.draw(shape);
-        }
+        Building::render(window);
 
 
         //  Üretim Barý
