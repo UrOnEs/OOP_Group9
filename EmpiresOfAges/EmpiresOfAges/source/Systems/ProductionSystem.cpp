@@ -90,7 +90,7 @@ ProductionResult ProductionSystem::startVillagerProduction(Player& player, TownC
   
     if (!tc.isConstructed) {
     std::cout << "[Production] Bina inşaat Ediliyor!\n";
-    return PopulationFull; //Buraya yeni bir uyarı lazım !
+    return ProductionResult::PopulationFull; // BURAYA YENİ BİR UYARI LAZIM !
     }
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
         std::cout << "[Production] Nufus limiti dolu!\n";
