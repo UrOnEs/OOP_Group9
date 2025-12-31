@@ -24,10 +24,17 @@ public:
     void run();
     void startMatch(unsigned int seed);
 
+
+    void showWarning(const std::string& message);
+    void drawWarning(sf::RenderWindow& window);
+
 private:
     void processEvents();
     void update(float dt);
     void render();
+    std::string warningMsg = "";
+    sf::Clock warningClock;
+    bool isWarningActive = false;
 
     // --- TEMEL BÝLEÞENLER ---
     sf::RenderWindow window;
@@ -48,6 +55,8 @@ private:
     // ----- Sesler ----------
     sf::Music bgMusic;
 
+
+
     // --- ÝNÞAAT SÝSTEMÝ DEÐÝÞKENLERÝ (YENÝ) ---
     bool isInBuildMode = false;          // Þu an bina yerleþtirmeye çalýþýyor muyuz?
     BuildTypes pendingBuildingType;      // Hangi binayý yerleþtireceðiz?
@@ -58,6 +67,7 @@ private:
     void initNetwork();
     void initUI();
     void handleInput(float dt);
+
 
     void handleKeyboardInput(const sf::Event& event);
     void handleMouseInput(const sf::Event& event);

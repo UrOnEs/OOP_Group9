@@ -349,6 +349,32 @@ void Game::handleMouseInput(const sf::Event& event) {
                 hud.selectedPanel.setVisible(true);
                 auto entity = localPlayer.selected_entities[0];
 
+                //Productiondan gelen output nasýl deðerlendirilecek
+                auto handleProductionResult = [this](ProductionResult result) {
+                    switch (result) {
+                    case ProductionResult::Success:
+                        // Baþarýlý (Ses çalýnabilir)
+                        break;
+                    case ProductionResult::PopulationFull:
+                        showWarning("Nufus Limiti Dolu! Ev insa edin.");
+                        break;
+                    case ProductionResult::InsufficientFood:
+                        showWarning("Yetersiz Kaynak: Yemek gerekli.");
+                        break;
+                    case ProductionResult::InsufficientWood:
+                        showWarning("Yetersiz Kaynak: Odun gerekli.");
+                        break;
+                    case ProductionResult::InsufficientGold:
+                        showWarning("Yetersiz Kaynak: Altin gerekli.");
+                        break;
+                    case ProductionResult::QueueFull:
+                        showWarning("Uretim kuyrugu dolu!");
+                        break;
+                    default:
+                        break;
+                    }
+                    };
+
                 // Buton Callback'lerini Ayarla (Lambda ile)
                 std::vector<Ability> uiAbilities = entity->getAbilities();
                 for (auto& ab : uiAbilities) {
@@ -359,19 +385,33 @@ void Game::handleMouseInput(const sf::Event& event) {
 
                     else if (ab.getId() == 10) { // Köylü Üret
                         if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity))
-                            ab.setOnClick([this, tc]() { ProductionSystem::startVillagerProduction(localPlayer, *tc); });
+                            ab.setOnClick([this, tc, handleProductionResult]() {
+                            // Kontrolü ProductionSystem yapsýn, sonucu alalým
+                            ProductionResult res = ProductionSystem::startVillagerProduction(localPlayer, *tc);
+                            // Sonucu yardýmcý fonksiyona gönderelim
+                            handleProductionResult(res);
+                                });
                     }
                     else if (ab.getId() == 11) { // Barbar
                         if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
-                            ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian); });
+                            ab.setOnClick([this, b, handleProductionResult]() {
+                            ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian);
+                            handleProductionResult(res);
+                                });
                     }
                     else if (ab.getId() == 12) { // Okçu
                         if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
-                            ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Archer); });
+                            ab.setOnClick([this, b, handleProductionResult]() {
+                            ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Archer);
+                            handleProductionResult(res);
+                                });
                     }
                     else if (ab.getId() == 13) { // Wizard
                         if (auto b = std::dynamic_pointer_cast<Barracks>(entity))
-                            ab.setOnClick([this, b]() { ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard); });
+                            ab.setOnClick([this, b, handleProductionResult]() {
+                            ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard);
+                            handleProductionResult(res);
+                                });
                     }
                 }
 
@@ -422,7 +462,7 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
             }
         }
         else {
-            std::cout << "[GAME] Yetersiz Kaynak!\n";
+            showWarning("Yetersiz Kaynak!");
             cancelBuildMode();
         }
     }
@@ -451,7 +491,7 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
 
                 // Düþman seçildi ve görünür durumda
                 std::vector<Ability> emptyAbilities;
-
+                hud.selectedPanel.updateQueue({}, 0.0f);
                 hud.selectedPanel.setVisible(true);
                 hud.selectedPanel.updateSelection(
                     "[DUSMAN] " + entity->getName(),
@@ -857,6 +897,8 @@ void Game::render() {
     hud.draw(window);
     uiManager.draw(window);
 
+    drawWarning(window);
+
     window.display();
 }
 
@@ -934,6 +976,49 @@ void Game::enterBuildMode(BuildTypes type, const std::string& textureName) {
     ghostGridRect.setSize(sf::Vector2f(targetWidth, targetHeight));
 
     std::cout << "[GAME] Insaat modu aktif (Boyut: " << widthInTiles << "x" << heightInTiles << ")\n";
+}
+
+// Game.cpp
+
+void Game::showWarning(const std::string& message) {
+    warningMsg = message;
+    warningClock.restart(); // Sayacý sýfýrla
+    isWarningActive = true;
+}
+
+void Game::drawWarning(sf::RenderWindow& window) {
+    // 3 saniye (veya senin belirlediðin süre) geçtiyse çizme
+    if (!isWarningActive || warningClock.getElapsedTime().asSeconds() > 2.5f) {
+        isWarningActive = false;
+        return;
+    }
+
+    // FONTU ASSET MANAGER'DAN AL (En önemli düzeltme burasý!)
+    // Eðer AssetManager kullanmýyorsan fontu Game sýnýfýnýn üyesi yapmalýsýn.
+    sf::Font& font = AssetManager::getFont("assets/fonts/arial.ttf");
+
+    sf::Text warnText(warningMsg, font, 24); // Yazýyý biraz büyüttüm
+    warnText.setFillColor(sf::Color::Red);
+    warnText.setOutlineColor(sf::Color::Black);
+    warnText.setOutlineThickness(1.5f); // Okunabilirlik için kontur
+
+    // Ortala ve Konumlandýr (SelectedObjectPanel'in üstüne denk gelecek þekilde)
+    sf::FloatRect textRect = warnText.getLocalBounds();
+    warnText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+
+    // Ekranýn alt orta kýsmý (HUD'un hemen üstü)
+    float screenX = window.getSize().x / 2.0f;
+    float screenY = window.getSize().y - 200.0f;
+    warnText.setPosition(screenX, screenY);
+
+    // Arka plan kutusu
+    sf::RectangleShape bg(sf::Vector2f(textRect.width + 20, textRect.height + 10));
+    bg.setFillColor(sf::Color(0, 0, 0, 180));
+    bg.setOrigin(bg.getSize().x / 2.0f, bg.getSize().y / 2.0f);
+    bg.setPosition(screenX, screenY);
+
+    window.draw(bg);
+    window.draw(warnText);
 }
 
 void Game::cancelBuildMode() {
