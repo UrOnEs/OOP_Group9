@@ -9,7 +9,7 @@
 #include "Entity System/Entity Type/Tree.h"
 #include "Entity System/Entity Type/Stone.h"
 #include "Entity System/Entity Type/Gold.h"
-#include "Entity System/Entity Type/Mountain.h" // Mountain eklendi
+#include "Entity System/Entity Type/Mountain.h" 
 
 #include "UI/AssetManager.h"
 
@@ -82,16 +82,23 @@ void MapManager::initialize(unsigned int seed) {
     }
 
     // =========================================================
-    // 2. TAÞ OLUÞTURMA
+    // 2. TAÞ OLUÞTURMA (DÜZELTÝLDÝ: 2x2 KONTROLÜ)
     // =========================================================
     int stoneCount = (totalTiles * 2) / 1000;
     for (int i = 0; i < stoneCount; i++) {
         int tx = std::rand() % m_width;
         int ty = std::rand() % m_height;
+
+        // Harita sýnýrlarý dýþýna taþma kontrolü
         if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
             bool isSpaceFree = true;
+
+            // Taþlar 2x2 yer kaplar, bu yüzden 4 kareye de bakmalýyýz.
             if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
-            // Diðer kontroller...
+            if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
+            if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
+            if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
+
             if (isSpaceFree) {
                 std::shared_ptr<Stone> newStone = std::make_shared<Stone>();
                 sf::Texture& tex = AssetManager::getTexture("assets/nature/stone.png");
@@ -103,6 +110,8 @@ void MapManager::initialize(unsigned int seed) {
                 float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
                 newStone->setPosition(sf::Vector2f(centerX, centerY));
                 m_buildings.push_back(newStone);
+
+                // 4 kareyi de dolu olarak iþaretle
                 m_level[tx + ty * m_width] = 1;
                 m_level[(tx + 1) + ty * m_width] = 1;
                 m_level[tx + (ty + 1) * m_width] = 1;
@@ -112,16 +121,22 @@ void MapManager::initialize(unsigned int seed) {
     }
 
     // =========================================================
-    // 3. ALTIN OLUÞTURMA
+    // 3. ALTIN OLUÞTURMA (DÜZELTÝLDÝ: 2x2 KONTROLÜ)
     // =========================================================
     int goldCount = (totalTiles * 1) / 1000;
     for (int i = 0; i < goldCount; i++) {
         int tx = std::rand() % m_width;
         int ty = std::rand() % m_height;
+
         if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
             bool isSpaceFree = true;
+
+            // Altýnlar 2x2 yer kaplar, 4 kareye bak.
             if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
-            // Diðer kontroller...
+            if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
+            if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
+            if (m_level[(tx + 1) + (ty + 1) * m_width] != 0) isSpaceFree = false;
+
             if (isSpaceFree) {
                 std::shared_ptr<Gold> newGold = std::make_shared<Gold>();
                 sf::Texture& tex = AssetManager::getTexture("assets/nature/gold.png");
@@ -133,6 +148,8 @@ void MapManager::initialize(unsigned int seed) {
                 float centerY = (ty * m_tileSize) + (targetSize / 2.0f);
                 newGold->setPosition(sf::Vector2f(centerX, centerY));
                 m_buildings.push_back(newGold);
+
+                // 4 kareyi de dolu olarak iþaretle
                 m_level[tx + ty * m_width] = 1;
                 m_level[(tx + 1) + ty * m_width] = 1;
                 m_level[tx + (ty + 1) * m_width] = 1;
@@ -232,21 +249,7 @@ void MapManager::createMountains(int count) {
             std::shared_ptr<Mountain> mtn = std::make_shared<Mountain>();
             mtn->setTexture(tex); // Baþlangýçta tüm texture'ý alýr, setVariation ile düzeltilecek
 
-            // Scale ayarý (Texture boyutu ve Tile boyutu eþit deðilse)
-            sf::Vector2u texSize = tex.getSize();
-            // DÝKKAT: mountain.png bir tileset olduðu için (örn 4x4), 
-            // tek bir karenin boyutunu bilmemiz gerek.
-            // setVariation içinde TextureRect ayarlanacaðý için, burada
-            // genel scale'i "TextureGenisligi / 4" gibi bir orana göre deðil,
-            // "OyunTileBoyutu / ResimdekiTileBoyutu" oranýna göre ayarlamalýyýz.
-            // Þimdilik 1.0 yapýyoruz, setVariation'da TextureRect ayarlanýnca düzelecek.
-
-            // Eðer tileset içindeki her bir kare 32x32 ise ve oyun 32x32 ise scale 1 olmalý.
-            // Kodun genelinde m_tileSize kullanýlýyor.
-
             float scale = 1.0f;
-            // Varsayým: Tilesetinizdeki her kare m_tileSize (örn 32px) boyutunda.
-            // Deðilse: scale = (float)m_tileSize / 32.0f;
             mtn->setScale(scale, scale);
 
             float posX = (mapX * m_tileSize) + (m_tileSize / 2.0f);
@@ -285,8 +288,6 @@ void MapManager::updateMountainVisuals() {
 
         auto mountain = std::dynamic_pointer_cast<Mountain>(building);
         if (mountain) {
-            // Tileset'inizdeki her bir karenin boyutunu buraya girin.
-            // Genelde m_tileSize ile aynýdýr.
             mountain->setVariation(mask, m_tileSize);
         }
     }

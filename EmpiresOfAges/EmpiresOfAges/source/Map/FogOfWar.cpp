@@ -7,10 +7,8 @@
 FogOfWar::FogOfWar(int width, int height, int tileSize)
     : m_width(width), m_height(height), m_tileSize(tileSize)
 {
-    // Grid'i baþlat (Hepsi Unexplored)
     m_grid.resize(width * height, FogState::Unexplored);
 
-    // Vertex Array'i hazýrla (Quads)
     m_vertices.setPrimitiveType(sf::Quads);
     m_vertices.resize(width * height * 4);
 
@@ -26,26 +24,23 @@ FogOfWar::FogOfWar(int width, int height, int tileSize)
             quad[2].position = sf::Vector2f(px + tileSize, py + tileSize);
             quad[3].position = sf::Vector2f(px, py + tileSize);
 
-            // Baþlangýç rengi: Simsiyah
             for (int i = 0; i < 4; ++i) quad[i].color = sf::Color::Black;
         }
     }
 }
 
 void FogOfWar::update(const std::vector<std::shared_ptr<Entity>>& myEntities) {
-    // 1. ADIM: Önceki "Visible" olanlarý "Explored" durumuna düþür
-    // (Unexplored olanlar Unexplored kalmaya devam eder)
+    // 1. Visible -> Explored
     for (int i = 0; i < m_width * m_height; ++i) {
         if (m_grid[i] == FogState::Visible) {
             m_grid[i] = FogState::Explored;
-            // Rengi güncelle (Yarý saydam siyah)
             int x = i % m_width;
             int y = i / m_width;
             updateColor(x, y);
         }
     }
 
-    // 2. ADIM: Birimlerin olduðu yerleri "Visible" yap
+    // 2. Birim görüþ alanlarýný aç
     for (const auto& entity : myEntities) {
         if (!entity->getIsAlive()) continue;
 
@@ -53,12 +48,9 @@ void FogOfWar::update(const std::vector<std::shared_ptr<Entity>>& myEntities) {
         int cx = static_cast<int>(pos.x / m_tileSize);
         int cy = static_cast<int>(pos.y / m_tileSize);
 
-        // --- GÜNCELLENEN KISIM: TÝPE GÖRE MENZÝL SEÇÝMÝ ---
-        float sightRange = GameRules::Range_Sight_Unit; // Varsayýlan (Asker/Köylü)
+        float sightRange = GameRules::Range_Sight_Unit;
 
-        // Eðer bu bir BÝNA ise
         if (std::dynamic_pointer_cast<Building>(entity)) {
-            // Eðer Ana Bina (TownCenter) ise daha da geniþ görsün
             if (std::dynamic_pointer_cast<TownCenter>(entity)) {
                 sightRange = GameRules::Range_Sight_TownCenter;
             }
@@ -66,8 +58,6 @@ void FogOfWar::update(const std::vector<std::shared_ptr<Entity>>& myEntities) {
                 sightRange = GameRules::Range_Sight_Building;
             }
         }
-        // ----------------------------------------------------
-
         revealArea(cx, cy, sightRange);
     }
 }
@@ -80,7 +70,6 @@ void FogOfWar::revealArea(int cx, int cy, float radius) {
         for (int x = cx - rGrid; x <= cx + rGrid; ++x) {
             if (x < 0 || y < 0 || x >= m_width || y >= m_height) continue;
 
-            // Dairesel görüþ kontrolü
             int dx = x - cx;
             int dy = y - cy;
             if (dx * dx + dy * dy <= rSq) {
@@ -99,13 +88,13 @@ void FogOfWar::updateColor(int x, int y) {
 
     switch (m_grid[index]) {
     case FogState::Unexplored:
-        color = sf::Color::Black; // Tamamen görünmez
+        color = sf::Color::Black;
         break;
     case FogState::Explored:
-        color = sf::Color(0, 0, 0, 150); // Karartýlmýþ (Daha önce görülmüþ)
+        color = sf::Color(0, 0, 0, 150);
         break;
     case FogState::Visible:
-        color = sf::Color::Transparent; // Tamamen açýk
+        color = sf::Color::Transparent;
         break;
     }
 
@@ -123,4 +112,10 @@ bool FogOfWar::isVisible(float x, float y) const {
     if (gx < 0 || gy < 0 || gx >= m_width || gy >= m_height) return false;
 
     return m_grid[gx + gy * m_width] == FogState::Visible;
+}
+
+// --- YENÝ EKLENEN FONKSÝYON GÖVDESÝ ---
+FogState FogOfWar::getFogAt(int x, int y) const {
+    if (x < 0 || y < 0 || x >= m_width || y >= m_height) return FogState::Unexplored;
+    return m_grid[x + y * m_width];
 }

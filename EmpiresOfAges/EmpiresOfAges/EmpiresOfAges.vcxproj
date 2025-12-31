@@ -167,6 +167,7 @@
     <ClCompile Include="source\UI\Ability.cpp" />
     <ClCompile Include="source\UI\DataManager.cpp" />
     <ClCompile Include="source\UI\HUD.cpp" />
+    <ClCompile Include="source\UI\Minimap.cpp" />
     <ClCompile Include="source\UI\ResourceBar.cpp" />
     <ClCompile Include="source\UI\AssetManager.cpp" />
     <ClCompile Include="source\UI\SelectedObjectPanel.cpp" />
@@ -223,6 +224,7 @@
     <ClInclude Include="include\UI\Ability.h" />
     <ClInclude Include="include\UI\DataManager.h" />
     <ClInclude Include="include\UI\HUD.h" />
+    <ClInclude Include="include\UI\Minimap.h" />
     <ClInclude Include="include\UI\ResourceBar.h" />
     <ClInclude Include="include\UI\AssetManager.h" />
     <ClInclude Include="include\UI\SelectedObjectPanel.h" />

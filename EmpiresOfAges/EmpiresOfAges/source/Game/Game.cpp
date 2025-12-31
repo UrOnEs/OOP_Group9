@@ -46,7 +46,8 @@ Game::Game(bool isHost, std::string serverIp)
     camera.setCenter(desktopMode.width / 2.0f, desktopMode.height / 2.0f);
 
     // 2. Arayüz ve Að Sistemlerini Baþlat
-    hud.init(desktopMode.width, desktopMode.height);
+    // NOT: hud.init() artýk startMatch içinde çaðrýlýyor çünkü harita verisine ihtiyacý var.
+
     initUI();
     initNetwork(); // Bu fonksiyon ileride startMatch'i tetikleyecek
 
@@ -76,7 +77,6 @@ Game::Game(bool isHost, std::string serverIp)
     // mapManager.initialize(), clearArea(), addEntity() gibi harita ve birim
     // oluþturma kodlarýnýn tamamý buradan SÝLÝNDÝ ve startMatch() fonksiyonuna taþýndý.
     // Bu sayede oyun, sunucudan seed gelmeden haritaya dokunmaz ve çökmez.
-
 }
 
 void Game::startMatch(unsigned int seed) {
@@ -84,6 +84,14 @@ void Game::startMatch(unsigned int seed) {
 
     // A. Haritayý Seed ile Oluþtur
     mapManager.initialize(seed);
+
+    // --- MINIMAP VE HUD BAÞLATMA (YENÝ) ---
+    // Harita verisi oluþtuðu için artýk HUD'u ve Minimap'i baþlatabiliriz.
+    sf::Vector2u winSize = window.getSize();
+    hud.init(winSize.x, winSize.y,
+        GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize,
+        mapManager.getLevelData());
+    // --------------------------------------
 
     // B. Önceki Entityleri Temizle (Varsa)
     localPlayer.entities.clear();
@@ -128,7 +136,7 @@ void Game::startMatch(unsigned int seed) {
 void Game::initNetwork() {
     networkManager.setLogger([](const std::string& msg) {
         // std::cout << "[NETWORK]: " << msg << std::endl;
-    });
+        });
 
     if (m_isHost) {
         // --- HOST (SUNUCU) ---
@@ -136,17 +144,18 @@ void Game::initNetwork() {
         if (networkManager.startServer(port)) {
             // 1. LobbyManager Oluþtur
             lobbyManager = std::make_unique<LobbyManager>(&networkManager, true);
-            
+
             // 2. CALLBACK BAÐLANTISI (BU EKSÝKTÝ!)
             // Gelen paketleri LobbyManager'a yönlendiriyoruz
             networkManager.server()->setOnPacket([this](uint64_t id, sf::Packet& pkt) {
                 if (lobbyManager) lobbyManager->handleIncomingPacket(id, pkt);
-            });
+                });
 
             // 3. Lobby Baþlat
             lobbyManager->start(1, "HostPlayer");
             lobbyManager->toggleReady(true);
-        } else {
+        }
+        else {
             std::cerr << "[GAME] HATA: Sunucu baslatilamadi!" << std::endl;
             return;
         }
@@ -154,7 +163,7 @@ void Game::initNetwork() {
     else {
         // --- CLIENT (ÝSTEMCÝ) ---
         std::cout << "[GAME] Sunucuya baglaniliyor: " << m_serverIp << "...\n";
-        
+
         if (networkManager.startClient(m_serverIp, 54000)) {
             // 1. LobbyManager Oluþtur
             lobbyManager = std::make_unique<LobbyManager>(&networkManager, false);
@@ -163,15 +172,16 @@ void Game::initNetwork() {
             // Gelen paketleri LobbyManager'a yönlendiriyoruz
             networkManager.client()->setOnPacket([this](sf::Packet& pkt) {
                 if (lobbyManager) lobbyManager->handleIncomingPacket(0, pkt); // Client için ID önemsiz (0)
-            });
+                });
 
             // 3. Lobby Baþlat
             lobbyManager->start(0, "ClientPlayer");
             lobbyManager->toggleReady(true);
             std::cout << "[GAME] Client baglandi. Oyun baslamasi bekleniyor...\n";
-        } else {
-             std::cerr << "[GAME] HATA: Sunucuya baglanilamadi!" << std::endl;
-             return;
+        }
+        else {
+            std::cerr << "[GAME] HATA: Sunucuya baglanilamadi!" << std::endl;
+            return;
         }
     }
 
@@ -181,15 +191,15 @@ void Game::initNetwork() {
         lobbyManager->setOnGameStart([this]() {
             unsigned int seed = lobbyManager->getGameSeed();
             this->startMatch(seed);
-        });
+            });
     }
 
     // --- HOST ÝSE OYUNU HEMEN BAÞLAT ---
     if (m_isHost && lobbyManager) {
         // Client'ýn baðlanmasý için minik bir bekleme (UDP olduðu için)
         // Ýdeal dünyada client'tan "Ben geldim" onayý bekleriz ama þimdilik sleep yeterli.
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-        
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
         std::cout << "[GAME] Sunucu baslatildi. Sinyal gonderiliyor...\n";
         lobbyManager->startGame();
     }
@@ -337,6 +347,18 @@ void Game::handleKeyboardInput(const sf::Event& event) {
 void Game::handleMouseInput(const sf::Event& event) {
     sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
     sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
+
+    // --- MINIMAP KONTROLÜ (YENÝ) ---
+    // Sol týk basýlýyken veya týklandýðýnda minimap'e bak
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
+        sf::Vector2f newCamPos;
+        // Eðer minimap'e týklandýysa:
+        if (hud.minimap.handleClick(pixelPos, newCamPos)) {
+            camera.setCenter(newCamPos);
+            return; // Baþka iþlem (seçim vs.) yapma
+        }
+    }
+    // -------------------------------
 
     // UI üzerindeyse oyun dünyasýna týklamayý engelle
     if (event.type == sf::Event::MouseButtonPressed && hud.isMouseOverUI(pixelPos)) return;
@@ -728,6 +750,15 @@ void Game::update(float dt) {
         if (m_fogOfWar) {
             m_fogOfWar->update(localPlayer.getEntities());
         }
+
+        // --- MINIMAP GÜNCELLEMESÝ (YENÝ) ---
+        hud.minimap.update(
+            localPlayer.getEntities(),
+            enemyPlayer.getEntities(),
+            camera,
+            m_fogOfWar.get()
+        );
+        // ------------------------------------
 
         handleInput(dt);
         const auto& levelData = mapManager.getLevelData();

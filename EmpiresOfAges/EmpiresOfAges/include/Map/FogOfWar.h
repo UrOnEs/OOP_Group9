@@ -13,22 +13,22 @@ class FogOfWar {
 public:
     FogOfWar(int width, int height, int tileSize);
 
-    // Her frame'de çaðrýlýp sisi güncelleyecek
     void update(const std::vector<std::shared_ptr<class Entity>>& myEntities);
-
-    // Çizim fonksiyonu
     void draw(sf::RenderWindow& window);
 
-    // Bir nokta þu an görünür mü? (Düþmanlarý çizip çizmeme kararý için)
     bool isVisible(float x, float y) const;
+
+    // --- YENÝ EKLENEN FONKSÝYON ---
+    // Koordinattaki sis durumunu döndürür (Minimap için gerekli)
+    FogState getFogAt(int x, int y) const;
 
 private:
     int m_width;
     int m_height;
     int m_tileSize;
 
-    std::vector<FogState> m_grid; // Mantýksal veri
-    sf::VertexArray m_vertices;   // Görsel veri
+    std::vector<FogState> m_grid;
+    sf::VertexArray m_vertices;
 
     void revealArea(int cx, int cy, float radius);
     void updateColor(int x, int y);
