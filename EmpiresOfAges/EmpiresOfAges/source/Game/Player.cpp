@@ -6,10 +6,10 @@
 
 Player::Player() {
     // Baþlangýç kaynaklarý
-    playerResources.add(ResourceType::Wood, 1000);
-    playerResources.add(ResourceType::Food, 1000);
-    playerResources.add(ResourceType::Gold, 1000);
-    playerResources.add(ResourceType::Stone, 1000);
+    playerResources.add(ResourceType::Wood, 100);
+    playerResources.add(ResourceType::Food, 100);
+    playerResources.add(ResourceType::Gold, 0);
+    playerResources.add(ResourceType::Stone, 50);
 
     // Limitler
     unitLimit = 5;

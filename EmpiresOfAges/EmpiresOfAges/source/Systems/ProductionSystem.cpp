@@ -45,7 +45,10 @@ bool ProductionSystem::startProduction(Player& player, Barracks& barracks, Soldi
 void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapManager& mapManager) {
     if (!barracks.getIsProducing()) return;
 
-    barracks.updateTimer(dt);
+    float timeMultiplier = GameRules::DebugMode ? 100.0f : 1.0f;
+
+    barracks.updateTimer(dt * timeMultiplier);
+
 
     if (barracks.isReady()) {
         SoldierTypes type = barracks.finishTraining();
@@ -86,7 +89,10 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
 
 bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
 
-
+    if (!tc.isConstructed) {
+        std::cout << "[Production] Bina inşaat Ediliyor!\n";
+        return false;
+    }
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
         std::cout << "[Production] Nufus limiti dolu!\n";
         return false;
@@ -106,7 +112,10 @@ bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
 //                                  KÖYLÜ GÜNCELLEME VE SPAWN
 // ======================================================================================
 void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager) {
-    tc.updateTimer(dt);
+    
+    float timeMultiplier = GameRules::DebugMode ? 100.0f : 1.0f;
+
+    tc.updateTimer(dt * timeMultiplier);
 
     if (tc.isReady()) {
         tc.finishProduction();

@@ -4,6 +4,8 @@
 
 namespace GameRules {
 
+    static bool DebugMode;
+
     // ==========================================
     // 1. GENEL AYARLAR & HARÝTA
     // ==========================================
@@ -115,10 +117,13 @@ namespace GameRules {
     const sf::Vector2f Size_TownCenter = sf::Vector2f(192.f, 192.f); // 3x3
 
 
-    constexpr int Resources_Per_Tree = 100;
+    constexpr int Resources_Per_Tree = 500;
     constexpr int Resources_Per_Stone = 300;
     constexpr int Resources_Per_Gold = 500;  // <-- YENÝ: Bir altýnda ne kadar kaynak var?
     constexpr int Wood_Per_Tick = 10;
     constexpr int Stone_Per_Tick = 10;
     constexpr int Gold_Per_Tick = 10;        // <-- YENÝ: Toplama hýzý
+
+    constexpr int Villager_MaxCargo = 50; 
+    constexpr float Villager_BuildSpeed = 100.0f;
 }

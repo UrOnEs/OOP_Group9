@@ -48,6 +48,11 @@ public:
     }
 
     void startProduction(float duration) {
+        
+        if (!isConstructed) {
+            std::cout << "[TOWN CENTER] Bina insaat halinde, asker uretemezsin!\n";
+            return;
+        }
         if (isProducing) {
             queuedVillagers++;
         }
@@ -115,15 +120,8 @@ public:
 
             window.draw(selectionCircle);
         }
-
-        // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
-        if (hasTexture) {
-            window.draw(sprite);
-        }
-        else {
-            // Texture yoksa þekli çiz (Failsafe)
-            window.draw(shape);
-        }
+        
+        Building::render(window);
 
         // 2. Üretim Barýný Çiz
         if (isProducing) {

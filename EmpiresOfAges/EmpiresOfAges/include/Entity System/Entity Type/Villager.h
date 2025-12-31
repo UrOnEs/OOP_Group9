@@ -16,7 +16,8 @@ enum class VillagerState {
     MovingToResource,
     Harvesting,
     ReturningToBase,
-    Garrisoned 
+    Garrisoned,
+    Building
 };
 
 class Villager : public Unit {
@@ -30,8 +31,9 @@ private:
     int maxCargo = 10;
     ResourceType cargoType;
 
-    std::weak_ptr<ResourceGenerator> targetResource;
-    std::weak_ptr<Building> targetBase;
+    std::weak_ptr<ResourceGenerator> targetResource; // Alýnacak Kaynak
+    std::weak_ptr<Building> targetBase; // Kaynaðý býrakacaðý bina
+    std::weak_ptr<Building> targetConstruction; // Ýnþa edilecek bina
 
 public:
     Villager();
@@ -44,6 +46,8 @@ public:
     void stopHarvesting();
     void updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player, const std::vector<int>& mapData, int width, int height);
     void smartMoveTo(sf::Vector2f targetPos, int targetSizeInTiles, const std::vector<int>& mapData, int width, int height);
+
+    void startBuilding(std::shared_ptr<Building> building); // Yeni Emir Fonksiyonu
 
     // Render fonksiyonunu eziyoruz (Ýçerdeyken çizilmesin diye)
     void render(sf::RenderWindow& window) override;

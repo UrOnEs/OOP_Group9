@@ -40,6 +40,7 @@ private:
     UIManager uiManager;
     GameStateManager stateManager;
 
+
     // --- OYUN NESNELERÝ ---
     Player localPlayer;
     Player enemyPlayer;
@@ -81,4 +82,6 @@ private:
     float gameDuration = 0.0f;
     bool m_isHost;
     std::string m_serverIp;
+
+    bool isDevMode = false;
 };
