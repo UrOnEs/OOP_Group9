@@ -35,6 +35,9 @@ bool g_isEnteringName = true; // Baþlangýçta true olsun ki isim sorsun
 std::string g_nameInputString = "";
 std::string g_playerCurrentName = "Player";
 std::string g_targetIP = "127.0.0.1";
+//Uyarý mesajý ve süresi
+std::string g_lobbyWarningMsg = "";
+sf::Clock g_lobbyWarningClock;
 
 // --- Global Yöneticiler ---
 NetworkManager g_netManager;
@@ -187,6 +190,32 @@ void leaveLobby() {
     g_currentState = GameState::Menu;
 }
 
+// YENÝ FONKSÝYON: Renk çakýþmasý var mý?
+bool hasColorConflict() {
+    if (!g_lobbyManager) return false;
+
+    uint64_t myId = g_lobbyManager->selfId();
+    int myColor = -1;
+
+    // 1. Önce kendi rengimi bul
+    for (const auto& p : g_lobbyManager->players()) {
+        if (p.id == myId) {
+            myColor = p.colorIndex;
+            break;
+        }
+    }
+
+    // 2. Baþka birinde ayný renk var mý bak
+    for (const auto& p : g_lobbyManager->players()) {
+        if (p.id != myId) { // Kendim hariç
+            if (p.colorIndex == myColor) {
+                return true; // Çakýþma var!
+            }
+        }
+    }
+    return false; // Çakýþma yok
+}
+
 // --- MAIN ---
 int main() {
     srand(static_cast<unsigned int>(time(NULL)));
@@ -330,7 +359,23 @@ int main() {
     btnReady.setSize(200, 60);
     btnReady.setTexture(btnTexture, 200, 60);
     btnReady.setText("Ready", menuFont);
-    btnReady.setCallback([]() { if (g_lobbyManager) g_lobbyManager->toggleReady(!isSelfReady()); });
+    btnReady.setCallback([]() {
+        if (g_lobbyManager) {
+            // Eðer zaten Hazýr durumdaysak iptal etmek (unready) serbest olsun.
+            // Ama Hazýr deðilsek ve Hazýr olmaya çalýþýyorsak renk kontrolü yap.
+            bool currentlyReady = isSelfReady();
+
+            if (!currentlyReady && hasColorConflict()) {
+                g_lobbyWarningMsg = "Bu renk dolu! Rengi degistir.";
+                g_lobbyWarningClock.restart();
+            }
+            else {
+                // Sorun yok, iþlemi yap
+                g_lobbyManager->toggleReady(!currentlyReady);
+                g_lobbyWarningMsg = ""; // Varsa uyarýyý sil
+            }
+        }
+        });
 
     UIButton btnStartGame;
     btnStartGame.setPosition(600, 500);
@@ -607,6 +652,30 @@ int main() {
             btnReady.draw(window);
             btnLeave.draw(window);
             if (g_isHost) btnStartGame.draw(window);
+
+            if (!g_lobbyWarningMsg.empty()) {
+                // Mesaj sadece 3 saniye ekranda kalsýn
+                if (g_lobbyWarningClock.getElapsedTime().asSeconds() < 3.0f) {
+                    sf::Text warnText(g_lobbyWarningMsg, font, 18);
+                    warnText.setFillColor(sf::Color::Red);
+
+                    // Metni Ready butonunun altýna ortala
+                    sf::FloatRect textRect = warnText.getLocalBounds();
+                    warnText.setOrigin(textRect.left + textRect.width / 2.0f, 0);
+                    warnText.setPosition(450, 570); // Butonun (y=500) biraz altý
+
+                    // Arka planý biraz karart ki okunsun (Opsiyonel)
+                    sf::RectangleShape bg(sf::Vector2f(textRect.width + 10, textRect.height + 10));
+                    bg.setFillColor(sf::Color(0, 0, 0, 150));
+                    bg.setPosition(warnText.getPosition().x - textRect.width / 2 - 5, warnText.getPosition().y - 2);
+
+                    window.draw(bg);
+                    window.draw(warnText);
+                }
+                else {
+                    g_lobbyWarningMsg = ""; // Süre doldu, temizle
+                }
+            }
         }
 
         // --- OYUN BAÞLATMA ---

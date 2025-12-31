@@ -7,36 +7,35 @@
 #include "Map/PathFinder.h"
 #include <iostream>
 #include <set>
+//For warnings
+#include "Game/Game.h"
 
-bool ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
+ProductionResult ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
-        std::cout << "[Production] Nufus limiti dolu! ("
-            << player.getCurrentPopulation() << "/" << player.getUnitLimit() << ")\n";
-        return false;
+        std::cout << "[Production] Nufus limiti dolu!\n";
+        return ProductionResult::PopulationFull;
     }
     // Maliyet Kontrolü
-    GameRules::Cost cost;
-    if (unitType == SoldierTypes::Barbarian) cost = GameRules::getUnitCost(SoldierTypes::Barbarian);
-    else if (unitType == SoldierTypes::Archer) cost = GameRules::getUnitCost(SoldierTypes::Archer);
-    else if (unitType == SoldierTypes::Wizard) cost = GameRules::getUnitCost(SoldierTypes::Wizard);
-    else return false;
-
+    GameRules::Cost cost = GameRules::getUnitCost(unitType);
     std::vector<int> res = player.getResources();
-    if (res[0] >= cost.wood && res[1] >= cost.gold && res[2] >= cost.stone && res[3] >= cost.food) {
-        player.addWood(-cost.wood);
-        player.addGold(-cost.gold);
-        player.addStone(-cost.stone);
-        player.addFood(-cost.food);
 
-        player.addQueuedUnit(1);
+    if (res[0] < cost.wood) return ProductionResult::InsufficientWood;
+    if (res[1] < cost.gold) return ProductionResult::InsufficientGold;
+    if (res[2] < cost.stone) return ProductionResult::InsufficientStone;
+    if (res[3] < cost.food) return ProductionResult::InsufficientFood;
 
-        float time = 10.0f;
-        if (unitType == SoldierTypes::Barbarian) time = 5.0f;
+    player.addWood(-cost.wood);
+    player.addGold(-cost.gold);
+    player.addStone(-cost.stone);
+    player.addFood(-cost.food);
 
-        barracks.startTraining(unitType, time);
-        return true;
-    }
-    return false;
+    player.addQueuedUnit(1);
+
+    float time = 10.0f;
+    if (unitType == SoldierTypes::Barbarian) time = 5.0f;
+
+    barracks.startTraining(unitType, time);
+    return ProductionResult::Success;
 }
 
 // ======================================================================================
@@ -87,15 +86,15 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
     }
 }
 
-bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
-
+ProductionResult ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
+  
     if (!tc.isConstructed) {
-        std::cout << "[Production] Bina inşaat Ediliyor!\n";
-        return false;
+    std::cout << "[Production] Bina inşaat Ediliyor!\n";
+    return PopulationFull; //Buraya yeni bir uyarı lazım !
     }
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
         std::cout << "[Production] Nufus limiti dolu!\n";
-        return false;
+        return ProductionResult::PopulationFull;
     }
     // Köylü Maliyeti
     int foodCost = 50;
@@ -103,9 +102,9 @@ bool ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
         player.addFood(-foodCost);
         player.addQueuedUnit(1);
         tc.startProduction(10.0f); // 10 saniye üretim
-        return true;
+        return ProductionResult::Success;
     }
-    return false;
+    return ProductionResult::InsufficientFood;
 }
 
 // ======================================================================================

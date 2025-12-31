@@ -7,16 +7,28 @@
 // MapManager sýnýfýný tanýmasý için
 class MapManager;
 
+enum class ProductionResult {
+    Success,
+    InsufficientFood,
+    InsufficientWood,
+    InsufficientGold,
+    InsufficientStone,
+    InsufficentResource,
+    PopulationFull,
+    QueueFull,
+    InvalidBuilding
+};
+
 class ProductionSystem {
 public:
     // Asker Üretimi
-    static bool startProduction(Player& player, Barracks& barracks, SoldierTypes unitType);
+    static ProductionResult startProduction(Player& player, Barracks& barracks, SoldierTypes unitType);
 
     // --- GÜNCELLEME: MapManager eklendi ---
     static void update(Player& player, Barracks& barracks, float dt, MapManager& mapManager);
 
     // Köylü Üretimi
-    static bool startVillagerProduction(Player& player, TownCenter& tc);
+    static ProductionResult startVillagerProduction(Player& player, TownCenter& tc);
 
     // --- GÜNCELLEME: MapManager eklendi ---
     static void updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager);
