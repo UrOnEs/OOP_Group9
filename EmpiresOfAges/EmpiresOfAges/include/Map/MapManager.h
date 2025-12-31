@@ -27,17 +27,20 @@ public:
     int getHeight() const { return m_height; }
     int getTileSize() const { return m_tileSize; }
 
-    // Game.cpp'nin binalarý/aðaçlarý güncelleyebilmesi için listeyi veriyoruz
     std::vector<std::shared_ptr<Building>>& getBuildings() { return m_buildings; }
-    // -------------------------
-
-    //Belli bir alaný sanki TOKÝ ev yapacakmýþ gibi temizler
     void clearArea(int startX, int startY, int width, int height);
 
 private:
     void createTilesetFile();
     void updateTile(int tx, int ty, int id);
     bool isBuildingAt(int tx, int ty);
+
+    // Rastgele dað kümeleri oluþturur
+    void createMountains(int count);
+
+    // --- YENÝ EKLENEN FONKSÝYON ---
+    // Daðlarýn komþularýna bakarak doðru görseli seçer (Autotiling)
+    void updateMountainVisuals();
 
     int m_width;
     int m_height;

@@ -6,12 +6,13 @@ enum class BuildTypes {
 	Farm,
 	WoodPlace,
 	StoneMine,
-	GoldMine, // Bu bina olan maden
+	GoldMine,
 	House,
 	Tree,
 	TownCenter,
 	Stone,
-	Gold // <-- YENÝ EKLENDÝ (Yerdeki Altýn Kaynaðý)
+	Gold,
+	Mountain // <-- YENI EKLENDI
 };
 
 enum class SoldierTypes {

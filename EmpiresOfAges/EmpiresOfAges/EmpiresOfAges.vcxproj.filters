@@ -90,5 +90,6 @@
     <ClInclude Include="include\Entity System\Entity Type\Stone.h" />
     <ClInclude Include="include\Entity System\Entity Type\Gold.h" />
     <ClInclude Include="include\Map\FogOfWar.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Mountain.h" />
   </ItemGroup>
 </Project>

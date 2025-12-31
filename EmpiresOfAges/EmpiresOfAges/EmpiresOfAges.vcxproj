@@ -181,6 +181,7 @@
     <ClInclude Include="include\Entity System\Entity Type\Gold.h" />
     <ClInclude Include="include\Entity System\Entity Type\GoldMine.h" />
     <ClInclude Include="include\Entity System\Entity Type\House.h" />
+    <ClInclude Include="include\Entity System\Entity Type\Mountain.h" />
     <ClInclude Include="include\Entity System\Entity Type\ResourceGenerator.h" />
     <ClInclude Include="include\Entity System\Entity Type\Soldier.h" />
     <ClInclude Include="include\Entity System\Entity Type\Stone.h" />
