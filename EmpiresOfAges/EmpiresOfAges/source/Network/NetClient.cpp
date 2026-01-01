@@ -78,7 +78,7 @@ void NetClient::update(float dt) {
     while (m_socket.receive(receivedPacket, senderAddress, senderPort) == sf::Socket::Done) {
 
         // Sadece bekledi�imiz sunucudan geliyorsa i�le
-        if (senderAddress == m_serverAddress && senderPort == m_serverPort) {
+        if (senderPort == m_serverPort) {
             handleIncomingPacket(receivedPacket);
         }
         else {
@@ -94,7 +94,7 @@ void NetClient::update(float dt) {
 
     for (auto& pair : m_pendingPackets) {
         // Eğer paket gönderileli 200ms geçmişse ve hala onay gelmemişse tekrar gönder
-        if (pair.second.timer.getElapsedTime().asMilliseconds() > 200) {
+        if (pair.second.timer.getElapsedTime().asMilliseconds() > 50) {
             std::cout << "[NetClient] Paket tekrar gonderiliyor (Seq: " << pair.second.sequence << ")...\n";
 
             m_socket.send(pair.second.packet, m_serverAddress, m_serverPort);

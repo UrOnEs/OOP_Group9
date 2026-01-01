@@ -37,9 +37,14 @@ public:
     // (Opsiyonel: IP:Port string'ini kullanarak g�ndermek daha pratik olabilir.)
     bool sendTo(const std::string& endpoint, sf::Packet& pkt);
 
-
+    bool sendToReliable(uint64_t clientId, sf::Packet& pkt);
 
     void sendToAll(sf::Packet& pkt);
+
+    void sendToAllReliable(sf::Packet& pkt);
+
+    // NetServer sınıfının public kısmına:
+    void sendToAllExcept(uint64_t excludedClientId, sf::Packet& pkt);
 
 
     // --- Callback Ayarlay�c�lar ---

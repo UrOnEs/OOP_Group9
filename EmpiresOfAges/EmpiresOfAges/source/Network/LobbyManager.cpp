@@ -41,7 +41,7 @@ void LobbyManager::changeColor(int colorIndex) {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::ChangeColor) << colorIndex;
         if (m_netManager && m_netManager->client()) {
-            m_netManager->client()->send(pkt);
+            m_netManager->client()->sendReliable(pkt);
         }
     }
 }
@@ -51,7 +51,7 @@ void LobbyManager::closeLobby() {
     if (m_isHost && m_netManager->server()) {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::LobbyClosed);
-        m_netManager->server()->sendToAll(pkt);
+        m_netManager->server()->sendToAllReliable(pkt);
     }
 }
 void LobbyManager::toggleReady(bool isReady) {
@@ -62,7 +62,7 @@ void LobbyManager::toggleReady(bool isReady) {
     else {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::ToggleReady) << isReady;
-        if (m_netManager && m_netManager->client()) m_netManager->client()->send(pkt);
+        if (m_netManager && m_netManager->client()) m_netManager->client()->sendReliable(pkt);
     }
 }
 void LobbyManager::startGame() {
@@ -74,7 +74,7 @@ void LobbyManager::startGame() {
     sf::Packet pkt;
     pkt << static_cast<sf::Int32>(LobbyCommand::StartGameSignal) << m_gameSeed;
     if (m_netManager && m_netManager->server()) {
-        m_netManager->server()->sendToAll(pkt);
+        m_netManager->server()->sendToAllReliable(pkt);
         if (m_onGameStart) m_onGameStart();
     }
 }
@@ -159,7 +159,7 @@ void LobbyManager::processJoinRequest(uint64_t senderId, sf::Packet& pkt) {
 
         if (m_netManager && m_netManager->server()) {
             // Sadece yeni gelen kişiye gönder (sendTo)
-            m_netManager->server()->sendTo(senderId, startPkt);
+            m_netManager->server()->sendToReliable(senderId, startPkt);
             std::cout << "[LOBBY] Gec katilan oyuncuya seed gonderildi: " << senderId << std::endl;
         }
     }
@@ -199,7 +199,7 @@ void LobbyManager::syncLobbyToClients() {
                 << p.ready
                 << static_cast<sf::Int32>(p.colorIndex);
         }
-        m_netManager->server()->sendTo(client.id, syncPkt);
+        m_netManager->server()->sendToReliable(client.id, syncPkt);
     }
     if (m_onChange) m_onChange();
 }

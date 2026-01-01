@@ -170,49 +170,67 @@ void Game::initNetwork() {
         if (stateManager.getState() == GameState::Playing) {
             sf::Packet copyPkt = pkt;
             sf::Uint8 cmdRaw;
-            if (copyPkt >> cmdRaw) {
-                NetCommand cmd = (NetCommand)cmdRaw;
-                if (cmd == NetCommand::TrainUnit) {
-                    int gx, gy, uType;
-                    if (copyPkt >> gx >> gy >> uType) {
-                        auto building = mapManager.getBuildingAt(gx, gy);
-                        if (building && building->getTeam() == enemyPlayer.getTeamColor()) {
-                            if (uType == 1 && std::dynamic_pointer_cast<TownCenter>(building)) {
-                                ProductionSystem::startVillagerProduction(enemyPlayer, *std::dynamic_pointer_cast<TownCenter>(building));
-                                std::cout << "[AG] Rakip koylu uretiyor.\n";
-                            }
-                            else if (std::dynamic_pointer_cast<Barracks>(building)) {
-                                auto bar = std::dynamic_pointer_cast<Barracks>(building);
-                                SoldierTypes type = SoldierTypes::Barbarian;
-                                if (uType == 3) type = SoldierTypes::Archer;
-                                if (uType == 4) type = SoldierTypes::Wizard;
-                                ProductionSystem::startProduction(enemyPlayer, *bar, type);
-                                std::cout << "[AG] Rakip asker uretiyor.\n";
-                            }
+
+            // Okuma hatası kontrolü
+            if (!(copyPkt >> cmdRaw)) return;
+
+            NetCommand cmd = (NetCommand)cmdRaw;
+
+            // --- SERVER İSE PAKETİ DİĞERLERİNE YANSIT (FORWARDING) ---
+            if (m_isHost && id != 0) { // id != 0 demek bir Client'tan geldi demek
+                // Paketi olduğu gibi diğerlerine gönder (Gönderen hariç)
+                networkManager.server()->sendToAllExcept(id, pkt);
+            }
+
+            // --- TRAIN UNIT ---
+            if (cmd == NetCommand::TrainUnit) {
+                int gx, gy, uType;
+                if (copyPkt >> gx >> gy >> uType) {
+                    auto building = mapManager.getBuildingAt(gx, gy);
+
+                    // RENK KONTROLÜNÜ GEVŞETTİK: "Benim değilse düşmanındır"
+                    if (building && building->getTeam() != localPlayer.getTeamColor()) {
+
+                        // İŞLEMİN GARANTİ ÇALIŞMASI İÇİN GEÇİCİ KAYNAK
+                        enemyPlayer.addUnitLimit(50);
+                        enemyPlayer.addFood(2000);
+                        enemyPlayer.addWood(2000);
+                        enemyPlayer.addGold(2000);
+                        enemyPlayer.addStone(2000);
+
+                        if (uType == 1 && std::dynamic_pointer_cast<TownCenter>(building)) {
+                            ProductionSystem::startVillagerProduction(enemyPlayer, *std::dynamic_pointer_cast<TownCenter>(building));
+                            std::cout << "[AG] Rakip (ID: " << id << ") koylu uretiyor.\n";
+                        }
+                        else if (std::dynamic_pointer_cast<Barracks>(building)) {
+                            auto bar = std::dynamic_pointer_cast<Barracks>(building);
+                            SoldierTypes type = SoldierTypes::Barbarian;
+                            if (uType == 3) type = SoldierTypes::Archer;
+                            if (uType == 4) type = SoldierTypes::Wizard;
+                            ProductionSystem::startProduction(enemyPlayer, *bar, type);
+                            std::cout << "[AG] Rakip (ID: " << id << ") asker uretiyor.\n";
                         }
                     }
                 }
-                else if (cmd == NetCommand::PlaceBuilding) {
-                    int gx, gy, bTypeInt;
-                    if (copyPkt >> gx >> gy >> bTypeInt) {
-                        BuildTypes type = (BuildTypes)bTypeInt;
+            }
+            // --- PLACE BUILDING ---
+            else if (cmd == NetCommand::PlaceBuilding) {
+                int gx, gy, bTypeInt;
+                if (copyPkt >> gx >> gy >> bTypeInt) {
+                    BuildTypes type = (BuildTypes)bTypeInt;
 
-                        // Düşman için binayı yerleştirmeyi dene
-                        // Not: Düşman kaynağını kontrol etmiyoruz, sadece görsel senkronizasyon yapıyoruz.
+                    // Bina daha önce kurulmamışsa kur
+                    if (mapManager.getBuildingAt(gx, gy) == nullptr) {
                         std::shared_ptr<Building> enemyBuilding = mapManager.tryPlaceBuilding(gx, gy, type);
-
                         if (enemyBuilding) {
-                            // Düşman rengini ve takımını ayarla
-                            enemyBuilding->setTeam(enemyPlayer.getTeamColor());
+                            // Düşman rengini ata (Basit mantık: Bizim değilse kırmızı/mavi yap)
+                            TeamColors targetColor = (localPlayer.getTeamColor() == TeamColors::Blue) ? TeamColors::Red : TeamColors::Blue;
+                            enemyBuilding->setTeam(targetColor);
 
-                            // İnşaat halinde başlat
                             enemyBuilding->isConstructed = false;
-                            enemyBuilding->health = 1.0f; // Temel atma canı
-
-                            // Düşman listesine ekle
+                            enemyBuilding->health = 1.0f;
                             enemyPlayer.addEntity(enemyBuilding);
-
-                            std::cout << "[AG] Rakip bina insa etti: " << (int)type << " (" << gx << "," << gy << ")\n";
+                            std::cout << "[AG] Rakip bina insa etti: " << gx << "," << gy << "\n";
                         }
                     }
                 }
@@ -238,7 +256,7 @@ void Game::initNetwork() {
             // Bekleme Mantığı
             if (m_totalPlayerCount == 1) {
                 std::cout << "[GAME] Tek kisilik oyun. Hemen baslatiliyor.\n";
-                m_startGameTimer = 0.1f; // 100ms sonra başlat
+                m_startGameTimer = 0.5f; // 100ms sonra başlat
             }
             else {
                 std::cout << "[GAME] Toplam " << m_totalPlayerCount << " oyuncu bekleniyor...\n";
@@ -249,7 +267,7 @@ void Game::initNetwork() {
 
                     if (m_connectedClientCount >= (m_totalPlayerCount - 1)) {
                         std::cout << "[GAME] HERKES HAZIR! Mac baslatiliyor...\n";
-                        m_startGameTimer = 0.5f;
+                        m_startGameTimer = 0.1f;
                     }
                     });
             }
@@ -1175,7 +1193,7 @@ void Game::sendTrainCommand(int gridX, int gridY, int unitTypeID) {
 
     // Herkese gönder
     if (m_isHost) {
-        networkManager.server()->sendToAll(packet);
+        networkManager.server()->sendToAllReliable(packet);
     }
     else {
         networkManager.client()->sendReliable(packet);
@@ -1195,7 +1213,7 @@ void Game::sendBuildCommand(int gridX, int gridY, int buildTypeID) {
 
     // Herkese gönder
     if (m_isHost) {
-        networkManager.server()->sendToAll(packet);
+        networkManager.server()->sendToAllReliable(packet);
     }
     else {
         networkManager.client()->sendReliable(packet);

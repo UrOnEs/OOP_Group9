@@ -1,6 +1,7 @@
 ﻿// Connection.cpp - SFML UDP/Packet
 
 #include "Network/Connection.h"
+#include <iostream>
 
 // --- Kurucu ---
 
@@ -39,7 +40,14 @@ void Connection::processACK(uint32_t seq) {
 
 void Connection::resendMissingPackets(sf::UdpSocket& socket) {
     for (auto& pair : m_pendingPackets) {
-        if (pair.second.timer.getElapsedTime().asMilliseconds() > 200) { // 200ms zaman aşımı
+        // Süreyi 50ms yapmıştık, kontrol edin
+        if (pair.second.timer.getElapsedTime().asMilliseconds() > 50) {
+
+            // --- LOG EKLEMESİ ---
+            std::cout << "[Network] Paket (Seq: " << pair.second.sequence
+                << ") tekrar gonderiliyor -> " << m_address.toString() << "\n";
+            // --------------------
+
             socket.send(pair.second.packet, m_address, m_port);
             pair.second.timer.restart();
         }

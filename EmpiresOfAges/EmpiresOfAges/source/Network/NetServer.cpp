@@ -194,24 +194,67 @@ bool NetServer::sendTo(const std::string& endpoint, sf::Packet& pkt) {
     return false;
 }
 
+bool NetServer::sendToReliable(uint64_t clientId, sf::Packet& pkt) {
+    auto it = m_connections.find(clientId);
+    if (it != m_connections.end()) {
+        Connection* conn = it->second.get();
+        if (conn) {
+            uint32_t seq = conn->getNextSequence();
+
+            // Reliable Başlık Ekle
+            sf::Packet finalPkt;
+            finalPkt << (sf::Uint8)PacketType::Reliable << seq;
+            finalPkt.append(pkt.getData(), pkt.getDataSize());
+
+            // Gönder ve Takip Listesine Ekle
+            conn->send(m_socket, finalPkt);
+            conn->addPendingPacket(seq, finalPkt);
+            return true;
+        }
+    }
+    return false;
+}
+
 
 
 void NetServer::sendToAll(sf::Packet& pkt) { // void olarak kalabilir, ��nk� sendToAll(broadcast) genellikle void d�ner
-
-    // T�m ba�l� Connection'lara yay�n yap.
-    // Geleneksel iterat�r kullanarak hatay� ��z�yoruz:
-    for (auto const& pair : m_connections) {
-        // 'pair' �imdi std::pair<const uint64_t, std::unique_ptr<Connection>> t�r�ndedir.
-
-        Connection* connPtr = pair.second.get(); // unique_ptr i�indeki ham pointer'� al
-
-        if (connPtr) {
-            connPtr->send(m_socket, pkt);
-        }
-    }
     broadcast(pkt);
 }
 
+void NetServer::sendToAllReliable(sf::Packet& pkt) {
+    for (auto& pair : m_connections) {
+        Connection* conn = pair.second.get();
+        if (conn) {
+            // 1. Sequence numarasını al
+            uint32_t seq = conn->getNextSequence();
+
+            // 2. Reliable Header Ekle
+            sf::Packet finalPkt;
+            finalPkt << (sf::Uint8)PacketType::Reliable << seq;
+            finalPkt.append(pkt.getData(), pkt.getDataSize());
+
+            // 3. Gönder ve Onay Listesine Ekle
+            conn->send(m_socket, finalPkt);
+            conn->addPendingPacket(seq, finalPkt);
+        }
+    }
+}
+
+void NetServer::sendToAllExcept(uint64_t excludedClientId, sf::Packet& pkt) {
+    for (auto& pair : m_connections) {
+        if (pair.first != excludedClientId) { // Gönderen hariç diğerlerine yolla
+            Connection* conn = pair.second.get();
+            if (conn) {
+                uint32_t seq = conn->getNextSequence();
+                sf::Packet finalPkt;
+                finalPkt << (sf::Uint8)PacketType::Reliable << seq;
+                finalPkt.append(pkt.getData(), pkt.getDataSize());
+                conn->send(m_socket, finalPkt);
+                conn->addPendingPacket(seq, finalPkt);
+            }
+        }
+    }
+}
 
 
 void NetServer::broadcast(sf::Packet& pkt) {
