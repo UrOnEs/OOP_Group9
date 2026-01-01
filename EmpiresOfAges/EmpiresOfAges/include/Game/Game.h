@@ -20,13 +20,17 @@
 
 class Game {
 public:
-    Game(bool isHost, std::string serverIp, int playerIndex);
+    Game(bool isHost, std::string serverIp, int playerIndex, int totalPlayerCount);
     void run();
     void startMatch(unsigned int seed);
 
 
     void showWarning(const std::string& message);
     void drawWarning(sf::RenderWindow& window);
+
+    void sendTrainCommand(int gridX, int gridY, int unitTypeID);
+
+    void sendBuildCommand(int gridX, int gridY, int buildTypeID);
 
 private:
     void processEvents();
@@ -96,4 +100,12 @@ private:
     bool isDevMode = false;
 
     int m_playerIndex;
+
+    bool m_matchStarted = false;       // Oyunun baþlayýp baþlamadýðýný kontrol eder
+    bool m_launchScheduled = false;
+
+    int m_totalPlayerCount;     // Oyunda olmasý gereken toplam kiþi sayýsý
+    int m_connectedClientCount;
+
+    float m_startGameTimer = -1.0f;
 };

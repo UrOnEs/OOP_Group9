@@ -175,7 +175,7 @@ void leaveLobby() {
     g_netManager.discovery()->stop();
     if (!g_isHost && g_netManager.client() && g_netManager.client()->isConnected()) {
         sf::Packet pkt; pkt << static_cast<sf::Int32>(4); // LeaveLobby Command
-        g_netManager.client()->send(pkt);
+        g_netManager.client()->sendReliable(pkt);
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
         g_netManager.client()->disconnect();
     }
@@ -686,11 +686,15 @@ int main() {
                 std::cout << "[MAIN] Oyun baslatiliyor..." << std::endl;
 
                 int myPlayerIndex = 0;
+                int totalPlayers = 1; // Varsayýlan 1
+
                 if (g_lobbyManager) {
                     uint64_t myId = g_lobbyManager->selfId();
+                    totalPlayers = g_lobbyManager->players().size(); // LOBÝDEKÝ SAYIYI AL
+
                     for (const auto& p : g_lobbyManager->players()) {
                         if (p.id == myId) {
-                            myPlayerIndex = p.colorIndex; // Oyuncunun rengini
+                            myPlayerIndex = p.colorIndex;
                             break;
                         }
                     }
@@ -706,7 +710,7 @@ int main() {
                 // Portun tamamen boþa düþmesi için yarým saniye bekle
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                Game game(g_isHost, g_targetIP, myPlayerIndex);
+                Game game(g_isHost, g_targetIP, myPlayerIndex, totalPlayers);
                 game.run();
             }
             catch (const std::exception& e) {

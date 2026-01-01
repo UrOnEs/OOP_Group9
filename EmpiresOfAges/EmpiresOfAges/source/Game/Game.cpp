@@ -32,11 +32,14 @@
 
 //bool GameRules::DebugMode = false;
 
-Game::Game(bool isHost, std::string serverIp, int playerIndex)
+Game::Game(bool isHost, std::string serverIp, int playerIndex, int totalPlayerCount)
     : mapManager(GameRules::MapWidth, GameRules::MapHeight, GameRules::TileSize),
     m_isHost(isHost),     // Kaydet
     m_serverIp(serverIp),
-    m_playerIndex(playerIndex)
+    m_playerIndex(playerIndex),
+    m_totalPlayerCount(totalPlayerCount), // Kaydet
+    m_connectedClientCount(0)
+
 {
     // 1. Pencere ve Görünüm Ayarları
     sf::VideoMode desktopMode = sf::VideoMode::getDesktopMode();
@@ -136,14 +139,21 @@ void Game::startMatch(unsigned int seed) {
         }
         // Eðer bu index BAÞKASI ise -> EnemyPlayer'a ekle
         else {
-            // Þimdilik sadece bina koyalým ki yerleri belli olsun.
-            // Ýleride að üzerinden "PlayerConnected" bilgisi gelince sadece aktif oyuncular doðmalý.
-            // Ama þimdilik harita boþ kalmasýn diye diðer 3 köþeye de düþman binasý koyuyoruz.
-
+            // 1. Enemy Town Center
             std::shared_ptr<Building> enemyTC = mapManager.tryPlaceBuilding(spawnGrid.x, spawnGrid.y, BuildTypes::TownCenter);
             if (enemyTC) {
                 enemyTC->setTeam((TeamColors)i); // Dusmanin rengini ayarla
                 enemyPlayer.addEntity(enemyTC);
+
+                // --- EKLENEN KISIM: DÜŞMAN KÖYLÜSÜ ---
+                // Tıpkı localPlayer'da olduğu gibi düşman için de başlangıç köylüsü ekliyoruz.
+                std::shared_ptr<Villager> enemyVil = std::make_shared<Villager>();
+                sf::Vector2f spawnPos = enemyTC->getPosition();
+                spawnPos.y += 120.0f;
+                enemyVil->setPosition(spawnPos);
+                enemyVil->setTeam((TeamColors)i);
+                enemyPlayer.addEntity(enemyVil);
+                // -------------------------------------
             }
         }
     }
@@ -153,77 +163,126 @@ void Game::startMatch(unsigned int seed) {
 }
 
 void Game::initNetwork() {
-    networkManager.setLogger([](const std::string& msg) {
-        // std::cout << "[NETWORK]: " << msg << std::endl;
-        });
+    networkManager.setLogger([](const std::string& msg) {});
+
+    // Paket İşleyici
+    auto packetHandler = [this](uint64_t id, sf::Packet& pkt) {
+        if (stateManager.getState() == GameState::Playing) {
+            sf::Packet copyPkt = pkt;
+            sf::Uint8 cmdRaw;
+            if (copyPkt >> cmdRaw) {
+                NetCommand cmd = (NetCommand)cmdRaw;
+                if (cmd == NetCommand::TrainUnit) {
+                    int gx, gy, uType;
+                    if (copyPkt >> gx >> gy >> uType) {
+                        auto building = mapManager.getBuildingAt(gx, gy);
+                        if (building && building->getTeam() == enemyPlayer.getTeamColor()) {
+                            if (uType == 1 && std::dynamic_pointer_cast<TownCenter>(building)) {
+                                ProductionSystem::startVillagerProduction(enemyPlayer, *std::dynamic_pointer_cast<TownCenter>(building));
+                                std::cout << "[AG] Rakip koylu uretiyor.\n";
+                            }
+                            else if (std::dynamic_pointer_cast<Barracks>(building)) {
+                                auto bar = std::dynamic_pointer_cast<Barracks>(building);
+                                SoldierTypes type = SoldierTypes::Barbarian;
+                                if (uType == 3) type = SoldierTypes::Archer;
+                                if (uType == 4) type = SoldierTypes::Wizard;
+                                ProductionSystem::startProduction(enemyPlayer, *bar, type);
+                                std::cout << "[AG] Rakip asker uretiyor.\n";
+                            }
+                        }
+                    }
+                }
+                else if (cmd == NetCommand::PlaceBuilding) {
+                    int gx, gy, bTypeInt;
+                    if (copyPkt >> gx >> gy >> bTypeInt) {
+                        BuildTypes type = (BuildTypes)bTypeInt;
+
+                        // Düşman için binayı yerleştirmeyi dene
+                        // Not: Düşman kaynağını kontrol etmiyoruz, sadece görsel senkronizasyon yapıyoruz.
+                        std::shared_ptr<Building> enemyBuilding = mapManager.tryPlaceBuilding(gx, gy, type);
+
+                        if (enemyBuilding) {
+                            // Düşman rengini ve takımını ayarla
+                            enemyBuilding->setTeam(enemyPlayer.getTeamColor());
+
+                            // İnşaat halinde başlat
+                            enemyBuilding->isConstructed = false;
+                            enemyBuilding->health = 1.0f; // Temel atma canı
+
+                            // Düşman listesine ekle
+                            enemyPlayer.addEntity(enemyBuilding);
+
+                            std::cout << "[AG] Rakip bina insa etti: " << (int)type << " (" << gx << "," << gy << ")\n";
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            if (lobbyManager) lobbyManager->handleIncomingPacket(id, pkt);
+        }
+        };
 
     if (m_isHost) {
-        // --- HOST (SUNUCU) ---
-        unsigned short port = 54000;
-        if (networkManager.startServer(port)) {
-            // 1. LobbyManager Oluştur
+        // --- HOST ---
+        if (networkManager.startServer(54000)) {
+
+            // --- EKSİK OLAN SATIR BURASIYDI ---
             lobbyManager = std::make_unique<LobbyManager>(&networkManager, true);
+            // ----------------------------------
 
-            // 2. CALLBACK BAĞLANTISI (BU EKSİKTİ!)
-            // Gelen paketleri LobbyManager'a yönlendiriyoruz
-            networkManager.server()->setOnPacket([this](uint64_t id, sf::Packet& pkt) {
-                if (lobbyManager) lobbyManager->handleIncomingPacket(id, pkt);
-                });
-
-            // 3. Lobby Başlat
+            networkManager.server()->setOnPacket(packetHandler);
             lobbyManager->start(1, "HostPlayer");
             lobbyManager->toggleReady(true);
+
+            // Bekleme Mantığı
+            if (m_totalPlayerCount == 1) {
+                std::cout << "[GAME] Tek kisilik oyun. Hemen baslatiliyor.\n";
+                m_startGameTimer = 0.1f; // 100ms sonra başlat
+            }
+            else {
+                std::cout << "[GAME] Toplam " << m_totalPlayerCount << " oyuncu bekleniyor...\n";
+                networkManager.server()->setOnClientConnected([this](uint64_t clientId) {
+                    m_connectedClientCount++;
+                    std::cout << "[GAME] Oyuncu (" << clientId << ") baglandi. Durum: "
+                        << m_connectedClientCount << "/" << (m_totalPlayerCount - 1) << "\n";
+
+                    if (m_connectedClientCount >= (m_totalPlayerCount - 1)) {
+                        std::cout << "[GAME] HERKES HAZIR! Mac baslatiliyor...\n";
+                        m_startGameTimer = 0.5f;
+                    }
+                    });
+            }
         }
         else {
             std::cerr << "[GAME] HATA: Sunucu baslatilamadi!" << std::endl;
-            return;
         }
     }
     else {
-        // --- CLIENT (İSTEMCİ) ---
+        // --- CLIENT ---
         std::cout << "[GAME] Sunucuya baglaniliyor: " << m_serverIp << "...\n";
-
         if (networkManager.startClient(m_serverIp, 54000)) {
-            // 1. LobbyManager Oluştur
             lobbyManager = std::make_unique<LobbyManager>(&networkManager, false);
-
-            // 2. CALLBACK BAĞLANTISI (BU EKSİKTİ!)
-            // Gelen paketleri LobbyManager'a yönlendiriyoruz
-            networkManager.client()->setOnPacket([this](sf::Packet& pkt) {
-                if (lobbyManager) lobbyManager->handleIncomingPacket(0, pkt); // Client için ID önemsiz (0)
-                });
-
-            // 3. Lobby Başlat
+            networkManager.client()->setOnPacket([packetHandler](sf::Packet& pkt) { packetHandler(0, pkt); });
             lobbyManager->start(0, "ClientPlayer");
             lobbyManager->toggleReady(true);
+
+            sf::Packet dummy; dummy << (sf::Uint8)NetCommand::None;
+            networkManager.client()->sendReliable(dummy);
             std::cout << "[GAME] Client baglandi. Oyun baslamasi bekleniyor...\n";
         }
         else {
-            std::cerr << "[GAME] HATA: Sunucuya baglanilamadi!" << std::endl;
-            return;
+            std::cerr << "[GAME] HATA: Baglanilamadi!\n";
         }
     }
 
-    // --- ORTAK Callback ---
-    // Oyun başla sinyali gelince ne yapacağız?
     if (lobbyManager) {
         lobbyManager->setOnGameStart([this]() {
             unsigned int seed = lobbyManager->getGameSeed();
             this->startMatch(seed);
             });
     }
-
-    // --- HOST İSE OYUNU HEMEN BAŞLAT ---
-    if (m_isHost && lobbyManager) {
-        // Client'ın bağlanması için minik bir bekleme (UDP olduğu için)
-        // İdeal dünyada client'tan "Ben geldim" onayı bekleriz ama şimdilik sleep yeterli.
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        std::cout << "[GAME] Sunucu baslatildi. Sinyal gonderiliyor...\n";
-        lobbyManager->startGame();
-    }
 }
-
 void Game::initUI() {
     static sf::Texture villagerTex;
     static sf::Texture houseIconTex;
@@ -256,20 +315,28 @@ void Game::processEvents() {
     while (window.pollEvent(event)) {
 
         uiManager.handleEvent(event);
-        hud.handleEvent(event);
+
+        // --- HATA BURADAYDI ---
+        // hud.handleEvent(event); // <-- BU SATIR BURADA OLDUĞU İÇİN ÇÖKÜYOR OLABİLİR
 
         if (event.type == sf::Event::Closed) {
             window.close();
         }
 
+        // SADECE OYUN OYNANIYORSA HUD VE OYUN GİRDİLERİNİ İŞLE
         if (stateManager.getState() == GameState::Playing) {
+
+            // --- BURAYA TAŞIYORUZ ---
+            // Artık güvenli, çünkü startMatch çalıştı ve HUD yüklendi.
+            hud.handleEvent(event);
+            // ------------------------
 
             // 1. KLAVYE GİRDİLERİ
             if (event.type == sf::Event::KeyPressed) {
                 handleKeyboardInput(event);
             }
 
-            // 2. MOUSE GİRDİLERİ (Tıklamalar)
+            // 2. MOUSE GİRDİLERİ
             if (event.type == sf::Event::MouseButtonPressed ||
                 event.type == sf::Event::MouseButtonReleased ||
                 event.type == sf::Event::MouseMoved) {
@@ -454,10 +521,15 @@ void Game::handleMouseInput(const sf::Event& event) {
                     else if (ab.getId() == 10) { // Köylü Üret
                         if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity))
                             ab.setOnClick([this, tc, handleProductionResult]() {
-                            // Kontrolü ProductionSystem yapsın, sonucu alalım
+                            // 1. Önce KENDİ oyunumuzda işlemi yap
                             ProductionResult res = ProductionSystem::startVillagerProduction(localPlayer, *tc);
-                            // Sonucu yardımcı fonksiyona gönderelim
                             handleProductionResult(res);
+
+                            // 2. Başarılıysa AĞA GÖNDER
+                            if (res == ProductionResult::Success) {
+                                // Not: UnitType ID'leri için bir standart belirlemelisin. Örn: 1=Köylü, 2=Barbar...
+                                this->sendTrainCommand(tc->getGridPoint().x, tc->getGridPoint().y, 1);
+                            }
                                 });
                     }
                     else if (ab.getId() == 11) { // Barbar
@@ -465,6 +537,10 @@ void Game::handleMouseInput(const sf::Event& event) {
                             ab.setOnClick([this, b, handleProductionResult]() {
                             ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Barbarian);
                             handleProductionResult(res);
+
+                            if (res == ProductionResult::Success) {
+                                this->sendTrainCommand(b->getGridPoint().x, b->getGridPoint().y, 2); // 2 = Barbar
+                            }
                                 });
                     }
                     else if (ab.getId() == 12) { // Okçu
@@ -472,6 +548,10 @@ void Game::handleMouseInput(const sf::Event& event) {
                             ab.setOnClick([this, b, handleProductionResult]() {
                             ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Archer);
                             handleProductionResult(res);
+
+                            if (res == ProductionResult::Success) {
+                                this->sendTrainCommand(b->getGridPoint().x, b->getGridPoint().y, 3); // 3 = okcu
+                            }
                                 });
                     }
                     else if (ab.getId() == 13) { // Wizard
@@ -479,6 +559,10 @@ void Game::handleMouseInput(const sf::Event& event) {
                             ab.setOnClick([this, b, handleProductionResult]() {
                             ProductionResult res = ProductionSystem::startProduction(localPlayer, *b, SoldierTypes::Wizard);
                             handleProductionResult(res);
+
+                            if (res == ProductionResult::Success) {
+                                this->sendTrainCommand(b->getGridPoint().x, b->getGridPoint().y, 4); // 4 = buyucu
+                            }
                                 });
                     }
                 }
@@ -525,6 +609,8 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
                 localPlayer.addGold(-cost.gold);
                 localPlayer.addStone(-cost.stone);
                 localPlayer.addFood(-cost.food);
+
+                sendBuildCommand(gridX, gridY, (int)pendingBuildingType);
 
                 std::cout << "[GAME] Temel atildi! Insaat bekliyor.\n";
 
@@ -762,22 +848,37 @@ void Game::onRightClick(const sf::Vector2f& worldPos) {
 }
 
 void Game::update(float dt) {
-    networkManager.update(dt);
-    if (stateManager.getState() == GameState::Playing) {
+    // Ağ paketlerini her zaman dinlemeliyiz (Bağlantı istekleri için)
+    networkManager.update(dt); //
+
+    if (m_isHost && m_startGameTimer > 0.0f) {
+        m_startGameTimer -= dt;
+        if (m_startGameTimer <= 0.0f) {
+            // Süre doldu, oyunu başlat
+            if (lobbyManager) {
+                std::cout << "[GAME] Timer doldu, start sinyali gonderiliyor...\n";
+                lobbyManager->startGame();
+            }
+            m_startGameTimer = -1.0f; // Sayacı kapat
+        }
+    }
+
+    // --- ÖNEMLİ DEĞİŞİKLİK: Sadece oyun oynanıyorsa güncelleme yap ---
+    if (stateManager.getState() == GameState::Playing) { //
 
         // --- SAVAŞ SİSİ GÜNCELLEMESİ ---
         if (m_fogOfWar) {
             m_fogOfWar->update(localPlayer.getEntities());
         }
 
-        // --- MINIMAP GÜNCELLEMESİ (YENİ) ---
+        // --- MINIMAP GÜNCELLEMESİ ---
+        // Bu kod eskiden dışarıdaydı, artık koruma altında.
         hud.minimap.update(
             localPlayer.getEntities(),
             enemyPlayer.getEntities(),
             camera,
             m_fogOfWar.get()
         );
-        // ------------------------------------
 
         handleInput(dt);
         const auto& levelData = mapManager.getLevelData();
@@ -787,70 +888,33 @@ void Game::update(float dt) {
 
         // --- ENTITY GÜNCELLEMELERİ ---
         for (auto& entity : localPlayer.getEntities()) {
-
-            // 1. Fiziksel Hareket
-            if (auto unit = std::dynamic_pointer_cast<Unit>(entity)) {
-                unit->update(dt, levelData, mapW, mapH);
-            }
-
-            // 2. KÖYLÜ MANTIĞI
-            if (auto villager = std::dynamic_pointer_cast<Villager>(entity)) {
-                // ESKİ HALİ: villager->updateVillager(dt, allBuildings, localPlayer);
-
-                // YENİ HALİ (Harita verilerini ekliyoruz):
-                villager->updateVillager(dt, allBuildings, localPlayer, levelData, mapW, mapH);
-            }
-
-            // 3. ASKER MANTIĞI
-            if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                soldier->updateSoldier(dt, enemyPlayer.getEntities());
-            }
-
-            // 4. Binalar
-            if (auto barracks = std::dynamic_pointer_cast<Barracks>(entity)) {
-                ProductionSystem::update(localPlayer, *barracks, dt, mapManager);
-            }
-            if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity)) {
-                ProductionSystem::updateTC(localPlayer, *tc, dt, mapManager);
-            }
+            if (auto u = std::dynamic_pointer_cast<Unit>(entity)) u->update(dt, levelData, mapW, mapH);
+            if (auto v = std::dynamic_pointer_cast<Villager>(entity)) v->updateVillager(dt, allBuildings, localPlayer, levelData, mapW, mapH);
+            if (auto s = std::dynamic_pointer_cast<Soldier>(entity)) s->updateSoldier(dt, enemyPlayer.getEntities());
+            if (auto b = std::dynamic_pointer_cast<Barracks>(entity)) ProductionSystem::update(localPlayer, *b, dt, mapManager);
+            if (auto tc = std::dynamic_pointer_cast<TownCenter>(entity)) ProductionSystem::updateTC(localPlayer, *tc, dt, mapManager);
         }
 
         // --- KAYNAK SİSTEMİ ---
         for (auto& building : mapManager.getBuildings()) {
-            if (building) {
-                if (auto resGen = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
-                    if (resGen->isWorking()) {
-                        ResourceSystem::update(localPlayer, *resGen, dt);
-                    }
-                }
+            if (auto res = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
+                if (res->isWorking()) ResourceSystem::update(localPlayer, *res, dt);
             }
         }
 
-        // --- UI GÜNCELLEME ---
+        // --- UI SEÇİM GÜNCELLEME ---
         if (!localPlayer.selected_entities.empty()) {
-            auto entity = localPlayer.selected_entities[0];
-            if (entity->getIsAlive()) {
+            auto ent = localPlayer.selected_entities[0];
+            if (ent->getIsAlive()) {
                 hud.selectedPanel.setVisible(true);
-                hud.selectedPanel.updateHealth((int)entity->health, entity->getMaxHealth());
-
-                //Yeni ekledim Test
-                bool showQueue = false;
-
-                if (entity->getTeam() == localPlayer.getTeamColor()) {
-
-                    // 2. Kural: Seçilen birim BİNA MI?
-                    if (auto building = std::dynamic_pointer_cast<Building>(entity)) {
-                        hud.selectedPanel.updateQueue(
-                            building->getProductionQueueIcons(),
-                            building->getProductionProgress()
-                        );
-                        showQueue = true; // Evet, kuyruğu göster!
-                    }
+                hud.selectedPanel.updateHealth((int)ent->health, ent->getMaxHealth());
+                if (auto b = std::dynamic_pointer_cast<Building>(ent)) {
+                    if (b->getTeam() == localPlayer.getTeamColor())
+                        hud.selectedPanel.updateQueue(b->getProductionQueueIcons(), b->getProductionProgress());
                 }
-                if (!showQueue) {
+                else {
                     hud.selectedPanel.updateQueue({}, 0.0f);
                 }
-                //Deneme buraya kadardı
             }
             else {
                 hud.selectedPanel.setVisible(false);
@@ -858,57 +922,29 @@ void Game::update(float dt) {
             }
         }
         else if (!enemyPlayer.selected_entities.empty()) {
-            auto entity = enemyPlayer.selected_entities[0];
-            if (entity->getIsAlive()) {
-                hud.selectedPanel.setVisible(true);
-                hud.selectedPanel.updateHealth((int)entity->health, entity->getMaxHealth());
-            }
-            else {
+            auto ent = enemyPlayer.selected_entities[0];
+            if (!ent->getIsAlive()) {
                 hud.selectedPanel.setVisible(false);
                 enemyPlayer.selected_entities.clear();
             }
         }
-        else {
-            hud.selectedPanel.setVisible(false);
-        }
 
-        // =================================================================
-        //                     DÜŞMAN YAPAY ZEKASI (AI)
-        // =================================================================
-
-        gameDuration += dt;
-
-        for (auto& building : mapManager.getBuildings()) {
-            if (auto barracks = std::dynamic_pointer_cast<Barracks>(building)) {
-
-                if (barracks->getTeam() == TeamColors::Red) {
-                    barracks->updateTimer(dt);
-                    if (gameDuration < 30.0f) continue;
-
-                    if (!barracks->getIsProducing()) {
-                        barracks->startTraining(SoldierTypes::Barbarian, 10.0f);
-                    }
-                    ProductionSystem::update(enemyPlayer, *barracks, dt, mapManager);
-                }
+        // --- DÜŞMAN GÜNCELLEME ---
+        for (auto& ent : enemyPlayer.getEntities()) {
+            if (auto s = std::dynamic_pointer_cast<Soldier>(ent)) {
+                s->update(dt, levelData, mapW, mapH);
+                s->updateSoldier(dt, localPlayer.getEntities());
             }
-        }
-
-        for (auto& entity : enemyPlayer.getEntities()) {
-            if (auto soldier = std::dynamic_pointer_cast<Soldier>(entity)) {
-                soldier->update(dt, levelData, mapW, mapH);
-                soldier->updateSoldier(dt, localPlayer.getEntities());
-            }
+            if (auto b = std::dynamic_pointer_cast<Barracks>(ent)) ProductionSystem::update(enemyPlayer, *b, dt, mapManager);
+            if (auto tc = std::dynamic_pointer_cast<TownCenter>(ent)) ProductionSystem::updateTC(enemyPlayer, *tc, dt, mapManager);
         }
 
         mapManager.removeDeadBuildings();
         localPlayer.removeDeadEntities();
         enemyPlayer.removeDeadEntities();
 
-        // NOT: Render fonksiyonları Game::render içine taşındı.
-
         std::vector<int> res = localPlayer.getResources();
         hud.resourceBar.updateResources(res[0], res[3], res[1], res[2], localPlayer);
-
     }
 }
 
@@ -916,43 +952,37 @@ void Game::render() {
     window.clear();
     window.setView(camera);
 
-    if (stateManager.getState() == GameState::Playing) {
+    if (stateManager.getState() == GameState::Playing) { //
+        // --- OYUN DÜNYASI ÇİZİMİ ---
         mapManager.draw(window);
 
-        // 1. Kendi Birimlerimiz (Her zaman çizilir)
+        // Kendi birimlerimiz
         localPlayer.renderEntities(window);
         for (auto& entity : localPlayer.getEntities()) {
             if (entity->getIsAlive()) entity->renderEffects(window);
         }
 
-        // 2. Düşman Birimleri (Sis Kontrollü)
+        // Düşman birimleri (Sis kontrollü)
         for (auto& entity : enemyPlayer.getEntities()) {
             if (!entity->getIsAlive()) continue;
-
             bool isVisible = true;
             if (m_fogOfWar) isVisible = m_fogOfWar->isVisible(entity->getPosition().x, entity->getPosition().y);
 
-            // Bina ise: Her zaman çiz (Sis üzerine binecek ve örtecek)
             if (std::dynamic_pointer_cast<Building>(entity)) {
                 entity->render(window);
-                // Efektleri sadece görünürse çizmek daha şık olur
                 if (isVisible) entity->renderEffects(window);
             }
-            // Asker ise: SADECE Görünürse çiz
             else if (isVisible) {
                 entity->render(window);
                 entity->renderEffects(window);
             }
         }
 
-        // 3. Savaş Sisi (En üst katman)
+        // Savaş Sisi
         if (m_fogOfWar) m_fogOfWar->draw(window);
 
-        // 4. Seçim Kutusu ve Hayalet Bina
-        if (isSelecting) {
-            window.draw(selectionBox);
-        }
-
+        // Seçim ve İnşaat
+        if (isSelecting) window.draw(selectionBox);
         if (isInBuildMode) {
             sf::Vector2i pixelPos = sf::Mouse::getPosition(window);
             sf::Vector2f worldPos = window.mapPixelToCoords(pixelPos, camera);
@@ -965,44 +995,47 @@ void Game::render() {
 
             ghostBuildingSprite.setPosition(snapX, snapY);
             ghostGridRect.setPosition(snapX, snapY);
-
-            int widthInTiles = (int)(ghostGridRect.getSize().x / mapManager.getTileSize());
-            int heightInTiles = (int)(ghostGridRect.getSize().y / mapManager.getTileSize());
-
-            bool isValid = true;
-            for (int x = 0; x < widthInTiles; ++x) {
-                for (int y = 0; y < heightInTiles; ++y) {
-                    if (gx + x < 0 || gx + x >= mapManager.getWidth() ||
-                        gy + y < 0 || gy + y >= mapManager.getHeight()) {
-                        isValid = false; break;
-                    }
-                    int idx = (gx + x) + (gy + y) * mapManager.getWidth();
-                    if (mapManager.getLevelData()[idx] != 0) {
-                        isValid = false; break;
-                    }
-                }
-                if (!isValid) break;
-            }
-
-            if (isValid) {
-                ghostBuildingSprite.setColor(sf::Color(0, 255, 0, 150));
-                ghostGridRect.setOutlineColor(sf::Color::Green);
-            }
-            else {
-                ghostBuildingSprite.setColor(sf::Color(255, 0, 0, 150));
-                ghostGridRect.setOutlineColor(sf::Color::Red);
-            }
-
             window.draw(ghostBuildingSprite);
             window.draw(ghostGridRect);
         }
     }
 
+    // --- UI KATMANI ---
     window.setView(window.getDefaultView());
-    hud.draw(window);
-    uiManager.draw(window);
 
-    drawWarning(window);
+    // Eğer oyun oynanıyorsa HUD'u çiz
+    if (stateManager.getState() == GameState::Playing) { //
+        hud.draw(window);
+        uiManager.draw(window);
+        drawWarning(window);
+    }
+    // Eğer oyun başlamadıysa (Bekleme Modu) Bilgi Ekranı Çiz
+    else {
+        // Font AssetManager'dan veya eldeki bir fonttan
+        // Not: AssetManager yoksa basit bir sf::Font yüklemesi yapmanız gerekebilir.
+        sf::Font& font = AssetManager::getFont("assets/fonts/arial.ttf");
+
+        sf::Text waitText;
+        waitText.setFont(font);
+        waitText.setCharacterSize(24);
+        waitText.setFillColor(sf::Color::White);
+
+        if (m_isHost) {
+            waitText.setString("Oyuncular Bekleniyor... (" +
+                std::to_string(m_connectedClientCount) + "/" +
+                std::to_string(m_totalPlayerCount - 1) + ")");
+        }
+        else {
+            waitText.setString("Oyun Baslatma Sinyali Bekleniyor...");
+        }
+
+        // Ortala
+        sf::FloatRect textRect = waitText.getLocalBounds();
+        waitText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+        waitText.setPosition(window.getSize().x / 2.0f, window.getSize().y / 2.0f);
+
+        window.draw(waitText);
+    }
 
     window.display();
 }
@@ -1129,4 +1162,42 @@ void Game::drawWarning(sf::RenderWindow& window) {
 void Game::cancelBuildMode() {
     isInBuildMode = false;
     std::cout << "[GAME] Insaat modu iptal.\n";
+}
+
+void Game::sendTrainCommand(int gridX, int gridY, int unitTypeID) {
+    sf::Packet packet;
+    // 1. Komut Tipi
+    packet << (sf::Uint8)NetCommand::TrainUnit; // Enum'ı Uint8 olarak yaz
+    // 2. Hangi Bina? (Koordinat ile bulmak en kolayıdır)
+    packet << gridX << gridY;
+    // 3. Hangi Birim?
+    packet << unitTypeID;
+
+    // Herkese gönder
+    if (m_isHost) {
+        networkManager.server()->sendToAll(packet);
+    }
+    else {
+        networkManager.client()->sendReliable(packet);
+    }
+}
+
+// source/Game/Game.cpp dosyasının en altlarına ekleyin:
+
+void Game::sendBuildCommand(int gridX, int gridY, int buildTypeID) {
+    sf::Packet packet;
+    // 1. Komut Tipi
+    packet << (sf::Uint8)NetCommand::PlaceBuilding;
+    // 2. Koordinat
+    packet << gridX << gridY;
+    // 3. Bina Tipi (BuildTypes enum'ını int olarak gönderiyoruz)
+    packet << buildTypeID;
+
+    // Herkese gönder
+    if (m_isHost) {
+        networkManager.server()->sendToAll(packet);
+    }
+    else {
+        networkManager.client()->sendReliable(packet);
+    }
 }

@@ -95,6 +95,8 @@ void NetClient::update(float dt) {
     for (auto& pair : m_pendingPackets) {
         // Eğer paket gönderileli 200ms geçmişse ve hala onay gelmemişse tekrar gönder
         if (pair.second.timer.getElapsedTime().asMilliseconds() > 200) {
+            std::cout << "[NetClient] Paket tekrar gonderiliyor (Seq: " << pair.second.sequence << ")...\n";
+
             m_socket.send(pair.second.packet, m_serverAddress, m_serverPort);
             pair.second.timer.restart(); // Sayacı sıfırla ki bir 200ms daha beklesin
         }
