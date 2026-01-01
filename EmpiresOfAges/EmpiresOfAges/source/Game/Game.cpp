@@ -176,16 +176,20 @@ void Game::initNetwork() {
 
             NetCommand cmd = (NetCommand)cmdRaw;
 
-            // --- SERVER İSE PAKETİ DİĞERLERİNE YANSIT (FORWARDING) ---
-            if (m_isHost && id != 0) { // id != 0 demek bir Client'tan geldi demek
-                // Paketi olduğu gibi diğerlerine gönder (Gönderen hariç)
-                networkManager.server()->sendToAllExcept(id, pkt);
-            }
+            
 
             // --- TRAIN UNIT ---
             if (cmd == NetCommand::TrainUnit) {
                 int gx, gy, uType;
                 if (copyPkt >> gx >> gy >> uType) {
+
+                    if (m_isHost && id != 0) {
+                        // Temiz bir paket oluştur ve diğerlerine gönder
+                        sf::Packet forwardPacket;
+                        forwardPacket << (sf::Uint8)NetCommand::TrainUnit << gx << gy << uType;
+                        networkManager.server()->sendToAllExcept(id, forwardPacket);
+                    }
+
                     auto building = mapManager.getBuildingAt(gx, gy);
 
                     // RENK KONTROLÜNÜ GEVŞETTİK: "Benim değilse düşmanındır"
@@ -217,6 +221,13 @@ void Game::initNetwork() {
             else if (cmd == NetCommand::PlaceBuilding) {
                 int gx, gy, bTypeInt;
                 if (copyPkt >> gx >> gy >> bTypeInt) {
+
+                    if (m_isHost && id != 0) {
+                        sf::Packet forwardPacket;
+                        forwardPacket << (sf::Uint8)NetCommand::PlaceBuilding << gx << gy << bTypeInt;
+                        networkManager.server()->sendToAllExcept(id, forwardPacket);
+                    }
+
                     BuildTypes type = (BuildTypes)bTypeInt;
 
                     // Bina daha önce kurulmamışsa kur
