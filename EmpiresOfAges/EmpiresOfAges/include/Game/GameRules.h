@@ -126,4 +126,11 @@ namespace GameRules {
 
     constexpr int Villager_MaxCargo = 50; 
     constexpr float Villager_BuildSpeed = 100.0f;
+
+    const sf::Vector2i SpawnPoints[] = {
+        {10, 10},     // Oyuncu 0:
+        {180, 180},   // Oyuncu 1:
+        {180, 10},    // Oyuncu 2:
+        {10, 180}     // Oyuncu 3:
+    };
 }

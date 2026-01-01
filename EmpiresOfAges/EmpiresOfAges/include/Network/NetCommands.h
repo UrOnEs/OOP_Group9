@@ -13,6 +13,8 @@ enum class NetCommand : uint16_t {
     SyncState = 10,
     IssueOrder = 20,
     ChatMessage = 30,
+    TrainUnit = 40,
+    PlaceBuilding = 50
     // ... oyun ihtiya�lar�na g�re
 };
 enum class PacketType : uint8_t {
