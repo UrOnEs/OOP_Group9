@@ -20,7 +20,7 @@
 
 class Game {
 public:
-    Game(bool isHost, std::string serverIp);
+    Game(bool isHost, std::string serverIp, int playerIndex);
     void run();
     void startMatch(unsigned int seed);
 
@@ -94,4 +94,6 @@ private:
     std::string m_serverIp;
 
     bool isDevMode = false;
+
+    int m_playerIndex;
 };

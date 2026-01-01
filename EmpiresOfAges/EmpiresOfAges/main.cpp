@@ -685,6 +685,17 @@ int main() {
             try {
                 std::cout << "[MAIN] Oyun baslatiliyor..." << std::endl;
 
+                int myPlayerIndex = 0;
+                if (g_lobbyManager) {
+                    uint64_t myId = g_lobbyManager->selfId();
+                    for (const auto& p : g_lobbyManager->players()) {
+                        if (p.id == myId) {
+                            myPlayerIndex = p.colorIndex; // Oyuncunun rengini
+                            break;
+                        }
+                    }
+                }
+
                 // 1. Önceki að servislerini durdur
                 g_netManager.discovery()->stop();
                 g_netManager.stop();
@@ -695,7 +706,7 @@ int main() {
                 // Portun tamamen boþa düþmesi için yarým saniye bekle
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-                Game game(g_isHost, g_targetIP);
+                Game game(g_isHost, g_targetIP, myPlayerIndex);
                 game.run();
             }
             catch (const std::exception& e) {
