@@ -14,7 +14,7 @@ public:
         buildingType = BuildTypes::TownCenter;
         health = GameRules::HP_TownCenter;
         this->sprite.setOrigin(96.f, 150.f);
-        addAbility(Ability(10, "Koylu Uret", "50 Yemek", "Kaynak toplar", &AssetManager::getTexture("assets/units/default.png")));
+        addAbility(Ability(10, "Koylu Uret", "50 Food", "Kaynak toplar", &AssetManager::getTexture("assets/units/default.png")));
     }
 
     int getMaxHealth() const override { return (int)GameRules::HP_TownCenter; }

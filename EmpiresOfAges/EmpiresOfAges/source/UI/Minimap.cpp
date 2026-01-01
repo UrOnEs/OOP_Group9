@@ -1,5 +1,6 @@
 #include "UI/Minimap.h"
 #include "Game/GameRules.h"
+#include "UI/AssetManager.h"
 #include <iostream>
 
 Minimap::Minimap() {
@@ -30,10 +31,47 @@ void Minimap::init(int mapWidth, int mapHeight, int tileSize, const std::vector<
     m_mapSprite.setPosition(m_position);
     m_fogSprite.setPosition(m_position); // Fog Sprite konumu
 
+    // --- MEVCUT KONUM VE HARÝTA AYARLARI ---
+    // Konum (Sað Alt) - Haritanýn (200x200) baþlangýç noktasý
+    m_position = sf::Vector2f(screenWidth - m_size.x - 25, screenHeight - m_size.y - 25); // Biraz daha içeriden baþlattým (padding için yer kalsýn)
+
+    m_background.setPosition(m_position);
+    m_mapSprite.setPosition(m_position);
+    m_fogSprite.setPosition(m_position);
+
     float worldWidth = (float)(mapWidth * tileSize);
     float worldHeight = (float)(mapHeight * tileSize);
     m_scaleX = m_size.x / worldWidth;
     m_scaleY = m_size.y / worldHeight;
+
+    // --- 1. ÇERÇEVE AYARLARI (YENÝ KISIM) ---
+    m_background.setOutlineThickness(0); // Eski kare çizgiyi kaldýr
+
+    static sf::Texture frameTex;
+
+    frameTex.loadFromFile("assets/ui/minimap_frame_1.png");
+
+    m_frameSprite.setTexture(frameTex);
+
+    // --- PADDING (BOÞLUK) HESABI ---
+    // Çerçevenin haritadan ne kadar daha geniþ duracaðýný belirler.
+    // Örneðin 15.0f yaparsanýz, çerçeve haritanýn her kenarýndan 15 piksel dýþarý taþar.
+    float padding = 11.0f;
+
+    // Çerçevenin hedef boyutu: Harita Boyutu + (Sað ve Sol Boþluk)
+    float targetFrameW = m_size.x + (padding * 2.0f);
+    float targetFrameH = m_size.y + (padding * 2.0f);
+
+    // Scale (Ölçek) Ayarý: Görseli hedef boyuta uydur
+    if (frameTex.getSize().x > 0) {
+        m_frameSprite.setScale(
+            targetFrameW / (float)frameTex.getSize().x,
+            targetFrameH / (float)frameTex.getSize().y
+        );
+    }
+
+    // Konum Ayarý: Haritanýn sol-üst köþesinden 'padding' kadar geriye ve yukarýya
+    m_frameSprite.setPosition(m_position.x - padding, m_position.y - padding);
 
     // --- HARÝTA DOKUSU ---
     sf::Image mapImg;
@@ -142,6 +180,7 @@ void Minimap::draw(sf::RenderWindow& window) {
     window.draw(m_mapSprite);  // 1. Zemin
     window.draw(m_fogSprite);  // 2. Sis (Zemini karartýr)
     window.draw(m_unitDots);   // 3. Birimler (Sisin üstünde parlak görünsün)
+    window.draw(m_frameSprite);
     window.draw(m_cameraBox);  // 4. Kamera Çerçevesi
 }
 

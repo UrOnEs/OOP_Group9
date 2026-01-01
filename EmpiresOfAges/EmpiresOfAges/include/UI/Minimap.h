@@ -49,4 +49,5 @@ private:
     sf::Image m_fogImage;
     sf::Texture m_fogTexture;
     sf::Sprite m_fogSprite;
+    sf::Sprite m_frameSprite;
 };

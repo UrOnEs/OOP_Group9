@@ -43,10 +43,10 @@ Villager::Villager() : Unit() {
         this->setScale(scaleX, scaleY);
     }
 
-    addAbility(Ability(1, "Ev Insa Et", "30 Odun", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));
-    addAbility(Ability(2, "Kisla Yap", "175 Odun", "Asker Uret", &AssetManager::getTexture("assets/buildings/barrack.png")));
-    addAbility(Ability(3, "Ciftlik Kur", "60 Odun", "Yemek Uret", &AssetManager::getTexture("assets/buildings/mill.png")));
-    addAbility(Ability(4, "Ana bina", "400 Odun", "Merkez", &AssetManager::getTexture("assets/buildings/castle.png")));
+    addAbility(Ability(1, "Ev Insa Et", "30 Wood", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));
+    addAbility(Ability(2, "Kisla Yap", "175 Wood", "Asker Uret", &AssetManager::getTexture("assets/buildings/barrack.png")));
+    addAbility(Ability(3, "Ciftlik Kur", "60 Wood", "Yemek Uret", &AssetManager::getTexture("assets/buildings/mill.png")));
+    addAbility(Ability(4, "Ana bina", "400 Wood, 200 Stone", "Merkez", &AssetManager::getTexture("assets/buildings/castle.png")));
 
     counter++;
 }

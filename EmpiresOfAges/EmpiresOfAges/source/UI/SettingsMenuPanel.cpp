@@ -45,16 +45,16 @@ void SettingsMenuPanel::init(float screenWidth, float screenHeight) {
     m_musicLabel.setFillColor(sf::Color(245, 228, 196));
 
     // Konum: Baþlýðýn biraz altýna
-    float centerX = (screenWidth / 2.0f); // Biraz sola hizalý
-    float centerY = (screenHeight / 2.0f) ;
+    float centerX = (screenWidth / 2.0f) - 70.0f; // Biraz sola hizalý
+    float centerY = (screenHeight / 2.0f) - 200.0f ;
 
-    m_musicLabel.setPosition(centerX - 50, centerY - 80);
+    m_musicLabel.setPosition(centerX, centerY);
 
-    float startY = centerY - 40; // Elemanlarýn Y konumu
+    float startY = centerY + 40; // Elemanlarýn Y konumu
 
     // 2. Eksi (-) Butonu
     m_volDownButton.setSize(40, 40);
-    m_volDownButton.setPosition(centerX - 80, startY);
+    m_volDownButton.setPosition(centerX - 40, startY);
     m_volDownButton.setTexture(settingsMenuButton);
     m_volDownButton.setText("-", m_font, 30, sf::Color(245, 228, 196));
     // Butonun arka planýný þeffaf yapabilir veya kutu gibi býrakabilirsin
@@ -62,7 +62,7 @@ void SettingsMenuPanel::init(float screenWidth, float screenHeight) {
 
     // 3. Artý (+) Butonu
     m_volUpButton.setSize(40, 40);
-    m_volUpButton.setPosition(centerX + 40, startY);
+    m_volUpButton.setPosition(centerX + 160, startY);
     m_volUpButton.setTexture(settingsMenuButton);
     m_volUpButton.setText("+", m_font, 30, sf::Color(245, 228, 196));
     m_volUpButton.setFillColor(sf::Color(70, 60, 50));
@@ -71,39 +71,50 @@ void SettingsMenuPanel::init(float screenWidth, float screenHeight) {
     m_volValueText.setFont(m_font);
     m_volValueText.setCharacterSize(24);
     m_volValueText.setFillColor(sf::Color::White);
-    // Baþlangýç deðerini al ve yaz
+    m_volValueText.setString(std::to_string(50));
     int currentVol = (int)SoundManager::getMusicVolume();
     m_volValueText.setString(std::to_string(currentVol));
 
     // Sayýyý ortala
     sf::FloatRect textRect = m_volValueText.getLocalBounds();
     m_volValueText.setOrigin(textRect.width / 2.0f, textRect.height / 2.0f);
-    m_volValueText.setPosition(centerX, startY + 20); // Butonlarýn ortasýna
+    m_volValueText.setPosition(centerX + 70, startY + 15); // Butonlarýn ortasýna
 
     // --- CALLBACKLER (Týklama Olaylarý) ---
 
     // Eksiye basýnca
     m_volDownButton.setCallback([this]() {
-        float vol = SoundManager::getMusicVolume();
-        vol -= 10.0f; // 10 azalt
+        // Mevcut sesi al ve en yakýn tam sayýya yuvarla
+        int vol = (int)std::round(SoundManager::getMusicVolume());
+
+        vol -= 10; // Tam sayý olarak azalt (Hata payýný engeller)
         if (vol < 0) vol = 0;
 
-        SoundManager::setMusicVolume(vol);
+        SoundManager::setMusicVolume((float)vol);
 
         // Yazýyý güncelle
-        this->m_volValueText.setString(std::to_string((int)vol));
+        this->m_volValueText.setString(std::to_string(vol));
+
+        // Yazý içeriði deðiþtiði için ortalamayý tekrar ayarla (Örn: 100 -> 90 olunca kaymasýn)
+        sf::FloatRect tr = this->m_volValueText.getLocalBounds();
+        this->m_volValueText.setOrigin(tr.width / 2.0f, tr.height / 2.0f);
         });
 
     // Artýya basýnca
     m_volUpButton.setCallback([this]() {
-        float vol = SoundManager::getMusicVolume();
-        vol += 10.0f; // 10 artýr
+        // Mevcut sesi al ve en yakýn tam sayýya yuvarla
+        int vol = (int)std::round(SoundManager::getMusicVolume());
+
+        vol += 10; // Tam sayý olarak artýr
         if (vol > 100) vol = 100;
 
-        SoundManager::setMusicVolume(vol);
+        SoundManager::setMusicVolume((float)vol);
 
         // Yazýyý güncelle
-        this->m_volValueText.setString(std::to_string((int)vol));
+        this->m_volValueText.setString(std::to_string(vol));
+
+        sf::FloatRect tr = this->m_volValueText.getLocalBounds();
+        this->m_volValueText.setOrigin(tr.width / 2.0f, tr.height / 2.0f);
         });
 }
 
@@ -130,6 +141,15 @@ void SettingsMenuPanel::draw(sf::RenderWindow& window) {
 
 void SettingsMenuPanel::setVisible(bool status) {
     m_visible = status;
+
+    if (m_visible) {
+        int currentVol = (int)std::round(SoundManager::getMusicVolume());
+        m_volValueText.setString(std::to_string(currentVol));
+
+        // Ortalamayý güncelle
+        sf::FloatRect tr = m_volValueText.getLocalBounds();
+        m_volValueText.setOrigin(tr.width / 2.0f, tr.height / 2.0f);
+    }
 }
 
 bool SettingsMenuPanel::isVisible() const {

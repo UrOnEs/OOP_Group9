@@ -28,9 +28,9 @@ public:
         // Görselin origin noktasý (Görseli merkeze oturtmak için)
         this->sprite.setOrigin(64.f, 100.f);
 
-        addAbility(Ability(11, "Barbar Uret", "60 Yemek", "Temel Savasci", getUnitTexture(SoldierTypes::Barbarian)));
-        addAbility(Ability(12, "Okçu Üret", "CostArcher", "Menzilli Asker", getUnitTexture(SoldierTypes::Archer)));
-        addAbility(Ability(13, "Büyücü Üret", "CostWizard", "Uzun Menzilli Büyücü", getUnitTexture(SoldierTypes::Wizard)));
+        addAbility(Ability(11, "Barbar Uret", "60 Food, 20 Gold", "Temel Savasci", getUnitTexture(SoldierTypes::Barbarian)));
+        addAbility(Ability(12, "Okçu Üret", "25 Wood, 20 Food, 45 Gold", "Menzilli Asker", getUnitTexture(SoldierTypes::Archer)));
+        addAbility(Ability(13, "Büyücü Üret", "160 Wood, 60 Food, 135 Gold", "Uzun Menzilli Büyücü", getUnitTexture(SoldierTypes::Wizard)));
     }
 
     // Class içine ekle:
