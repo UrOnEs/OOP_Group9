@@ -54,7 +54,8 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
 
         std::shared_ptr<Soldier> newSoldier = std::make_shared<Soldier>();
         newSoldier->setType(type);
-        newSoldier->setTeam(player.getTeamColor());
+
+        newSoldier->setTeam(barracks.getTeam());
 
         // --- AKILLI SPAWN SİSTEMİ (DÜZELTİLDİ) ---
         Point buildingGrid = barracks.getGridPoint();
@@ -120,7 +121,7 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
         tc.finishProduction();
 
         std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
-        newVillager->setTeam(player.getTeamColor());
+        newVillager->setTeam(tc.getTeam());
 
         // --- AKILLI SPAWN SİSTEMİ (DÜZELTİLDİ) ---
         Point buildingGrid = tc.getGridPoint();

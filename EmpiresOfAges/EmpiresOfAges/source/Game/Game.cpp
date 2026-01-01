@@ -220,13 +220,19 @@ void Game::initNetwork() {
             // --- PLACE BUILDING ---
             else if (cmd == NetCommand::PlaceBuilding) {
                 int gx, gy, bTypeInt;
-                if (copyPkt >> gx >> gy >> bTypeInt) {
+                int teamColorInt; // Rengi tutacak değişken
 
+                // YENİ OKUMA MANTIĞI: teamColorInt eklendi
+                if (copyPkt >> gx >> gy >> bTypeInt >> teamColorInt) {
+
+                    // --- FORWARDING FIX (GÜNCELLENDİ) ---
                     if (m_isHost && id != 0) {
                         sf::Packet forwardPacket;
-                        forwardPacket << (sf::Uint8)NetCommand::PlaceBuilding << gx << gy << bTypeInt;
+                        // Forward ederken rengi de ekliyoruz
+                        forwardPacket << (sf::Uint8)NetCommand::PlaceBuilding << gx << gy << bTypeInt << teamColorInt;
                         networkManager.server()->sendToAllExcept(id, forwardPacket);
                     }
+                    // ------------------------------------
 
                     BuildTypes type = (BuildTypes)bTypeInt;
 
@@ -234,14 +240,17 @@ void Game::initNetwork() {
                     if (mapManager.getBuildingAt(gx, gy) == nullptr) {
                         std::shared_ptr<Building> enemyBuilding = mapManager.tryPlaceBuilding(gx, gy, type);
                         if (enemyBuilding) {
-                            // Düşman rengini ata (Basit mantık: Bizim değilse kırmızı/mavi yap)
-                            TeamColors targetColor = (localPlayer.getTeamColor() == TeamColors::Blue) ? TeamColors::Red : TeamColors::Blue;
-                            enemyBuilding->setTeam(targetColor);
+
+                            // ESKİ HATALI MANTIK:
+                            // TeamColors targetColor = (localPlayer.getTeamColor() == TeamColors::Blue) ? TeamColors::Red : TeamColors::Blue;
+
+                            // YENİ DOĞRU MANTIK: Paketten gelen rengi ata
+                            enemyBuilding->setTeam((TeamColors)teamColorInt);
 
                             enemyBuilding->isConstructed = false;
                             enemyBuilding->health = 1.0f;
                             enemyPlayer.addEntity(enemyBuilding);
-                            std::cout << "[AG] Rakip bina insa etti: " << gx << "," << gy << "\n";
+                            std::cout << "[AG] Rakip bina insa etti (Renk: " << teamColorInt << "): " << gx << "," << gy << "\n";
                         }
                     }
                 }
@@ -1221,6 +1230,8 @@ void Game::sendBuildCommand(int gridX, int gridY, int buildTypeID) {
     packet << gridX << gridY;
     // 3. Bina Tipi (BuildTypes enum'ını int olarak gönderiyoruz)
     packet << buildTypeID;
+
+    packet << (sf::Int32)localPlayer.getTeamColor();
 
     // Herkese gönder
     if (m_isHost) {
