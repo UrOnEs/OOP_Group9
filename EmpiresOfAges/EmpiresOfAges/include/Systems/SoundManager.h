@@ -12,6 +12,10 @@ public:
     // Sesi çalar (Fire and Forget)
     static void playSound(const std::string& name);
 
+    static void playMusic(const std::string& filename);
+    static void setMusicVolume(float volume); // 0.0 ile 100.0 arasý
+    static float getMusicVolume();
+
     // Gereksiz sesleri temizlemek için (Game loop'ta çaðrýlmalý)
     static void update();
 
@@ -21,4 +25,6 @@ private:
 
     // O an çalan sesler (Çalma bitince listeden silinecek)
     static std::list<sf::Sound> activeSounds;
+
+    static sf::Music backgroundMusic;
 };

@@ -13,6 +13,10 @@ void HUD::init(int screenWidth, int screenHeight, int mapW, int mapH, int tileSi
     // 1. ResourceBar
     resourceBar.setWidth((float)screenWidth);
 
+    resourceBar.setSettingsCallback([this]() {
+        this->settingsPanel.setVisible(true);
+        });
+
     // 2. SelectedObjectPanel
     float panelHeight = 140.0f;
     float panelY = (float)screenHeight - panelHeight;
@@ -21,6 +25,8 @@ void HUD::init(int screenWidth, int screenHeight, int mapW, int mapH, int tileSi
     // 3. MINIMAP BAÞLAT (YENÝ)
     // Minimap'i harita verileriyle kuruyoruz
     minimap.init(mapW, mapH, tileSize, mapData, screenWidth, screenHeight);
+
+    settingsPanel.init((float)screenWidth, (float)screenHeight);
 }
 
 void HUD::update() {
@@ -30,16 +36,28 @@ void HUD::update() {
 }
 
 void HUD::handleEvent(const sf::Event& event) {
-    selectedPanel.handleEvent(event);
+    // YENÝ: ResourceBar artýk event dinliyor (buton için)
+    resourceBar.handleEvent(event);
+
+    // YENÝ: Ayarlar paneli açýksa eventleri oraya gönder
+    settingsPanel.handleEvent(event);
+
+    // Eðer ayarlar paneli açýksa, alt taraftaki oyuna týklamayý engellemek isteyebilirsin
+    // ama þimdilik SelectedObjectPanel de çalýþsýn:
+    if (!settingsPanel.isVisible()) {
+        selectedPanel.handleEvent(event);
+    }
 }
 
 void HUD::draw(sf::RenderWindow& window) {
     resourceBar.draw(window);
     selectedPanel.draw(window);
     minimap.draw(window); // <--- YENÝ: Minimap çizimi
+    settingsPanel.draw(window);
 }
 
 bool HUD::isMouseOverUI(const sf::Vector2i& mousePos) const {
+    if (settingsPanel.isVisible()) return true;
     // 1. Üst Kaynak Barý
     if (mousePos.y < (int)resourceBar.getHeight()) {
         return true;

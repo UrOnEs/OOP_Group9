@@ -171,6 +171,7 @@
     <ClCompile Include="source\UI\ResourceBar.cpp" />
     <ClCompile Include="source\UI\AssetManager.cpp" />
     <ClCompile Include="source\UI\SelectedObjectPanel.cpp" />
+    <ClCompile Include="source\UI\SettingsMenuPanel.cpp" />
     <ClCompile Include="source\UI\UIButton.cpp" />
     <ClCompile Include="source\UI\UIManager.cpp" />
     <ClCompile Include="source\UI\UIPanel.cpp" />
@@ -228,6 +229,7 @@
     <ClInclude Include="include\UI\ResourceBar.h" />
     <ClInclude Include="include\UI\AssetManager.h" />
     <ClInclude Include="include\UI\SelectedObjectPanel.h" />
+    <ClInclude Include="include\UI\SettingsMenuPanel.h" />
     <ClInclude Include="include\UI\UIButton.h" />
     <ClInclude Include="include\UI\UIManager.h" />
     <ClInclude Include="include\UI\UIPanel.h" />

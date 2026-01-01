@@ -5,6 +5,7 @@
 #include "SelectedObjectPanel.h"
 #include "UI/Ability.h"
 #include "UI/Minimap.h" // <--- YENÝ: Minimap eklendi
+#include "UI/SettingsMenuPanel.h"
 
 class HUD {
 public:
@@ -31,6 +32,7 @@ public:
     ResourceBar resourceBar;
     SelectedObjectPanel selectedPanel;
     Minimap minimap; // <--- YENÝ: Public eriþim (Game.cpp update edebilsin diye)
+    SettingsMenuPanel settingsPanel;
 
 private:
     int m_width;

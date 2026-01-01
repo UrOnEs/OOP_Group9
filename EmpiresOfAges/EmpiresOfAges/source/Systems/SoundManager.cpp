@@ -3,6 +3,7 @@
 
 std::map<std::string, sf::SoundBuffer> SoundManager::soundBuffers;
 std::list<sf::Sound> SoundManager::activeSounds;
+sf::Music SoundManager::backgroundMusic;
 
 void SoundManager::loadSound(const std::string& name, const std::string& filename) {
     sf::SoundBuffer buffer;
@@ -32,6 +33,31 @@ void SoundManager::playSound(const std::string& name) {
     sound.setVolume(50.0f); // Ýstersen parametre olarak alabilirsin
     // sound.setPitch(0.8f + (rand() % 40) / 100.0f); // Ýstersen rastgelelik katabilirsin
     sound.play();
+}
+
+void SoundManager::playMusic(const std::string& filename) {
+    // Eðer zaten çalýyorsa ve ayný dosya ise durdurma
+    // Ancak sf::Music dosya adýný tutmaz, o yüzden direkt açýyoruz.
+
+    if (backgroundMusic.openFromFile(filename)) {
+        backgroundMusic.setLoop(true); // Müzik bitince baþa dönsün
+        backgroundMusic.setVolume(50.0f); // Varsayýlan ses
+        backgroundMusic.play();
+    }
+    else {
+        std::cerr << "Muzik acilamadi: " << filename << std::endl;
+    }
+}
+
+void SoundManager::setMusicVolume(float volume) {
+    // 0 ile 100 arasýnda sýnýrla
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    backgroundMusic.setVolume(volume);
+}
+
+float SoundManager::getMusicVolume() {
+    return backgroundMusic.getVolume();
 }
 
 void SoundManager::update() {

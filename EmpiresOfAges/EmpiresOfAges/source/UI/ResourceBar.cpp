@@ -57,6 +57,14 @@ ResourceBar::ResourceBar() {
     setupText(stoneText, sf::Color(255, 255, 255));
     setupText(populationText, sf::Color(255, 255, 255));
 
+    settingsButton.setSize(32, 32);
+
+    // Varsa ikon yükle (Opsiyonel)
+    sf::Texture& gearTex = AssetManager::getTexture("assets/ui/settingsButton.png");
+    gearTex.setSmooth(true);
+    settingsButton.setFillColor(sf::Color::Transparent);
+    if(gearTex.getSize().x > 0) settingsButton.setTexture(gearTex);
+
 }
 
 void ResourceBar::setWidth(float width) {
@@ -76,6 +84,11 @@ void ResourceBar::setWidth(float width) {
             // width / scale iþlemi, texture koordinat sisteminde ne kadar geniþlik gerektiðini bulur.
             barSprite.setTextureRect(sf::IntRect(0, 0, (int)(width / scale), tex->getSize().y));
         }
+
+        float btnSize = 32.0f; // Buton boyutu
+        float padding = 10.0f; // Saðdan boþluk
+        // Y ekseninde ortalamak için: (BarYükseklik - ButonYükseklik) / 2 -> (40 - 30) / 2 = 5
+        settingsButton.setPosition(width - btnSize - padding, 4.0f);
     }
 
     // Hizalama
@@ -115,5 +128,14 @@ void ResourceBar::draw(sf::RenderWindow& window) {
     window.draw(iconGold); window.draw(goldText);
     window.draw(iconStone); window.draw(stoneText);
     window.draw(populationText);
+    settingsButton.draw(window);
+}
+
+void ResourceBar::handleEvent(const sf::Event& event) {
+    settingsButton.handleEvent(event);
+}
+
+void ResourceBar::setSettingsCallback(std::function<void()> cb) {
+    settingsButton.setCallback(cb);
 }
 

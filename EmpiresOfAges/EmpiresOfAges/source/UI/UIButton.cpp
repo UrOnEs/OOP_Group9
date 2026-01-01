@@ -59,12 +59,12 @@ void UIButton::setBackgroundTexture(const sf::Texture& texture) {
     }
 }
 
-void UIButton::setText(const std::string& text, const sf::Font& font, unsigned int size) {
+void UIButton::setText(const std::string& text, const sf::Font& font, unsigned int size, sf::Color color) {
     m_text.setFont(font);
     m_text.setString(text);
     m_text.setCharacterSize(size);
+    m_text.setFillColor(color);
     setPosition(m_shape.getPosition().x, m_shape.getPosition().y);
-    m_text.setFillColor(sf::Color::Black);
 }
 
 void UIButton::setTexture(const sf::Texture& texture, float width, float height) {

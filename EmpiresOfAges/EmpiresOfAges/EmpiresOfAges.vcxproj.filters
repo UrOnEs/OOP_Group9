@@ -36,6 +36,7 @@
     <ClCompile Include="source\UI\Ability.cpp" />
     <ClCompile Include="source\Map\FogOfWar.cpp" />
     <ClCompile Include="source\UI\Minimap.cpp" />
+    <ClCompile Include="source\UI\SettingsMenuPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Entity System\Entity Type\Barracks.h" />
@@ -93,5 +94,6 @@
     <ClInclude Include="include\Map\FogOfWar.h" />
     <ClInclude Include="include\Entity System\Entity Type\Mountain.h" />
     <ClInclude Include="include\UI\Minimap.h" />
+    <ClInclude Include="include\UI\SettingsMenuPanel.h" />
   </ItemGroup>
 </Project>

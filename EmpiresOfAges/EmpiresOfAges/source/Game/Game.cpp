@@ -4,6 +4,7 @@
 #include "Systems/BuildSystem.h"
 #include "Systems/CombatSystem.h"
 #include "Systems/ResourceSystem.h"
+#include "Systems/SoundManager.h"
 
 #include "Entity System/Entity Type/Unit.h"
 #include "Entity System/Entity Type/Villager.h"
@@ -67,11 +68,7 @@ Game::Game(bool isHost, std::string serverIp)
     selectionBox.setOutlineColor(sf::Color::Green);
 
     // 5. Arka Plan Müziði
-    if (bgMusic.openFromFile("assets/sounds/background_music.ogg")) {
-        bgMusic.setLoop(true);
-        bgMusic.setVolume(GameRules::BackgroundMusicVolume);
-        bgMusic.play();
-    }
+    SoundManager::playMusic("assets/sounds/background_music.ogg");
 
     // --- DÝKKAT ---
     // mapManager.initialize(), clearArea(), addEntity() gibi harita ve birim

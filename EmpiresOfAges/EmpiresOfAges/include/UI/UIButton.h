@@ -10,7 +10,7 @@ public:
     // Temel Ayarlar
     void setPosition(float x, float y);
     void setSize(float width, float height);
-    void setText(const std::string& text, const sf::Font& font, unsigned int size = 20);
+    void setText(const std::string& text, const sf::Font& font, unsigned int size = 20, sf::Color color = sf::Color::Black);
 
     void setBackgroundTexture(const sf::Texture& texture);
     // Resim (Sprite) Desteði

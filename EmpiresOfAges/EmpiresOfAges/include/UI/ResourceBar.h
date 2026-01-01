@@ -2,12 +2,18 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include "Game/Player.h"
+#include "UI/UIButton.h"
 
 class ResourceBar {
 public:
     ResourceBar();
     void updateResources(int wood, int food, int gold, int stone,Player player);
     void draw(sf::RenderWindow& window);
+
+    void handleEvent(const sf::Event& event);
+
+    // YENÝ: Ayarlar butonu callback'i
+    void setSettingsCallback(std::function<void()> cb);
 
     // YENÝ: Geniþliði ayarlamak için
     void setWidth(float width);
@@ -27,4 +33,6 @@ private:
     sf::Text goldText;
     sf::Text stoneText;
     sf::Text populationText;
+
+    UIButton settingsButton;
 };
