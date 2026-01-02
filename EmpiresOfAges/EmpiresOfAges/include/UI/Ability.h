@@ -3,9 +3,12 @@
 #include <functional>
 #include <SFML/Graphics.hpp>
 
+/**
+ * @brief Represents a clickable ability or action in the UI.
+ * Stores metadata like icon, cost, description, and the action callback.
+ */
 class Ability {
 public:
-    // Týklama fonksiyonu tipi (Callback)
     using Callback = std::function<void()>;
 
     Ability(int id, const std::string& name, const std::string& costText, const std::string& description, sf::Texture* icon)
@@ -13,18 +16,21 @@ public:
     {
     }
 
-    // --- GETTERS ---
+    // --- Getters ---
     int getId() const { return m_id; }
     std::string getName() const { return m_name; }
     std::string getCostText() const { return m_costText; }
     std::string getDescription() const { return m_description; }
     sf::Texture* getIcon() const { return m_icon; }
 
-    // --- ACTIONS ---
-    // Týklandýðýnda ne olacaðýný ayarlar
+    /**
+     * @brief Sets the function to call when the ability is clicked.
+     */
     void setOnClick(Callback callback) { m_onClick = callback; }
 
-    // Yeteneði çalýþtýrýr
+    /**
+     * @brief Executes the assigned callback function.
+     */
     void execute() const {
         if (m_onClick) {
             m_onClick();

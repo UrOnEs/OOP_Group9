@@ -8,7 +8,9 @@
 
 class NetworkManager;
 
-// 1. GÜNCELLEME: ChangeColor komutu eklendi
+/**
+ * @brief Commands specific to lobby management.
+ */
 enum class LobbyCommand : sf::Int32 {
     JoinRequest = 0,
     LobbyStateSync = 1,
@@ -16,17 +18,22 @@ enum class LobbyCommand : sf::Int32 {
     StartGameSignal = 3,
     LeaveLobby = 4,
     LobbyClosed = 5,
-    ChangeColor = 6  // <--- YENİ: Renk Değiştirme Komutu
+    ChangeColor = 6
 };
 
-// 2. GÜNCELLEME: Renk indeksi eklendi
+/**
+ * @brief Represents a player in the lobby.
+ */
 struct PlayerInfo {
     uint64_t id;
     std::string name;
     bool ready;
-    int colorIndex; // 0: Kırmızı, 1: Mavi, 2: Yeşil...
+    int colorIndex; // 0: Red, 1: Blue, 2: Green...
 };
 
+/**
+ * @brief Manages the pre-game lobby, including player synchronization, readiness, and colors.
+ */
 class LobbyManager {
 public:
     LobbyManager(NetworkManager* netManager, bool isHost);
@@ -34,7 +41,9 @@ public:
     void start(uint64_t selfId, const std::string& name);
     void toggleReady(bool isReady);
 
-    // 3. GÜNCELLEME: Renk değiştirme fonksiyonu
+    /**
+     * @brief Requests a color change for the local player.
+     */
     void changeColor(int colorIndex);
 
     void startGame();
@@ -58,14 +67,10 @@ public:
 private:
     void processJoinRequest(uint64_t senderId, sf::Packet& pkt);
     void processToggleReady(uint64_t senderId, sf::Packet& pkt);
-
-    // 4. GÜNCELLEME: Sunucu tarafında renk işleme
     void processChangeColor(uint64_t senderId, sf::Packet& pkt);
 
     void addPlayer(uint64_t id, const std::string& name, bool ready = false, int colorIndex = 0);
     void setReady(uint64_t id, bool ready);
-
-    // Yardımcı: Sadece rengi set etme
     void setColor(uint64_t id, int colorIndex);
 
     NetworkManager* m_netManager;

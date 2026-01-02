@@ -7,19 +7,13 @@
 #include "Map/Point.h"
 #include <iostream>
 #include <cmath>
-#include <algorithm> // std::max için gerekli
+#include <algorithm> 
 #include <set>
 
-// --- YARDIMCI FONKSÝYON: DÝKDÖRTGENE OLAN EN KISA MESAFE ---
-// Bu fonksiyon, bir noktanýn (köylü) bir dikdörtgene (bina) olan en yakýn uzaklýðýný hesaplar.
+// Helper: Calculate shortest distance to a rectangle
 float getDistanceToRect(const sf::Vector2f& p, const sf::FloatRect& r) {
-    // x eksenindeki mesafe (Solunda mý, saðýnda mý, içinde mi?)
     float dx = std::max({ r.left - p.x, 0.f, p.x - (r.left + r.width) });
-
-    // y eksenindeki mesafe (Üstünde mý, altýnda mý, içinde mi?)
     float dy = std::max({ r.top - p.y, 0.f, p.y - (r.top + r.height) });
-
-    // Pisagor ile bileþke mesafe
     return std::sqrt(dx * dx + dy * dy);
 }
 
@@ -43,10 +37,10 @@ Villager::Villager() : Unit() {
         this->setScale(scaleX, scaleY);
     }
 
-    addAbility(Ability(1, "Ev Insa Et", "30 Wood", "+5 Nufus", &AssetManager::getTexture("assets/buildings/house.png")));
-    addAbility(Ability(2, "Kisla Yap", "175 Wood", "Asker Uret", &AssetManager::getTexture("assets/buildings/barrack.png")));
-    addAbility(Ability(3, "Ciftlik Kur", "60 Wood", "Yemek Uret", &AssetManager::getTexture("assets/buildings/mill.png")));
-    addAbility(Ability(4, "Ana bina", "400 Wood, 200 Stone", "Merkez", &AssetManager::getTexture("assets/buildings/castle.png")));
+    addAbility(Ability(1, "Build House", "30 Wood", "+5 Pop", &AssetManager::getTexture("assets/buildings/house.png")));
+    addAbility(Ability(2, "Build Barracks", "175 Wood", "Train Troops", &AssetManager::getTexture("assets/buildings/barrack.png")));
+    addAbility(Ability(3, "Build Farm", "60 Wood", "Food Production", &AssetManager::getTexture("assets/buildings/mill.png")));
+    addAbility(Ability(4, "Build TC", "400 Wood, 200 Stone", "Main Base", &AssetManager::getTexture("assets/buildings/castle.png")));
 
     counter++;
 }
@@ -54,7 +48,7 @@ Villager::Villager() : Unit() {
 Villager::~Villager() { counter--; }
 
 std::string Villager::stats() {
-    return "Yuk: " + std::to_string(currentCargo) + "/" + std::to_string(maxCargo);
+    return "Load: " + std::to_string(currentCargo) + "/" + std::to_string(maxCargo);
 }
 
 int Villager::getMaxHealth() const { return GameRules::HP_Villager; }
@@ -87,15 +81,12 @@ void Villager::stopHarvesting() {
     m_isMoving = false;
 }
 
-// --- GÜNCELLENEN AKILLI HAREKET ---
 void Villager::smartMoveTo(sf::Vector2f targetPos, int targetSizeInTiles, const std::vector<int>& mapData, int width, int height) {
     Point targetGrid = { (int)(targetPos.x / GameRules::TileSize), (int)(targetPos.y / GameRules::TileSize) };
     Point myGrid = getGridPoint();
+    std::set<Point> reserved;
 
-    std::set<Point> reserved; // Þimdilik boþ, ileride diðer üniteler eklenebilir.
-
-    // ESKÝ: Sadece en yakýn boþ kareyi buluyordu (Genelde sað alt).
-    // YENÝ: Binanýn tüm çevresini tarayýp BANA EN YAKIN olan boþ kareyi buluyor.
+    // Find best accessible tile around target
     Point safeTarget = PathFinder::findBestTargetTile(myGrid, targetGrid, targetSizeInTiles, mapData, width, height, reserved);
 
     std::vector<Point> pathPoints = PathFinder::findPath(myGrid, safeTarget, mapData, width, height);
@@ -114,65 +105,47 @@ void Villager::smartMoveTo(sf::Vector2f targetPos, int targetSizeInTiles, const 
     }
 }
 
-// --- GÜNCELLENEN UPDATE DÖNGÜSÜ ---
 void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Building>>& buildings, Player& player, const std::vector<int>& mapData, int width, int height) {
 
-    // =========================================================
-    //           YENÝ DURUM: BUILDING (Ýnþaat)
-    // =========================================================
+    // --- STATE: BUILDING ---
     if (state == VillagerState::Building) {
         auto building = targetConstruction.lock();
 
-        // Bina yok olduysa veya zaten bittiyse dur
         if (!building || !building->getIsAlive() || building->isConstructed) {
             state = VillagerState::Idle;
             return;
         }
 
-        // Mesafeyi ölç
         sf::Vector2f diff = building->getPosition() - getPosition();
         float dist = std::sqrt(diff.x * diff.x + diff.y * diff.y);
-
-        // Binanýn boyutuna göre yaklaþma mesafesi (Yarýçap + 10px)
         float workDist = (building->getBounds().width / 2.0f) + 20.0f;
 
         if (dist <= workDist) {
-            // --- ÝNÞAAT VAKTÝ ---
             m_path.clear(); m_isMoving = false;
-
             float buildSpeed = GameRules::Villager_BuildSpeed;
-
             float buildAmount = buildSpeed * dt;
 
             if (building->health < building->getMaxHealth()) {
                 building->health += buildAmount;
                 if (GameRules::DebugMode) building->health += building->getMaxHealth();
 
-                // --- ÝNÞAAT TAMAMLANDI MI? ---
                 if (building->health >= building->getMaxHealth()) {
                     building->health = (float)building->getMaxHealth();
 
-                    if (!building->isConstructed) { // Sadece bir kere çalýþsýn
+                    if (!building->isConstructed) {
                         building->isConstructed = true;
-
-                        // ------ BÝTÝÞ FONKSÝYONUNU ÇAÐIR ----------
                         building->onConstructionComplete(player);
-                        // ----------------------------------------------
-
-                        std::cout << "[VILLAGER] Insaat tamamlandi!\n";
                     }
-
                     state = VillagerState::Idle;
                 }
             }
         }
         else {
-            // Uzaktayýz, binaya yürü
             if (!m_isMoving) moveTo(building->getPosition());
         }
     }
 
-    // 0. GARRISON
+    // --- STATE: GARRISONED ---
     if (state == VillagerState::Garrisoned) {
         auto res = targetResource.lock();
         if (!res || !res->getIsAlive()) {
@@ -182,13 +155,12 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
         return;
     }
 
-    // 1. KAYNAÐA GÝDÝÞ
+    // --- STATE: MOVING TO RESOURCE ---
     if (state == VillagerState::MovingToResource) {
         auto res = targetResource.lock();
         if (!res || !res->getIsAlive()) { findNearestResource(buildings); return; }
 
         if (!m_isMoving && m_path.empty()) {
-            // Binanýn boyutunu belirle
             int size = 2;
             if (res->buildingType == BuildTypes::TownCenter) size = 6;
             else if (res->buildingType == BuildTypes::Farm) size = 4;
@@ -197,12 +169,9 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
             smartMoveTo(res->getPosition(), size, mapData, width, height);
         }
 
-        // Mesafe Kontrolü (Kenara olan uzaklýk)
         float distToEdge = getDistanceToRect(getPosition(), res->getBounds());
 
-        // 40.0f toleransý, köylü komþu kareye girdiði aný yakalar.
         if (distToEdge <= 40.0f) {
-
             if (res->buildingType == BuildTypes::Farm) {
                 if (res->garrisonWorker()) {
                     state = VillagerState::Garrisoned;
@@ -220,18 +189,16 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
             }
         }
         else {
-            // Hala uzaktayýz, eðer takýldýysa tekrar rota çiz
             if (!m_isMoving) {
                 int size = 2;
                 if (res->buildingType == BuildTypes::TownCenter) size = 6;
                 else if (res->buildingType == BuildTypes::Farm) size = 4;
-
                 smartMoveTo(res->getPosition(), size, mapData, width, height);
             }
         }
     }
 
-    // 2. HASAT (Harvesting)
+    // --- STATE: HARVESTING ---
     else if (state == VillagerState::Harvesting) {
         auto res = targetResource.lock();
         if (!res || !res->getIsAlive()) {
@@ -260,7 +227,7 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
         }
     }
 
-    // 3. EVE DÖNÜÞ (Returning)
+    // --- STATE: RETURNING TO BASE ---
     else if (state == VillagerState::ReturningToBase) {
         auto base = targetBase.lock();
         if (!base || !base->getIsAlive()) {
@@ -273,13 +240,11 @@ void Villager::updateVillager(float dt, const std::vector<std::shared_ptr<Buildi
         }
 
         if (!m_isMoving && m_path.empty()) {
-            int size = 6; // Varsayýlan TownCenter
+            int size = 6;
             if (base->buildingType != BuildTypes::TownCenter) size = 2;
-
             smartMoveTo(base->getPosition(), size, mapData, width, height);
         }
 
-        // Mesafe Kontrolü (Kenara olan uzaklýk)
         float distToEdge = getDistanceToRect(getPosition(), base->getBounds());
 
         if (distToEdge <= 40.0f) {
@@ -342,7 +307,6 @@ void Villager::findNearestResource(const std::vector<std::shared_ptr<Building>>&
             if (auto res = std::dynamic_pointer_cast<ResourceGenerator>(building)) {
                 if (res->isFull()) continue;
 
-                // Seçim yaparken kenara olan uzaklýðý baz al
                 float dist = getDistanceToRect(getPosition(), res->getBounds());
 
                 if (dist < minDistance) {
@@ -374,7 +338,4 @@ void Villager::startBuilding(std::shared_ptr<Building> building) {
     if (!building) return;
     targetConstruction = building;
     state = VillagerState::Building;
-
-    // Eðer uzaktaysa önce yürü (MoveTo mantýðý update içinde iþleyecek)
-    // Ama direkt moveTo çaðýrýrsak state deðiþebilir, o yüzden update içinde halledeceðiz.
 }

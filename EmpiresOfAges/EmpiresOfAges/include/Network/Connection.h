@@ -1,51 +1,76 @@
 ﻿#pragma once
-// Connection.h - SFML UDP/Packet Versiyonu
-
-#pragma once
-
 #include <SFML/Network.hpp>
 #include <string>
 #include <map>
 #include "NetCommands.h"
 
-// Eski enum'u koruyoruz, ancak UDP'de ConnectionState'in kullan�m� farkl� olacakt�r.
+/**
+ * @brief Represents a connection state.
+ * In UDP, 'Connected' implies we have a target IP/Port.
+ */
 enum class ConnectionState { Disconnected, Connected };
-// UDP s�rekli ba�lant� kurmad��� i�in 'Connecting' ve 'Error' durumlar�n� bu seviyede ele alm�yoruz.
 
+/**
+ * @brief Manages a logical connection over UDP, handling packet sequencing and reliability.
+ */
 class Connection {
 public:
-    // Sadece IP adresi ve portu tutan kurucu
+    /**
+     * @brief Constructs a connection to a specific IP and port.
+     * @param address Target IP address.
+     * @param port Target port number.
+     */
     Connection(const sf::IpAddress& address, unsigned short port);
 
-    // SFML'in paketlerini kullanaca��m�z i�in Packet s�n�f�n� kullanabiliriz.
-    // Ancak UDP soketi bu s�n�fa ait olmad���ndan, send metodu soketi parametre olarak almal�.
+    /**
+     * @brief Sends a packet through the provided UDP socket.
+     * @param socket The physical UDP socket to use for sending.
+     * @param packet The data packet to send.
+     * @return sf::Socket::Status Status of the send operation.
+     */
     sf::Socket::Status send(sf::UdpSocket& socket, sf::Packet& packet) const;
 
-
-    // UDP'de s�rekli bir receive d�ng�s� yoktur. Sunucu/�stemci s�n�f� soketten s�rekli veri al�r.
-
-    // UDP'de bir uzak adres her zaman eri�ilebilir varsay�l�r.
+    /**
+     * @brief Returns the connection state.
+     * UDP assumes connectivity if target address is valid.
+     */
     ConnectionState state() const { return ConnectionState::Connected; }
 
-    // Uzak Adres ve Port bilgisini d�nd�r�r.
+    /**
+     * @brief Returns a string representation of the endpoint (IP:Port).
+     */
     std::string endpoint() const;
 
-    // --- Eri�imciler ---
+    // --- Accessors ---
     sf::IpAddress getAddress() const { return m_address; }
     unsigned short getPort() const { return m_port; }
 
+    /**
+     * @brief Retrieves the next sequence number for reliable transmission.
+     */
     uint32_t getNextSequence() { return ++m_lastSequenceSent; }
+
+    /**
+     * @brief Adds a packet to the pending list for reliable delivery assurance.
+     */
     void addPendingPacket(uint32_t seq, sf::Packet pkt);
+
+    /**
+     * @brief Processes an acknowledgment, removing the packet from the pending list.
+     */
     void processACK(uint32_t seq);
+
+    /**
+     * @brief Resends packets that haven't received an ACK within the timeout period.
+     */
     void resendMissingPackets(sf::UdpSocket& socket);
 
 private:
     sf::IpAddress m_address;
     unsigned short m_port;
 
-    // �statistikler i�in ekleyebiliriz (opsiyonel)
+    // Optional statistics
     uint64_t m_bytesSent = 0;
-    // uint64_t m_bytesReceived = 0; // Bu istatistik sunucu/istemci seviyesinde tutulur
     uint32_t m_lastSequenceSent = 0;
-    std::map<uint32_t, PendingPacket> m_pendingPackets; // Onay bekleyen paketler
+    std::map<uint32_t, PendingPacket> m_pendingPackets; ///< Packets waiting for ACK.
 };

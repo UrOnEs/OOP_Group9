@@ -1,33 +1,26 @@
 #include "Entity System/Entity Type/Unit.h"
-#include "Game/GameRules.h" // GameRules'u eklemeyi unutma
+#include "Game/GameRules.h" 
 #include <cmath>
 
 int Unit::entityCounter = 0;
 
-// Varsayýlan Yapýcý
 Unit::Unit()
-    : m_tileSize(GameRules::TileSize), // Varsayýlan olarak GameRules'daki deðeri al
+    : m_tileSize(GameRules::TileSize),
     m_isMoving(false),
     travelSpeed(100.f)
 {
-    // --- DEÐÝÞÝKLÝK: Yarýçap GameRules'dan geliyor ---
     shape.setRadius(GameRules::UnitRadius);
     shape.setOrigin(GameRules::UnitRadius, GameRules::UnitRadius);
 }
 
-// Parametreli Yapýcý
 Unit::Unit(int startGridX, int startGridY, int tileSize)
     : m_tileSize(tileSize), m_isMoving(false), travelSpeed(100.f)
 {
-    // --- DEÐÝÞÝKLÝK: Yarýçap GameRules'dan geliyor ---
-    // tileSize ne gelirse gelsin, askerin boyutu sabittir.
     float r = GameRules::UnitRadius;
-
     shape.setRadius(r);
     shape.setOrigin(r, r);
     shape.setFillColor(sf::Color::Red);
 
-    // Konumlandýrma: Askeri yine karenin (tileSize) ortasýna koyuyoruz
     sf::Vector2f startPixel(startGridX * tileSize + tileSize / 2.0f, startGridY * tileSize + tileSize / 2.0f);
     shape.setPosition(startPixel);
     m_targetPos = startPixel;
@@ -36,15 +29,11 @@ Unit::Unit(int startGridX, int startGridY, int tileSize)
 void Unit::moveTo(sf::Vector2f targetWorldPos) {
     m_targetPos = targetWorldPos;
     m_isMoving = true;
-
-    // HAREKETÝN BAÞLAMASI ÝÇÝN YOL LÝSTESÝNÝ DOLDURMALIYIZ
     m_path.clear();
     m_path.push_back(targetWorldPos);
 }
 
-// ------------------- FÝZÝKSEL HAREKET ---------------------
 void Unit::update(float dt, const std::vector<int>& mapData, int width, int height) {
-    // Hareket etmiyor veya yol bittiyse dur
     if (!m_isMoving || m_path.empty()) return;
 
     sf::Vector2f currentPos = shape.getPosition();
@@ -53,7 +42,6 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
 
     if (distance < 4.0f) {
         this->setPosition(m_targetPos);
-        //shape.setPosition(m_targetPos);
         m_path.erase(m_path.begin());
 
         if (m_path.empty()) {
@@ -68,19 +56,18 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
     sf::Vector2f normalizedDir = direction / distance;
     sf::Vector2f velocity = normalizedDir * travelSpeed * dt;
 
+    // X axis movement
     sf::Vector2f nextPosX = currentPos;
     nextPosX.x += velocity.x;
 
     if (checkCollision(nextPosX, mapData, width, height)) {
-        // X ekseninde çarptýk.
-        // HATA OLABÝLECEK KISIM: velocity.y'yi deðiþtiren kodu kaldýr.
-        // Sadece X hareketini yapma (else bloðuna girmez), Y hareketi aþaðýda zaten iþlenecek.
+        // Collision detected on X
     }
     else {
         currentPos.x = nextPosX.x;
     }
 
-    // Y EKSENÝ HAREKETÝ
+    // Y axis movement
     sf::Vector2f nextPosY = currentPos;
     nextPosY.y += velocity.y;
 
@@ -92,10 +79,8 @@ void Unit::update(float dt, const std::vector<int>& mapData, int width, int heig
 }
 
 bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& mapData, int width, int height) {
-    // --- DÜZELTME: HITBOX TOLERANSI ---
-    // Görsel yarýçapý (r) direkt kullanmak yerine, çarpýþma için biraz küçültüyoruz.
-    // Böylece birimler dar alanlardan veya köþelerden takýlmadan geçebilir.
-    float r = shape.getRadius() * 0.75f; // %25 küçültme (Daha akýcý hareket için)
+    // Collision tolerance (reduce radius by 25% for smoother navigation)
+    float r = shape.getRadius() * 0.75f;
 
     sf::FloatRect bounds(newPos.x - r, newPos.y - r, r * 2, r * 2);
 
@@ -110,34 +95,26 @@ bool Unit::checkCollision(const sf::Vector2f& newPos, const std::vector<int>& ma
         int tx = static_cast<int>(p.x) / m_tileSize;
         int ty = static_cast<int>(p.y) / m_tileSize;
 
-        // Harita dýþý kontrolü
         if (tx < 0 || ty < 0 || tx >= width || ty >= height) return true;
-
-        // Duvar kontrolü
         if (mapData[tx + ty * width] != 0) return true;
     }
     return false;
 }
 
 void Unit::render(sf::RenderWindow& window) {
-    // Önce Entity'nin render'ýný çaðýr (Can barý ve sprite için)
     Entity::render(window);
 
-    // --- YENÝ: SALDIRI MENZÝLÝ GÖSTERGESÝ ---
-    // Sadece seçiliyse ve menzili varsa (Köylülerde Range_Melee 20 civarýdýr, onlarý hariç tutabiliriz)
-    if (isSelected && range > 25.0f) { // 25'ten büyükse okçu/büyücü/barbar'dýr
+    // Render Attack Range Indicator
+    if (isSelected && range > 25.0f) {
         sf::CircleShape rangeCircle(range);
-        rangeCircle.setOrigin(range, range); // Merkezi ortala
+        rangeCircle.setOrigin(range, range);
         rangeCircle.setPosition(getPosition());
 
-        // Sadece içi boþ çizgi
         rangeCircle.setFillColor(sf::Color::Transparent);
-        rangeCircle.setOutlineColor(sf::Color(255, 255, 255, 100)); // Yarý saydam beyaz
+        rangeCircle.setOutlineColor(sf::Color(255, 255, 255, 100));
         rangeCircle.setOutlineThickness(1.0f);
-        rangeCircle.setPointCount(50); // Pürüzsüz daire
-
-        // Ýzometrik perspektif için biraz bastýr
-        rangeCircle.setScale(1.0f, 0.6f);
+        rangeCircle.setPointCount(50);
+        rangeCircle.setScale(1.0f, 0.6f); // Isometric perspective
 
         window.draw(rangeCircle);
     }

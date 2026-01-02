@@ -1,37 +1,26 @@
 #include "Systems/BuildSystem.h"
 #include "Game/Player.h"
-#include "Game/GameRules.h" // Yeni GameRules yapýsýný kullanacaðýz
-#include "Map/MapManager.h" // MapManager'a eriþim gerekebilir
-
-// Not: Fonksiyon imzasýný Player.h veya BuildSystem.h'a uygun þekilde çaðýrdýðýndan emin ol.
-// Þu an BuildSystem.h'da: bool build(Player&, Villager&, Building&, pos) var.
-// Ancak biz Game.cpp'de daha modern bir yapý kullanýyoruz. 
-// Þimdilik sadece hatayý gidermek için bu dosyadaki eski kodlarý güncelliyorum:
+#include "Game/GameRules.h"
+#include "Map/MapManager.h"
 
 bool BuildSystem::build(Player& player, Villager& worker, Building& building, const sf::Vector2f& pos) {
-
-    // --- YENÝ SÝSTEM: MALÝYET KONTROLÜ ---
-    // 1. Binanýn maliyetini öðren
+    // 1. Get Building Cost
     GameRules::Cost cost = GameRules::getBuildingCost(building.buildingType);
 
-    // 2. Oyuncunun parasý yetiyor mu? (ResourceManager'a yazdýðýmýz yeni metot)
-    // Not: Player.h içinde 'playerResources' private ise getResources() ile eriþmek zor olabilir.
-    // Bu yüzden Player.h içinde 'ResourceManager' public olmalý veya getter referans döndürmeli.
-    // Þimdilik varsayým: Player.h içinde þu fonksiyon var: ResourceManager& getResourceManager();
-
-    // Geçici olarak vector kontrolü (Eðer ResourceManager'a eriþemiyorsan):
+    // 2. Check Player Resources
+    // Accessing resources via a temporary vector copy (assuming Player has getResources)
     std::vector<int> currentRes = player.getResources();
     if (currentRes[0] < cost.wood || currentRes[1] < cost.gold) {
-        return false; // Yetersiz kaynak
+        return false; // Insufficient resources
     }
 
-    // 3. Alan Kontrolü
+    // 3. Check Space Availability
     if (!checkSpace(building, pos)) {
         return false;
     }
 
-    // 4. Ýnþaat Ýþlemi
-    // Kaynaðý düþ
+    // 4. Execute Construction
+    // Deduct resources
     player.addWood(-cost.wood);
     player.addGold(-cost.gold);
     player.addFood(-cost.food);
@@ -42,6 +31,6 @@ bool BuildSystem::build(Player& player, Villager& worker, Building& building, co
 }
 
 bool BuildSystem::checkSpace(Building& building, const sf::Vector2f& pos) {
-    // Harita/Tile sistemi gelince burasý MapManager üzerinden kontrol edilecek
+    // Logic to be implemented via MapManager to check for collisions/obstacles.
     return true;
 }

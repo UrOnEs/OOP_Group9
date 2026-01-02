@@ -4,18 +4,15 @@
 #include "Entity System/Entity.h"
 #include <SFML/System/Vector2.hpp>
 
+/**
+ * @brief Manages the lifecycle of all entities in the game.
+ */
 class EntityManager {
 private:
-
     std::vector<std::shared_ptr<Entity>> entities;
 
 public:
-    
     void addEntity(std::shared_ptr<Entity> entity, sf::Vector2f& spawnpoint);
-    
     void updateAll(float dt);
-    
     void removeDeadEntities();
-
 };
-

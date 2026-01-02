@@ -4,9 +4,8 @@ bool TileMap::load(const std::string& tilesetFile, sf::Vector2u tileSize, const 
     if (!m_tileset.loadFromFile(tilesetFile))
         return false;
 
-    // Smooth görünüm için (Pikselleþme isteniyorsa false yapýn)
+    // Smooth false for pixel art style, true for smoother scaling
     m_tileset.setSmooth(true);
-    // Doku tekrarýný etkinleþtir
     m_tileset.setRepeated(true);
 
     m_width = width;
@@ -14,11 +13,11 @@ bool TileMap::load(const std::string& tilesetFile, sf::Vector2u tileSize, const 
     m_vertices.setPrimitiveType(sf::Quads);
     m_vertices.resize(width * height * 4);
 
-    // Texture kaç kare geniþliðinde/yüksekliðinde?
+    // Calculate tileset dimensions in tiles
     int tilesetWidthInTiles = m_tileset.getSize().x / tileSize.x;
     int tilesetHeightInTiles = m_tileset.getSize().y / tileSize.y;
 
-    // Eðer görsel tileSize'dan küçük veya eþitse (tek kare), koruma ekle:
+    // Safety check for single-tile textures
     if (tilesetWidthInTiles == 0) tilesetWidthInTiles = 1;
     if (tilesetHeightInTiles == 0) tilesetHeightInTiles = 1;
 
@@ -33,12 +32,11 @@ bool TileMap::load(const std::string& tilesetFile, sf::Vector2u tileSize, const 
             quad[2].position = sf::Vector2f((i + 1) * tileSize.x, (j + 1) * tileSize.y);
             quad[3].position = sf::Vector2f(i * tileSize.x, (j + 1) * tileSize.y);
 
-            // --- DEÐÝÞÝKLÝK: Texture Koordinatlarýný Güvenli Hesaplama ---
+            // Safe texture coordinate calculation
             int tu = tileNumber % tilesetWidthInTiles;
             int tv = tileNumber / tilesetWidthInTiles;
 
-            // Eðer görsel küçükse (tek tile), tv'nin yüksekliði aþmasýný engelle
-            // Bu sayede ID=1 olsa bile yine 0. satýrdaki çimeni çizer.
+            // Clamp check to prevent out-of-bounds access
             if (tv >= tilesetHeightInTiles) {
                 tv = 0;
                 tu = 0;
@@ -62,23 +60,17 @@ void TileMap::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 void TileMap::updateTile(int x, int y, int newID, const std::string& tilesetFile) {
     if (x < 0 || y < 0 || x >= (m_vertices.getVertexCount() / 4) / m_tileSize.y) return;
 
-    // Burada m_width sýnýf içinde saklanmalý demiþtik. MapManager doðru width ile load çaðýrdýðý için
-    // m_width burada günceldir.
-
     sf::Vertex* quad = &m_vertices[(x + y * m_width) * 4];
 
-    // Texture boyutlarýný tekrar hesapla
     int tilesetWidthInTiles = m_tileset.getSize().x / m_tileSize.x;
     int tilesetHeightInTiles = m_tileset.getSize().y / m_tileSize.y;
 
     if (tilesetWidthInTiles == 0) tilesetWidthInTiles = 1;
     if (tilesetHeightInTiles == 0) tilesetHeightInTiles = 1;
 
-    // Koordinatlarý hesapla
     int tu = newID % tilesetWidthInTiles;
     int tv = newID / tilesetWidthInTiles;
 
-    // Koruma (Tek resim kullanýmý için)
     if (tv >= tilesetHeightInTiles) {
         tv = 0;
         tu = 0;

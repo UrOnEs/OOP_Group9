@@ -29,21 +29,21 @@ void MapManager::initialize(unsigned int seed) {
     m_buildings.clear();
     std::fill(m_level.begin(), m_level.end(), 0);
 
-    // Zemin görselini yükle
+    // Load terrain tileset
     if (!m_map.load("assets/nature/grass.png", sf::Vector2u(m_tileSize, m_tileSize), m_level, m_width, m_height)) {
-        std::cerr << "HATA: Harita zemini (grass.png) yuklenemedi!" << std::endl;
+        std::cerr << "ERROR: Failed to load map tileset (grass.png)!" << std::endl;
     }
 
     // =========================================================
-    // 0. DAÐLARI OLUÞTUR VE GÖRSELLERÝNÝ AYARLA
+    // 0. GENERATE MOUNTAINS & UPDATE VISUALS
     // =========================================================
-    createMountains(6);   // 6 adet büyük dað kümesi oluþtur
-    updateMountainVisuals(); // Daðlarýn kenarlarýný birleþtir (Autotiling)
+    createMountains(6);   // Create 6 large mountain clusters
+    updateMountainVisuals(); // Autotile logic
 
     int totalTiles = m_width * m_height;
 
     // =========================================================
-    // 1. AÐAÇ OLUÞTURMA
+    // 1. GENERATE TREES
     // =========================================================
     int forestClusterCount = (totalTiles * 5) / 1000;
     for (int i = 0; i < forestClusterCount; i++) {
@@ -82,18 +82,16 @@ void MapManager::initialize(unsigned int seed) {
     }
 
     // =========================================================
-    // 2. TAÞ OLUÞTURMA (DÜZELTÝLDÝ: 2x2 KONTROLÜ)
+    // 2. GENERATE STONE MINES (2x2 Check)
     // =========================================================
     int stoneCount = (totalTiles * 2) / 1000;
     for (int i = 0; i < stoneCount; i++) {
         int tx = std::rand() % m_width;
         int ty = std::rand() % m_height;
 
-        // Harita sýnýrlarý dýþýna taþma kontrolü
         if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
             bool isSpaceFree = true;
 
-            // Taþlar 2x2 yer kaplar, bu yüzden 4 kareye de bakmalýyýz.
             if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
             if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
             if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
@@ -111,7 +109,6 @@ void MapManager::initialize(unsigned int seed) {
                 newStone->setPosition(sf::Vector2f(centerX, centerY));
                 m_buildings.push_back(newStone);
 
-                // 4 kareyi de dolu olarak iþaretle
                 m_level[tx + ty * m_width] = 1;
                 m_level[(tx + 1) + ty * m_width] = 1;
                 m_level[tx + (ty + 1) * m_width] = 1;
@@ -121,7 +118,7 @@ void MapManager::initialize(unsigned int seed) {
     }
 
     // =========================================================
-    // 3. ALTIN OLUÞTURMA (DÜZELTÝLDÝ: 2x2 KONTROLÜ)
+    // 3. GENERATE GOLD MINES (2x2 Check)
     // =========================================================
     int goldCount = (totalTiles * 1) / 1000;
     for (int i = 0; i < goldCount; i++) {
@@ -131,7 +128,6 @@ void MapManager::initialize(unsigned int seed) {
         if (tx >= 0 && tx + 1 < m_width && ty >= 0 && ty + 1 < m_height) {
             bool isSpaceFree = true;
 
-            // Altýnlar 2x2 yer kaplar, 4 kareye bak.
             if (m_level[tx + ty * m_width] != 0) isSpaceFree = false;
             if (m_level[(tx + 1) + ty * m_width] != 0) isSpaceFree = false;
             if (m_level[tx + (ty + 1) * m_width] != 0) isSpaceFree = false;
@@ -149,7 +145,6 @@ void MapManager::initialize(unsigned int seed) {
                 newGold->setPosition(sf::Vector2f(centerX, centerY));
                 m_buildings.push_back(newGold);
 
-                // 4 kareyi de dolu olarak iþaretle
                 m_level[tx + ty * m_width] = 1;
                 m_level[(tx + 1) + ty * m_width] = 1;
                 m_level[tx + (ty + 1) * m_width] = 1;
@@ -159,7 +154,7 @@ void MapManager::initialize(unsigned int seed) {
     }
 }
 
-// --- ORGANÝK DAÐ OLUÞTURMA (20x20 Alan, %80 Doluluk) ---
+// --- ORGANIC MOUNTAIN GENERATION (20x20 Area, %80 Fill) ---
 void MapManager::createMountains(int count) {
     int created = 0;
     int attempts = 0;
@@ -167,18 +162,17 @@ void MapManager::createMountains(int count) {
     while (created < count && attempts < count * 50) {
         attempts++;
 
-        // 20x20'lik bir alan
         int areaSize = 20;
         int startX = std::rand() % (m_width - areaSize - 4) + 2;
         int startY = std::rand() % (m_height - areaSize - 4) + 2;
 
-        // Base Korumasý
+        // Base Protection
         float distToPlayer = std::sqrt(std::pow(startX - 6, 2) + std::pow(startY - 5, 2));
         float distToEnemy = std::sqrt(std::pow(startX - 100, 2) + std::pow(startY - 20, 2));
 
         if (distToPlayer < 40.0f || distToEnemy < 40.0f) continue;
 
-        // Alan kontrolü
+        // Check if area is clear
         bool areaMostlyClear = true;
         for (int x = 0; x < areaSize; x += 2) {
             for (int y = 0; y < areaSize; y += 2) {
@@ -192,12 +186,12 @@ void MapManager::createMountains(int count) {
         }
         if (!areaMostlyClear) continue;
 
-        // --- ORGANÝK BÜYÜME ALGORÝTMASI ---
+        // --- ORGANIC GROWTH ALGORITHM ---
         std::vector<bool> localGrid(areaSize * areaSize, false);
         std::vector<sf::Vector2i> frontier;
         std::vector<sf::Vector2i> finalTiles;
 
-        int targetFillCount = (int)(areaSize * areaSize * 0.80f); // %80 doluluk
+        int targetFillCount = (int)(areaSize * areaSize * 0.80f); // 80% fill
         int currentCount = 0;
 
         int cx = areaSize / 2;
@@ -236,7 +230,7 @@ void MapManager::createMountains(int count) {
             }
         }
 
-        // Daðlarý Haritaya Ekle
+        // Add mountains to map
         sf::Texture& tex = AssetManager::getTexture("assets/nature/mountain.png");
 
         for (auto& tile : finalTiles) {
@@ -247,7 +241,7 @@ void MapManager::createMountains(int count) {
             if (m_level[mapX + mapY * m_width] != 0) continue;
 
             std::shared_ptr<Mountain> mtn = std::make_shared<Mountain>();
-            mtn->setTexture(tex); // Baþlangýçta tüm texture'ý alýr, setVariation ile düzeltilecek
+            mtn->setTexture(tex);
 
             float scale = 1.0f;
             mtn->setScale(scale, scale);
@@ -257,33 +251,32 @@ void MapManager::createMountains(int count) {
             mtn->setPosition(sf::Vector2f(posX, posY));
 
             m_buildings.push_back(mtn);
-            m_level[mapX + mapY * m_width] = 1; // Duvar
+            m_level[mapX + mapY * m_width] = 1; // Mark as obstacle
         }
 
         created++;
-        std::cout << "[MAP] Organik Dag Kumesi olusturuldu (20x20 alan, %80): " << startX << "," << startY << "\n";
     }
 }
 
-// --- YENÝ EKLENEN: GÖRSEL DÜZENLEME (AUTOTILING) ---
+// --- VISUAL UPDATE (AUTOTILING) ---
 void MapManager::updateMountainVisuals() {
     for (auto& building : m_buildings) {
         if (building->buildingType != BuildTypes::Mountain) continue;
 
         sf::Vector2f pos = building->getPosition();
-        // Merkezden sol üst köþeye koordinat çevirimi
+        // Convert to grid coordinates
         int tx = static_cast<int>(pos.x / m_tileSize);
         int ty = static_cast<int>(pos.y / m_tileSize);
 
-        // Bitmask Hesaplama
+        // Bitmask Calculation
         int mask = 0;
-        // Kuzey (1)
+        // North (1)
         if (ty > 0 && m_level[tx + (ty - 1) * m_width] != 0) mask += 1;
-        // Batý (2)
+        // West (2)
         if (tx > 0 && m_level[(tx - 1) + ty * m_width] != 0) mask += 2;
-        // Doðu (4)
+        // East (4)
         if (tx < m_width - 1 && m_level[(tx + 1) + ty * m_width] != 0) mask += 4;
-        // Güney (8)
+        // South (8)
         if (ty < m_height - 1 && m_level[tx + (ty + 1) * m_width] != 0) mask += 8;
 
         auto mountain = std::dynamic_pointer_cast<Mountain>(building);
@@ -294,7 +287,7 @@ void MapManager::updateMountainVisuals() {
 }
 
 void MapManager::createTilesetFile() {
-    // KULLANILMIYOR
+    // UNUSED
 }
 
 std::shared_ptr<Building> MapManager::tryPlaceBuilding(int tx, int ty, BuildTypes type) {

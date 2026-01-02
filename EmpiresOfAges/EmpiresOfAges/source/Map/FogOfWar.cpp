@@ -30,7 +30,7 @@ FogOfWar::FogOfWar(int width, int height, int tileSize)
 }
 
 void FogOfWar::update(const std::vector<std::shared_ptr<Entity>>& myEntities) {
-    // 1. Visible -> Explored
+    // 1. Degrade Visible -> Explored
     for (int i = 0; i < m_width * m_height; ++i) {
         if (m_grid[i] == FogState::Visible) {
             m_grid[i] = FogState::Explored;
@@ -40,7 +40,7 @@ void FogOfWar::update(const std::vector<std::shared_ptr<Entity>>& myEntities) {
         }
     }
 
-    // 2. Birim görüþ alanlarýný aç
+    // 2. Reveal new areas based on unit vision
     for (const auto& entity : myEntities) {
         if (!entity->getIsAlive()) continue;
 
@@ -114,7 +114,6 @@ bool FogOfWar::isVisible(float x, float y) const {
     return m_grid[gx + gy * m_width] == FogState::Visible;
 }
 
-// --- YENÝ EKLENEN FONKSÝYON GÖVDESÝ ---
 FogState FogOfWar::getFogAt(int x, int y) const {
     if (x < 0 || y < 0 || x >= m_width || y >= m_height) return FogState::Unexplored;
     return m_grid[x + y * m_width];

@@ -14,7 +14,6 @@ Soldier::Soldier() {
     shape.setPosition(100.f, 100.f);
     this->setTexture(AssetManager::getTexture("assets/units/barbarian.png"));
 
-    // Görsel boyutlandýrma
     if (this->sprite.getTexture()) {
         float scaleX = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().x;
         float scaleY = (GameRules::UnitRadius * 5) / (float)this->sprite.getTexture()->getSize().y;
@@ -55,10 +54,7 @@ void Soldier::setType(SoldierTypes type) {
         attackRange = GameRules::Range_Wizard;
         this->damage = GameRules::Dmg_Wizard;
         this->range = attackRange;
-
-        // Þarj süresini GameRules'dan alýyoruz
         this->wizardMaxChargeTime = attackInterval;
-
         this->setTexture(AssetManager::getTexture("assets/units/wizard.png"));
         break;
     }
@@ -84,12 +80,10 @@ std::string Soldier::getName() {
     }
 }
 
-// --- HEDEFLEME ---
 void Soldier::setTarget(std::shared_ptr<Entity> target) {
     if (target) {
-        if (target->getTeam() == this->getTeam()) return; // Dost ateþi yok
+        if (target->getTeam() == this->getTeam()) return;
 
-        // Zaten ayný hedefe saldýrýyorsak tekrar atama yapma
         auto current = targetEntity.lock();
         if (current && current == target) return;
 
@@ -106,7 +100,6 @@ void Soldier::clearTarget() {
     m_isMoving = false;
 }
 
-// --- UPDATE LOOP (BEYÝN) ---
 void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>& potentialTargets) {
     if (!getIsAlive()) {
         state = SoldierState::Idle;
@@ -115,32 +108,19 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
 
     if (attackTimer > 0) attackTimer -= dt;
 
-    // =========================================================
-    //             DURUM: MOVING (Sadece Yürü)
-    // =========================================================
-    // Eðer asker "Hareket" emri aldýysa, hedefe varana kadar kör olsun.
+    // --- STATE: MOVING ---
     if (state == SoldierState::Moving) {
-        // Unit sýnýfýndaki "m_isMoving" deðiþkeni fiziksel hareketin sürüp sürmediðini tutar.
         if (!m_isMoving) {
-            // Hareket bitti, artýk durup etrafa bakabiliriz.
             state = SoldierState::Idle;
         }
         else {
-            // Hareket devam ediyor, fonksiyondan çýk. 
-            // Aþaðýdaki düþman arama koduna girme!
             return;
         }
     }
 
-    // =========================================================
-    //             DURUM: IDLE (Düþman Ara)
-    // =========================================================
+    // --- STATE: IDLE (Scan for enemies) ---
     if (state == SoldierState::Idle) {
-        // --- MENZÝL KÜÇÜLTME ---
-        // Eskiden 300.0f idi. Þimdi 150.0f yapýyoruz.
-        // Böylece sadece çok yakýnýna giren düþmana saldýrýr.
         float scanRange = 150.0f;
-
         float bestDist = scanRange;
         std::shared_ptr<Entity> bestTarget = nullptr;
 
@@ -148,12 +128,11 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
             if (!target || !target->getIsAlive()) continue;
             if (target->getTeam() == this->getTeam()) continue;
 
-            // Basit mesafe hesabý (Karekök almadan kare karþýlaþtýrma daha hýzlýdýr)
             float dx = target->getPosition().x - getPosition().x;
             float dy = target->getPosition().y - getPosition().y;
             float distSq = dx * dx + dy * dy;
 
-            if (distSq < bestDist * bestDist) { // bestDist'in karesiyle kýyasla
+            if (distSq < bestDist * bestDist) {
                 bestDist = std::sqrt(distSq);
                 bestTarget = target;
             }
@@ -164,7 +143,7 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
         }
     }
 
-    // 1. CHASING: Kovalama
+    // --- STATE: CHASING ---
     else if (state == SoldierState::Chasing) {
         auto target = targetEntity.lock();
         if (!target || !target->getIsAlive()) {
@@ -177,10 +156,9 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
         float targetRadius = target->getBounds().width / 2.0f;
         if (targetRadius < 15.f) targetRadius = 15.f;
 
-        // Menzil Hesabý (Uzakçýlar için radius ekleme)
         float attackReach;
-        if (range > 30.0f) attackReach = range + 10.0f; // Okçu/Büyücü
-        else attackReach = range + targetRadius + 5.0f; // Barbar
+        if (range > 30.0f) attackReach = range + 10.0f; // Ranged
+        else attackReach = range + targetRadius + 5.0f; // Melee
 
         if (dist <= attackReach) {
             state = SoldierState::Attacking;
@@ -192,7 +170,7 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
         }
     }
 
-    // 2. ATTACKING: Saldýrý
+    // --- STATE: ATTACKING ---
     else if (state == SoldierState::Attacking) {
         auto target = targetEntity.lock();
         if (!target || !target->getIsAlive()) {
@@ -205,7 +183,6 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
         float targetRadius = target->getBounds().width / 2.0f;
         if (targetRadius < 15.f) targetRadius = 15.f;
 
-        // Menzilden Çýkma Hesabý
         float stopDist;
         if (range > 30.0f) stopDist = range + 20.0f;
         else stopDist = range + targetRadius + 20.0f;
@@ -215,98 +192,74 @@ void Soldier::updateSoldier(float dt, const std::vector<std::shared_ptr<Entity>>
             isCharging = false;
             return;
         }
-        // --- BÜYÜCÜ ÖZEL MANTIÐI ---
+
+        // --- Wizard Logic ---
         if (soldierType == SoldierTypes::Wizard) {
-            // Þarj Baþlat
             if (!isCharging) {
                 isCharging = true;
                 wizardChargeTimer = wizardMaxChargeTime;
             }
 
-            // Geri Sayým
             wizardChargeTimer -= dt;
 
-            // Þarj Bitti -> SALDIR!
             if (wizardChargeTimer <= 0) {
                 isCharging = false;
 
-                // --- HEDEF TÝPÝNÝ ANALÝZ ET ---
-                // Hedef bir bina mý? (dynamic_cast ile kontrol ediyoruz)
-                // Not: Building.h dosyasýný include ettiðinden emin ol, yoksa Building tanýnmaz.
-                // Eðer Building include edilmediyse "Entity" üzerinden bir kontrol ekleyebiliriz 
-                // ama en güzeli cast etmektir.
-                // Þimdilik basitçe hasar büyüklüðü ile ayýralým veya Unit olup olmadýðýna bakalým.
-
                 bool isBuilding = false;
-                // Birimler "Unit" sýnýfýndan türetilir. Eðer Unit'e cast edilemiyorsa binadýr (veya kaynaktýr).
                 if (std::dynamic_pointer_cast<Unit>(target) == nullptr) {
                     isBuilding = true;
                 }
 
                 if (isBuilding) {
-                    // ==========================================
-                    // SENARYO 1: BÝNAYA SALDIRI (YÜKSEK HASAR)
-                    // ==========================================
-                    float siegeDamage = 300.0f; // Normal hasarýn çok üstünde
+                    // Scenario 1: Siege Damage
+                    float siegeDamage = 300.0f;
                     target->takeDamage(siegeDamage);
-                    std::cout << "[WIZARD] Binaya YILDIRIM carpti! (300 dmg)\n";
                 }
                 else {
-                    // ==========================================
-                    // SENARYO 2: BÝRÝME SALDIRI (ALAN HASARI)
-                    // ==========================================
-                    float aoeDamage = 50.0f;    // Daha düþük hasar
-                    float splashRadius = 120.0f; // Patlama çapý (piksel)
+                    // Scenario 2: AoE Damage
+                    float aoeDamage = 50.0f;
+                    float splashRadius = 120.0f;
 
-                    // 1. Ana Hedefe Vur
                     target->takeDamage(aoeDamage);
 
-                    // 2. Etraftakilere Sýçrat (Splash Damage)
-                    // potentialTargets listesi zaten updateSoldier'a parametre olarak geliyor!
                     for (const auto& enemy : potentialTargets) {
-                        // Kendisi, ölüler veya takým arkadaþlarý hariç
                         if (!enemy || !enemy->getIsAlive()) continue;
-                        if (enemy == target) continue; // Ana hedefe zaten vurduk
-                        if (enemy->getTeam() == this->getTeam()) continue; // Dost ateþi yok
+                        if (enemy == target) continue;
+                        if (enemy->getTeam() == this->getTeam()) continue;
 
-                        // Mesafe ölçümü (Hedefin merkezinden düþmanýn merkezine)
                         sf::Vector2f diff = enemy->getPosition() - target->getPosition();
                         float distSq = diff.x * diff.x + diff.y * diff.y;
 
-                        // Eðer yarýçapýn içindeyse vur
                         if (distSq <= splashRadius * splashRadius) {
                             enemy->takeDamage(aoeDamage);
                         }
                     }
-                    std::cout << "[WIZARD] Alan hasari (AoE) patladi!\n";
                 }
             }
         }
-        // --- DÝÐERLERÝ ---
+        // --- Standard Attack ---
         else {
             if (attackTimer <= 0) {
                 if (CombatSystem::attack(*this, *target)) {
                     attackTimer = attackInterval;
                 }
                 else {
-                    state = SoldierState::Chasing; // Menzil yetmedi, yürü
+                    state = SoldierState::Chasing;
                 }
             }
         }
     }
 }
 
-// --- RENDER (Sadece Karakter) ---
 void Soldier::render(sf::RenderWindow& window) {
     if (!getIsAlive()) return;
     Unit::render(window);
 }
 
-// --- RENDER EFFECTS (Yýldýrým vb.) ---
 void Soldier::renderEffects(sf::RenderWindow& window) {
     if (!getIsAlive()) return;
 
-    // Büyücü Yýldýrým Efekti
+    // Wizard Lightning Effect
     if (soldierType == SoldierTypes::Wizard && isCharging) {
         auto target = targetEntity.lock();
         if (target) {
@@ -317,7 +270,6 @@ void Soldier::renderEffects(sf::RenderWindow& window) {
             float iconScale = 0.1f;
             lightning.setScale(iconScale, iconScale);
 
-            // Dolma Efekti
             float percent = 1.0f - (wizardChargeTimer / wizardMaxChargeTime);
             if (percent < 0) percent = 0; if (percent > 1) percent = 1;
 
@@ -341,7 +293,6 @@ void Soldier::renderEffects(sf::RenderWindow& window) {
 sf::Texture* Soldier::getIcon() {
     switch (soldierType) {
     case SoldierTypes::Barbarian:
-        // Þimdilik birimlerin kendi görsellerini ikon olarak kullanalým
         return &AssetManager::getTexture("assets/units/barbarian.png");
     case SoldierTypes::Archer:
         return &AssetManager::getTexture("assets/units/archer.png");
@@ -353,13 +304,7 @@ sf::Texture* Soldier::getIcon() {
 }
 
 void Soldier::commandMove(const sf::Vector2f& targetPos) {
-    // 1. Mevcut hedefi ve saldýrýyý unut
     clearTarget();
-
-    // 2. Durumu "Moving" yap (Böylece Idle'daki tarama çalýþmayacak)
     state = SoldierState::Moving;
-
-    // 3. Fiziksel hareketi baþlat (Unit sýnýfýndan gelen fonksiyon)
     moveTo(targetPos);
 }
-

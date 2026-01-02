@@ -5,17 +5,14 @@
 #include "Entity System/Entity Type/TownCenter.h"
 #include "Map/MapManager.h" 
 #include "Map/PathFinder.h"
-#include <iostream>
 #include <set>
-//For warnings
-#include "Game/Game.h"
 
 ProductionResult ProductionSystem::startProduction(Player& player, Barracks& barracks, SoldierTypes unitType) {
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
-        std::cout << "[Production] Nufus limiti dolu!\n";
         return ProductionResult::PopulationFull;
     }
-    // Maliyet Kontrolü
+
+    // Cost Check
     GameRules::Cost cost = GameRules::getUnitCost(unitType);
     std::vector<int> res = player.getResources();
 
@@ -24,6 +21,7 @@ ProductionResult ProductionSystem::startProduction(Player& player, Barracks& bar
     if (res[2] < cost.stone) return ProductionResult::InsufficientStone;
     if (res[3] < cost.food) return ProductionResult::InsufficientFood;
 
+    // Deduct Resources
     player.addWood(-cost.wood);
     player.addGold(-cost.gold);
     player.addStone(-cost.stone);
@@ -38,30 +36,23 @@ ProductionResult ProductionSystem::startProduction(Player& player, Barracks& bar
     return ProductionResult::Success;
 }
 
-// ======================================================================================
-//                                  ASKER GÜNCELLEME VE SPAWN
-// ======================================================================================
 void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapManager& mapManager) {
     if (!barracks.getIsProducing()) return;
 
     float timeMultiplier = GameRules::DebugMode ? 100.0f : 1.0f;
-
     barracks.updateTimer(dt * timeMultiplier);
-
 
     if (barracks.isReady()) {
         SoldierTypes type = barracks.finishTraining();
 
         std::shared_ptr<Soldier> newSoldier = std::make_shared<Soldier>();
         newSoldier->setType(type);
-
         newSoldier->setTeam(barracks.getTeam());
 
-        // --- AKILLI SPAWN SİSTEMİ (DÜZELTİLDİ) ---
+        // --- Smart Spawn System ---
         Point buildingGrid = barracks.getGridPoint();
 
-        // 1. REZERVE LİSTESİNİ DOLDUR
-        // Sadece duvarlara değil, haritadaki DİĞER ASKERLERE de bakmalıyız.
+        // 1. Populate Reserved Tiles (Include other units)
         std::set<Point> reserved;
         for (const auto& entity : player.getEntities()) {
             if (entity->getIsAlive()) {
@@ -69,52 +60,43 @@ void ProductionSystem::update(Player& player, Barracks& barracks, float dt, MapM
             }
         }
 
-        // 2. En yakın boş kareyi bul (Artık askerlerin olduğu kareleri de dolu sayacak)
+        // 2. Find Closest Free Tile
         Point spawnGrid = PathFinder::findClosestFreeTile(
             buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
         );
 
-        // 3. Dünya koordinatına çevir ve yerleştir
+        // 3. Convert to World Coordinates
         float spawnX = spawnGrid.x * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
         float spawnY = spawnGrid.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
 
         newSoldier->setPosition(sf::Vector2f(spawnX, spawnY));
-        // -----------------------------------------
 
         player.addEntity(newSoldier);
         player.addQueuedUnit(-1);
-        std::cout << "[INFO] Asker egitimi tamamlandi! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }
 
 ProductionResult ProductionSystem::startVillagerProduction(Player& player, TownCenter& tc) {
-  
     if (!tc.isConstructed) {
-    std::cout << "[Production] Bina inşaat Ediliyor!\n";
-        return ProductionResult::PopulationFull; //Buraya yeni bir uyarı lazım !
+        return ProductionResult::InvalidBuilding;
     }
     if (player.getCurrentPopulation() + 1 > player.getUnitLimit()) {
-        std::cout << "[Production] Nufus limiti dolu!\n";
         return ProductionResult::PopulationFull;
     }
-    // Köylü Maliyeti
+
+    // Villager Cost
     int foodCost = 50;
     if (player.getResources()[3] >= foodCost) {
         player.addFood(-foodCost);
         player.addQueuedUnit(1);
-        tc.startProduction(10.0f); // 10 saniye üretim
+        tc.startProduction(10.0f); // 10 seconds build time
         return ProductionResult::Success;
     }
     return ProductionResult::InsufficientFood;
 }
 
-// ======================================================================================
-//                                  KÖYLÜ GÜNCELLEME VE SPAWN
-// ======================================================================================
 void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager) {
-    
     float timeMultiplier = GameRules::DebugMode ? 100.0f : 1.0f;
-
     tc.updateTimer(dt * timeMultiplier);
 
     if (tc.isReady()) {
@@ -123,10 +105,9 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
         std::shared_ptr<Villager> newVillager = std::make_shared<Villager>();
         newVillager->setTeam(tc.getTeam());
 
-        // --- AKILLI SPAWN SİSTEMİ (DÜZELTİLDİ) ---
+        // --- Smart Spawn System ---
         Point buildingGrid = tc.getGridPoint();
 
-        // 1. REZERVE LİSTESİNİ DOLDUR
         std::set<Point> reserved;
         for (const auto& entity : player.getEntities()) {
             if (entity->getIsAlive()) {
@@ -134,7 +115,6 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
             }
         }
 
-        // 2. En yakın boş kareyi bul
         Point spawnGrid = PathFinder::findClosestFreeTile(
             buildingGrid, mapManager.getLevelData(), mapManager.getWidth(), mapManager.getHeight(), reserved
         );
@@ -143,10 +123,8 @@ void ProductionSystem::updateTC(Player& player, TownCenter& tc, float dt, MapMan
         float spawnY = spawnGrid.y * mapManager.getTileSize() + mapManager.getTileSize() / 2.0f;
 
         newVillager->setPosition(sf::Vector2f(spawnX, spawnY));
-        // -----------------------------------------
 
         player.addEntity(newVillager);
         player.addQueuedUnit(-1);
-        std::cout << "[INFO] Yeni koylu isbasi yapti! (" << spawnGrid.x << "," << spawnGrid.y << ")\n";
     }
 }

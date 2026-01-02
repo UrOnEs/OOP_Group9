@@ -9,28 +9,29 @@
 
 enum class SoldierState { Idle, Moving, Chasing, Attacking };
 
+/**
+ * @brief Combat unit with attacking capabilities (Melee, Ranged, Magic).
+ */
 class Soldier : public Unit {
 private:
     static int IDcounter;
     static int counter;
     SoldierTypes soldierType;
 
-    
     std::weak_ptr<Entity> targetEntity;
 
     float attackTimer = 0.0f;
     float attackInterval = 1.0f;
     float attackRange = 20.0f;
 
-    // Büyücü Deðiþkenleri
+    // Wizard Mechanics
     float wizardChargeTimer = 0.0f;
     float wizardMaxChargeTime = GameRules::AttackSpeed_Wizard;
     bool isCharging = false;
 
 public:
-    
     SoldierState state = SoldierState::Idle;
-    
+
     Soldier();
     ~Soldier();
 
@@ -55,7 +56,6 @@ public:
 
     std::string getName() override;
     sf::Texture* getIcon() override;
-
 };
 
 #endif

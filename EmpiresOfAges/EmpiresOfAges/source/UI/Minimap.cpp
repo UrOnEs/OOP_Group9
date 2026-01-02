@@ -6,13 +6,11 @@
 Minimap::Minimap() {
     m_size = sf::Vector2f(200.f, 200.f);
 
-    // Arkaplan
     m_background.setSize(m_size);
     m_background.setFillColor(sf::Color(20, 20, 20));
     m_background.setOutlineThickness(2);
     m_background.setOutlineColor(sf::Color(200, 150, 50));
 
-    // Kamera kutusu
     m_cameraBox.setFillColor(sf::Color::Transparent);
     m_cameraBox.setOutlineThickness(1.0f);
     m_cameraBox.setOutlineColor(sf::Color::White);
@@ -25,15 +23,8 @@ void Minimap::init(int mapWidth, int mapHeight, int tileSize, const std::vector<
     m_mapHeight = mapHeight;
     m_tileSize = tileSize;
 
-    // Konum (Sað Alt)
-    m_position = sf::Vector2f(screenWidth - m_size.x - 10, screenHeight - m_size.y - 10);
-    m_background.setPosition(m_position);
-    m_mapSprite.setPosition(m_position);
-    m_fogSprite.setPosition(m_position); // Fog Sprite konumu
-
-    // --- MEVCUT KONUM VE HARÝTA AYARLARI ---
-    // Konum (Sað Alt) - Haritanýn (200x200) baþlangýç noktasý
-    m_position = sf::Vector2f(screenWidth - m_size.x - 25, screenHeight - m_size.y - 25); // Biraz daha içeriden baþlattým (padding için yer kalsýn)
+    // Position (Bottom Right)
+    m_position = sf::Vector2f(screenWidth - m_size.x - 25, screenHeight - m_size.y - 25);
 
     m_background.setPosition(m_position);
     m_mapSprite.setPosition(m_position);
@@ -44,36 +35,25 @@ void Minimap::init(int mapWidth, int mapHeight, int tileSize, const std::vector<
     m_scaleX = m_size.x / worldWidth;
     m_scaleY = m_size.y / worldHeight;
 
-    // --- 1. ÇERÇEVE AYARLARI (YENÝ KISIM) ---
-    m_background.setOutlineThickness(0); // Eski kare çizgiyi kaldýr
+    m_background.setOutlineThickness(0);
 
     static sf::Texture frameTex;
-
     frameTex.loadFromFile("assets/ui/minimap_frame_1.png");
-
     m_frameSprite.setTexture(frameTex);
 
-    // --- PADDING (BOÞLUK) HESABI ---
-    // Çerçevenin haritadan ne kadar daha geniþ duracaðýný belirler.
-    // Örneðin 15.0f yaparsanýz, çerçeve haritanýn her kenarýndan 15 piksel dýþarý taþar.
     float padding = 11.0f;
-
-    // Çerçevenin hedef boyutu: Harita Boyutu + (Sað ve Sol Boþluk)
     float targetFrameW = m_size.x + (padding * 2.0f);
     float targetFrameH = m_size.y + (padding * 2.0f);
 
-    // Scale (Ölçek) Ayarý: Görseli hedef boyuta uydur
     if (frameTex.getSize().x > 0) {
         m_frameSprite.setScale(
             targetFrameW / (float)frameTex.getSize().x,
             targetFrameH / (float)frameTex.getSize().y
         );
     }
-
-    // Konum Ayarý: Haritanýn sol-üst köþesinden 'padding' kadar geriye ve yukarýya
     m_frameSprite.setPosition(m_position.x - padding, m_position.y - padding);
 
-    // --- HARÝTA DOKUSU ---
+    // Create static map texture
     sf::Image mapImg;
     mapImg.create(mapWidth, mapHeight, sf::Color::Black);
 
@@ -81,8 +61,8 @@ void Minimap::init(int mapWidth, int mapHeight, int tileSize, const std::vector<
         for (int y = 0; y < mapHeight; ++y) {
             int tileType = mapData[x + y * mapWidth];
             sf::Color color;
-            if (tileType == 0) color = sf::Color(34, 139, 34); // Çimen
-            else color = sf::Color(100, 100, 100);             // Duvar
+            if (tileType == 0) color = sf::Color(34, 139, 34); // Grass
+            else color = sf::Color(100, 100, 100);             // Wall/Obstacle
             mapImg.setPixel(x, y, color);
         }
     }
@@ -91,11 +71,11 @@ void Minimap::init(int mapWidth, int mapHeight, int tileSize, const std::vector<
     m_mapSprite.setTexture(m_mapTexture);
     m_mapSprite.setScale(m_size.x / (float)mapWidth, m_size.y / (float)mapHeight);
 
-    // --- FOG OF WAR GÖRSELÝ HAZIRLIÐI ---
-    m_fogImage.create(mapWidth, mapHeight, sf::Color::Black); // Baþlangýçta simsiyah
+    // Init fog texture
+    m_fogImage.create(mapWidth, mapHeight, sf::Color::Black);
     m_fogTexture.loadFromImage(m_fogImage);
     m_fogSprite.setTexture(m_fogTexture);
-    m_fogSprite.setScale(m_mapSprite.getScale()); // Harita ile ayný ölçekte
+    m_fogSprite.setScale(m_mapSprite.getScale());
 }
 
 void Minimap::update(const std::vector<std::shared_ptr<Entity>>& myUnits,
@@ -103,7 +83,7 @@ void Minimap::update(const std::vector<std::shared_ptr<Entity>>& myUnits,
     const sf::View& currentView,
     FogOfWar* fog)
 {
-    // 1. KAMERA KUTUSU
+    // Update Camera Box
     sf::Vector2f viewSize = currentView.getSize();
     sf::Vector2f viewCenter = currentView.getCenter();
     sf::Vector2f viewTopLeft = viewCenter - (viewSize / 2.0f);
@@ -121,30 +101,26 @@ void Minimap::update(const std::vector<std::shared_ptr<Entity>>& myUnits,
     m_cameraBox.setSize(sf::Vector2f(boxW, boxH));
     m_cameraBox.setPosition(boxX, boxY);
 
-    // 2. FOG OF WAR GÜNCELLEMESÝ (YENÝ KOD)
+    // Update Fog
     if (fog) {
-        // Haritadaki her karo için sis durumunu kontrol edip pixel rengini ayarla
         for (int x = 0; x < m_mapWidth; ++x) {
             for (int y = 0; y < m_mapHeight; ++y) {
                 FogState state = fog->getFogAt(x, y);
-                sf::Color c = sf::Color::Black; // Varsayýlan: Unexplored
+                sf::Color c = sf::Color::Black;
 
                 if (state == FogState::Visible) {
-                    c = sf::Color::Transparent; // Açýk
+                    c = sf::Color::Transparent;
                 }
                 else if (state == FogState::Explored) {
-                    c = sf::Color(0, 0, 0, 150); // Yarý saydam siyah
+                    c = sf::Color(0, 0, 0, 150);
                 }
-                // Unexplored ise zaten Black kalýr.
-
                 m_fogImage.setPixel(x, y, c);
             }
         }
-        // Texture'ý RAM'den GPU'ya gönder
         m_fogTexture.update(m_fogImage);
     }
 
-    // 3. BÝRÝMLER
+    // Update Units
     m_unitDots.clear();
 
     auto addDot = [&](const std::shared_ptr<Entity>& e, sf::Color color) {
@@ -159,17 +135,14 @@ void Minimap::update(const std::vector<std::shared_ptr<Entity>>& myUnits,
         m_unitDots.append(sf::Vertex(sf::Vector2f(mx, my + dotSize), color));
         };
 
-    // Dostlar
     for (const auto& u : myUnits) {
         if (u->getIsAlive()) addDot(u, sf::Color::Cyan);
     }
 
-    // Düþmanlar (Sadece görünürse)
     for (const auto& u : enemyUnits) {
         if (u->getIsAlive()) {
             bool visible = true;
             if (fog) visible = fog->isVisible(u->getPosition().x, u->getPosition().y);
-
             if (visible) addDot(u, sf::Color::Red);
         }
     }
@@ -177,11 +150,11 @@ void Minimap::update(const std::vector<std::shared_ptr<Entity>>& myUnits,
 
 void Minimap::draw(sf::RenderWindow& window) {
     window.draw(m_background);
-    window.draw(m_mapSprite);  // 1. Zemin
-    window.draw(m_fogSprite);  // 2. Sis (Zemini karartýr)
-    window.draw(m_unitDots);   // 3. Birimler (Sisin üstünde parlak görünsün)
+    window.draw(m_mapSprite);
+    window.draw(m_fogSprite);
+    window.draw(m_unitDots);
     window.draw(m_frameSprite);
-    window.draw(m_cameraBox);  // 4. Kamera Çerçevesi
+    window.draw(m_cameraBox);
 }
 
 bool Minimap::handleClick(const sf::Vector2i& mousePos, sf::Vector2f& outNewCenter) {

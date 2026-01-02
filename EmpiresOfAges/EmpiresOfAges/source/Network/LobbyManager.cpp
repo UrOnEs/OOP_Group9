@@ -12,14 +12,9 @@ LobbyManager::LobbyManager(NetworkManager* netManager, bool isHost)
 
 void LobbyManager::start(uint64_t selfId, const std::string& name) {
     m_selfId = selfId;
-    // Varsayılan renk 0 (Kırmızı)
+    // Default color 0 (Red)
     addPlayer(selfId, name, false, 0);
-    if (m_isHost) {
-        // Sunucunun yerel IP adresini al
-        sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
-        std::cout << "SUNUCU ACILDI! Yerel IP Adresin: " << localIP.toString() << std::endl;
-        std::cout << "Arkadaslarin bu IP'yi girerek baglanabilir." << std::endl;
-    }
+
     if (!m_isHost) {
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::JoinRequest) << name;
@@ -29,15 +24,14 @@ void LobbyManager::start(uint64_t selfId, const std::string& name) {
     }
 }
 
-// YENİ: Renk Değiştirme İsteği
 void LobbyManager::changeColor(int colorIndex) {
     if (m_isHost) {
-        // Host ise direkt değiştir ve herkese yay
+        // If host, change directly and sync
         setColor(m_selfId, colorIndex);
         syncLobbyToClients();
     }
     else {
-        // Client ise sunucuya istek at
+        // If client, send request to server
         sf::Packet pkt;
         pkt << static_cast<sf::Int32>(LobbyCommand::ChangeColor) << colorIndex;
         if (m_netManager && m_netManager->client()) {
@@ -46,7 +40,6 @@ void LobbyManager::changeColor(int colorIndex) {
     }
 }
 
-// ... (toggleReady, startGame, closeLobby, setOn... fonksiyonları AYNI KALACAK) ...
 void LobbyManager::closeLobby() {
     if (m_isHost && m_netManager->server()) {
         sf::Packet pkt;
@@ -54,6 +47,7 @@ void LobbyManager::closeLobby() {
         m_netManager->server()->sendToAllReliable(pkt);
     }
 }
+
 void LobbyManager::toggleReady(bool isReady) {
     if (m_isHost) {
         setReady(m_selfId, isReady);
@@ -65,6 +59,7 @@ void LobbyManager::toggleReady(bool isReady) {
         if (m_netManager && m_netManager->client()) m_netManager->client()->sendReliable(pkt);
     }
 }
+
 void LobbyManager::startGame() {
     if (!m_isHost || !canStartGame() || m_isGameStarted) return;
     m_isGameStarted = true;
@@ -78,15 +73,15 @@ void LobbyManager::startGame() {
         if (m_onGameStart) m_onGameStart();
     }
 }
+
 bool LobbyManager::canStartGame() const {
     if (m_players.size() < 1) return false;
     for (const auto& p : m_players) if (!p.ready) return false;
     return true;
 }
+
 void LobbyManager::setOnPlayerChange(PlayerChangeCallback cb) { m_onChange = std::move(cb); }
 void LobbyManager::setOnGameStart(GameStartCallback cb) { m_onGameStart = std::move(cb); }
-// ... (Buraya kadar olanlar aynı) ...
-
 
 void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
     sf::Int32 cmdInt;
@@ -97,7 +92,6 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
         if (cmd == LobbyCommand::JoinRequest) processJoinRequest(senderId, pkt);
         else if (cmd == LobbyCommand::ToggleReady) processToggleReady(senderId, pkt);
         else if (cmd == LobbyCommand::LeaveLobby) removePlayer(senderId);
-        // YENİ: Renk isteği
         else if (cmd == LobbyCommand::ChangeColor) processChangeColor(senderId, pkt);
     }
     else {
@@ -114,9 +108,8 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
                     sf::Uint64 id;
                     std::string name;
                     bool ready;
-                    int color; // YENİ: Paket içinde renk var
+                    int color;
 
-                    // GÜNCELLEME: Renk verisini de oku
                     if (pkt >> id >> name >> ready >> color) {
                         p.id = id;
                         p.name = name;
@@ -131,7 +124,7 @@ void LobbyManager::handleIncomingPacket(uint64_t senderId, sf::Packet& pkt) {
         else if (cmd == LobbyCommand::StartGameSignal) {
             unsigned int seed = 0;
             if (pkt >> seed) {
-                m_gameSeed = seed; // Kaydet
+                m_gameSeed = seed;
                 if (m_onGameStart) m_onGameStart();
             }
         }
@@ -145,25 +138,20 @@ void LobbyManager::processJoinRequest(uint64_t senderId, sf::Packet& pkt) {
     std::string playerName;
     if (!(pkt >> playerName)) return;
 
-    // Yeni gelen oyuncuya varsayılan renk ata
+    // Assign default color
     int defaultColor = static_cast<int>(m_players.size()) % 4;
     addPlayer(senderId, playerName, false, defaultColor);
     syncLobbyToClients();
 
-    // --- KRİTİK EKLEME: GEÇ KATILANLARA SEED GÖNDER ---
-    // Eğer oyun sunucuda zaten başladıysa, yeni gelen oyuncuya
-    // "Biz başladık, sen de başla" diyerek Seed'i göndermeliyiz.
+    // If game already started, send the seed to the late joiner
     if (m_isGameStarted) {
         sf::Packet startPkt;
         startPkt << static_cast<sf::Int32>(LobbyCommand::StartGameSignal) << m_gameSeed;
 
         if (m_netManager && m_netManager->server()) {
-            // Sadece yeni gelen kişiye gönder (sendTo)
             m_netManager->server()->sendToReliable(senderId, startPkt);
-            std::cout << "[LOBBY] Gec katilan oyuncuya seed gonderildi: " << senderId << std::endl;
         }
     }
-    // ---------------------------------------------------
 }
 
 void LobbyManager::processToggleReady(uint64_t senderId, sf::Packet& pkt) {
@@ -173,7 +161,6 @@ void LobbyManager::processToggleReady(uint64_t senderId, sf::Packet& pkt) {
     syncLobbyToClients();
 }
 
-// YENİ: Sunucuda renk değiştirme işlemi
 void LobbyManager::processChangeColor(uint64_t senderId, sf::Packet& pkt) {
     int newColor;
     if (!(pkt >> newColor)) return;
@@ -193,7 +180,6 @@ void LobbyManager::syncLobbyToClients() {
         syncPkt << static_cast<sf::Uint32>(m_players.size());
 
         for (const auto& p : m_players) {
-            // GÜNCELLEME: Renk bilgisini de pakete ekle
             syncPkt << static_cast<sf::Uint64>(p.id)
                 << p.name
                 << p.ready
@@ -204,7 +190,6 @@ void LobbyManager::syncLobbyToClients() {
     if (m_onChange) m_onChange();
 }
 
-// GÜNCELLEME: addPlayer artık renk alıyor
 void LobbyManager::addPlayer(uint64_t id, const std::string& name, bool ready, int colorIndex) {
     auto it = std::find_if(m_players.begin(), m_players.end(),
         [id](const PlayerInfo& p) { return p.id == id; });
@@ -229,7 +214,6 @@ void LobbyManager::setReady(uint64_t id, bool ready) {
     if (it != m_players.end()) it->ready = ready;
 }
 
-// YENİ: Rengi güncelle
 void LobbyManager::setColor(uint64_t id, int colorIndex) {
     auto it = std::find_if(m_players.begin(), m_players.end(),
         [id](const PlayerInfo& p) { return p.id == id; });

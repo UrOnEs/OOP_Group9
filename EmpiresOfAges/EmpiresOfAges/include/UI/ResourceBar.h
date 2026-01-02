@@ -4,30 +4,29 @@
 #include "Game/Player.h"
 #include "UI/UIButton.h"
 
+/**
+ * @brief Top HUD panel displaying player resources and population.
+ */
 class ResourceBar {
 public:
     ResourceBar();
-    void updateResources(int wood, int food, int gold, int stone,Player player);
+    void updateResources(int wood, int food, int gold, int stone, Player player);
     void draw(sf::RenderWindow& window);
-
     void handleEvent(const sf::Event& event);
 
-    // YENÝ: Ayarlar butonu callback'i
     void setSettingsCallback(std::function<void()> cb);
-
-    // YENÝ: Geniþliði ayarlamak için
     void setWidth(float width);
-    float getHeight() const { return 40.f; } // Sabit yükseklik getter
+    float getHeight() const { return 40.f; }
 
 private:
     sf::Font font;
     sf::RectangleShape backgroundBar;
-    
+
     sf::Sprite barSprite;
     bool hasTexture = false;
-    
+
     sf::Sprite iconWood, iconFood, iconGold, iconStone;
-    
+
     sf::Text woodText;
     sf::Text foodText;
     sf::Text goldText;

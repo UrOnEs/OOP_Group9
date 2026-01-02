@@ -1,8 +1,10 @@
 #pragma once
 
+/**
+ * @brief Handles victory and defeat conditions (Placeholder).
+ */
 class VictoryCondition {
 public:
-    bool checkVictory();//Sað kaldýn mý? ve Diðerleri kaybetti mi?
-    bool checkDefeat();//Sona kalan son kiþi deðilsin ve kaybettin
+    bool checkVictory();
+    bool checkDefeat();
 };
-

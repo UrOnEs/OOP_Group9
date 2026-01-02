@@ -14,11 +14,7 @@ public:
 
 private:
     sf::RectangleShape background;
-
     sf::Sprite backgroundSprite;
     bool hasTexture = false;
-
     std::vector<UIButton> buttons;
 };
-
-

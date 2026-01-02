@@ -9,17 +9,23 @@
 class ResourceManager;
 class Building;
 
+/**
+ * @brief Manages the game map, terrain generation, and building placement.
+ */
 class MapManager {
 public:
     MapManager(int width, int height, int tileSize);
 
+    /**
+     * @brief Generates the map procedurally based on a seed.
+     */
     void initialize(unsigned int seed);
+
     std::shared_ptr<Building> tryPlaceBuilding(int tx, int ty, BuildTypes type);
     void removeBuilding(int tx, int ty);
     void updateBuildings(float dt);
     void draw(sf::RenderWindow& window);
     void removeDeadBuildings();
-
 
     const std::vector<int>& getLevelData() const;
     std::shared_ptr<Building> getBuildingAt(int tx, int ty);
@@ -35,11 +41,14 @@ private:
     void updateTile(int tx, int ty, int id);
     bool isBuildingAt(int tx, int ty);
 
-    // Rastgele dað kümeleri oluþturur
+    /**
+     * @brief Generates organic clusters of mountains.
+     */
     void createMountains(int count);
 
-    // --- YENÝ EKLENEN FONKSÝYON ---
-    // Daðlarýn komþularýna bakarak doðru görseli seçer (Autotiling)
+    /**
+     * @brief Updates mountain sprites using autotiling logic based on neighbors.
+     */
     void updateMountainVisuals();
 
     int m_width;

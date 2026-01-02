@@ -1,24 +1,15 @@
-﻿// Connection.cpp - SFML UDP/Packet
-
-#include "Network/Connection.h"
+﻿#include "Network/Connection.h"
 #include <iostream>
-
-// --- Kurucu ---
 
 Connection::Connection(const sf::IpAddress& address, unsigned short port)
     : m_address(address), m_port(port) {}
 
-// --- A� ��lemleri Implementasyonu ---
-
 sf::Socket::Status Connection::send(sf::UdpSocket& socket, sf::Packet& packet) const {
-    // SFML'in UdpSocket'�, paketi belirtilen uzak adrese ve porta g�nderir.
+    // SFML UdpSocket sends the packet to the stored address/port.
     sf::Socket::Status status = socket.send(packet, m_address, m_port);
 
-    // �statistik g�ncellemesi
     if (status == sf::Socket::Done) {
-        // sf::Packet'�n yakla��k boyutunu hesaplamak zor oldu�u i�in, 
-        // pratiklik ad�na sadece g�nderim ba�ar�l�ysa art�rabiliriz.
-        // Daha do�ru bir say�m i�in sf::Packet'�n verilerini okumak gerekir, �imdilik atl�yoruz.
+        // Stats could be updated here.
         // m_bytesSent += packet.getDataSize(); 
     }
 
@@ -26,7 +17,6 @@ sf::Socket::Status Connection::send(sf::UdpSocket& socket, sf::Packet& packet) c
 }
 
 std::string Connection::endpoint() const {
-    // �rnek: "192.168.1.1:54000"
     return m_address.toString() + ":" + std::to_string(m_port);
 }
 
@@ -35,19 +25,14 @@ void Connection::addPendingPacket(uint32_t seq, sf::Packet pkt) {
 }
 
 void Connection::processACK(uint32_t seq) {
-    m_pendingPackets.erase(seq); // Onay geldi, listeden çıkar
+    m_pendingPackets.erase(seq); // ACK received, remove from pending.
 }
 
 void Connection::resendMissingPackets(sf::UdpSocket& socket) {
     for (auto& pair : m_pendingPackets) {
-        // Süreyi 50ms yapmıştık, kontrol edin
+        // Retry timeout check (50ms)
         if (pair.second.timer.getElapsedTime().asMilliseconds() > 50) {
-
-            // --- LOG EKLEMESİ ---
-            std::cout << "[Network] Paket (Seq: " << pair.second.sequence
-                << ") tekrar gonderiliyor -> " << m_address.toString() << "\n";
-            // --------------------
-
+            // Retrying send... (Debug logs removed for cleaner output)
             socket.send(pair.second.packet, m_address, m_port);
             pair.second.timer.restart();
         }

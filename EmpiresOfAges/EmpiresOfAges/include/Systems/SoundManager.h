@@ -4,27 +4,32 @@
 #include <list>
 #include <string>
 
+/**
+ * @brief Global sound manager for handling sound effects and background music.
+ */
 class SoundManager {
 public:
-    // Sesi yükler ve hafýzada tutar
+    /**
+     * @brief Loads a sound file into memory.
+     */
     static void loadSound(const std::string& name, const std::string& filename);
 
-    // Sesi çalar (Fire and Forget)
+    /**
+     * @brief Plays a sound effect (fire-and-forget).
+     */
     static void playSound(const std::string& name);
 
     static void playMusic(const std::string& filename);
-    static void setMusicVolume(float volume); // 0.0 ile 100.0 arasý
+    static void setMusicVolume(float volume); // 0.0 to 100.0
     static float getMusicVolume();
 
-    // Gereksiz sesleri temizlemek için (Game loop'ta çaðrýlmalý)
+    /**
+     * @brief Updates internal lists, removing finished sounds. Call every frame.
+     */
     static void update();
 
 private:
-    // Ses dosyalarýnýn verisi (RAM'de durur)
     static std::map<std::string, sf::SoundBuffer> soundBuffers;
-
-    // O an çalan sesler (Çalma bitince listeden silinecek)
     static std::list<sf::Sound> activeSounds;
-
     static sf::Music backgroundMusic;
 };

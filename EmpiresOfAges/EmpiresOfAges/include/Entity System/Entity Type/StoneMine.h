@@ -6,11 +6,9 @@ class StoneMine : public ResourceGenerator {
 public:
     StoneMine() {
         buildingType = BuildTypes::StoneMine;
-        health = GameRules::BuildingHealth; // Standart bina caný
-
-        interval = GameRules::Time_Harvest_Tick; // Standart hýz
+        health = GameRules::BuildingHealth;
+        interval = GameRules::Time_Harvest_Tick;
         amountPerTick = 5;
     }
-
-    std::string getInfo() override { return "Stone Mine: Tas Uretir"; }
+    std::string getInfo() override { return "Stone Mine"; }
 };

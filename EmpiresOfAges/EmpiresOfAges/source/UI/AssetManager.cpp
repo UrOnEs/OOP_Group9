@@ -16,4 +16,3 @@ sf::Font& AssetManager::getFont(const std::string& filename) {
     }
     return fonts[filename];
 }
-

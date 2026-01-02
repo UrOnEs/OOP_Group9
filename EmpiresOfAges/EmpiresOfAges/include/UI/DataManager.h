@@ -1,9 +1,11 @@
-/*#pragma once
+#pragma once
 #include <string>
-//using json = nlohmann::json;
 
+/**
+ * @brief Placeholder for JSON data management.
+ * Currently disabled/unused.
+ */
 class DataManager {
 public:
-    static json loadJSON(const std::string& filename);
-    static void saveJSON(const std::string& filename, const json& data);
-};*/
+    // Future implementation for load/save functionality
+};

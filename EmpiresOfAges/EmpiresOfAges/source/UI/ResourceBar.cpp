@@ -2,13 +2,10 @@
 #include "UI/AssetManager.h"
 
 ResourceBar::ResourceBar() {
-    // 1. Font Yükleme (Hata kontrolü ekledim, font yoksa çökmesin)
     if (!font.loadFromFile("assets/fonts/arial.ttf")) {
-        // Font yüklenemezse varsayýlan bir þeyler yapýlabilir ama þimdilik geçiyoruz
+        // Handle font loading error
     }
 
-    // 2. Arka Plan Þeridi (Simsiyah deðil, yarý saydam gri)
-    // 1920 geniþlik, 40 yükseklik. Ekranýn tepesini kaplar.
     backgroundBar.setSize(sf::Vector2f(1920.f, 40.f));
     backgroundBar.setFillColor(sf::Color(0, 0, 0, 150));
     backgroundBar.setPosition(0, 0);
@@ -19,7 +16,6 @@ ResourceBar::ResourceBar() {
         barSprite.setTexture(barTex);
         hasTexture = true;
         barSprite.setPosition(0, 0);
-        // setWidth çaðrýldýðýnda scale edilecek
     }
 
     auto setupIcon = [&](sf::Sprite& sprite, const std::string& path) {
@@ -29,19 +25,14 @@ ResourceBar::ResourceBar() {
             float iconSize = 32.0f;
             sprite.setScale(iconSize / tex.getSize().x, iconSize / tex.getSize().y);
         }
-    };
+        };
 
     setupIcon(iconWood, "assets/ui/icon_wood.png");
     setupIcon(iconFood, "assets/ui/icon_food.png");
     setupIcon(iconGold, "assets/ui/icon_gold.png");
     setupIcon(iconStone, "assets/ui/icon_stone.png");
 
-    // Ortak Ayarlar Ýçin Lambda veya Döngü kullanabiliriz ama 
-    // senin için anlaþýlýr olsun diye tek tek yazýyorum.
-
-    unsigned int fontSize = 18; // Daha kibar bir boyut
-    float startX = 20.f;        // Soldan boþluk
-    float spacing = 200.f;      // Her yazý arasý boþluk
+    unsigned int fontSize = 18;
 
     auto setupText = [&](sf::Text& txt, sf::Color color) {
         txt.setFont(font);
@@ -51,56 +42,47 @@ ResourceBar::ResourceBar() {
         txt.setOutlineColor(sf::Color::Black);
         };
 
-    setupText(woodText, sf::Color(255, 255, 255)); // Artýk ikon olacaðý için yazýlar beyaz olabilir
-    setupText(foodText, sf::Color(255, 255, 255));
-    setupText(goldText, sf::Color(255, 255, 255));
-    setupText(stoneText, sf::Color(255, 255, 255));
-    setupText(populationText, sf::Color(255, 255, 255));
+    setupText(woodText, sf::Color::White);
+    setupText(foodText, sf::Color::White);
+    setupText(goldText, sf::Color::White);
+    setupText(stoneText, sf::Color::White);
+    setupText(populationText, sf::Color::White);
 
     settingsButton.setSize(32, 32);
 
-    // Varsa ikon yükle (Opsiyonel)
     sf::Texture& gearTex = AssetManager::getTexture("assets/ui/settingsButton.png");
     gearTex.setSmooth(true);
     settingsButton.setFillColor(sf::Color::Transparent);
-    if(gearTex.getSize().x > 0) settingsButton.setTexture(gearTex);
-
+    if (gearTex.getSize().x > 0) settingsButton.setTexture(gearTex);
 }
 
 void ResourceBar::setWidth(float width) {
     backgroundBar.setSize(sf::Vector2f(width, 40.f));
 
     if (hasTexture) {
-        // Texture referansýný tekrar alalým (Boyut hesaplamak için)
         const sf::Texture* tex = barSprite.getTexture();
         if (tex) {
             float targetHeight = 40.0f;
             float scale = targetHeight / (float)tex->getSize().y;
 
             barSprite.setScale(scale, scale);
-
-            // 3. TextureRect ayarla (Döþeme Ýþlemi)
-            // Mantýk: "Ekrana sýðmak için bu resimden yan yana kaç tane lazým?"
-            // width / scale iþlemi, texture koordinat sisteminde ne kadar geniþlik gerektiðini bulur.
             barSprite.setTextureRect(sf::IntRect(0, 0, (int)(width / scale), tex->getSize().y));
         }
 
-        float btnSize = 32.0f; // Buton boyutu
-        float padding = 10.0f; // Saðdan boþluk
-        // Y ekseninde ortalamak için: (BarYükseklik - ButonYükseklik) / 2 -> (40 - 30) / 2 = 5
+        float btnSize = 32.0f;
+        float padding = 10.0f;
         settingsButton.setPosition(width - btnSize - padding, 4.0f);
     }
 
-    // Hizalama
     float startX = 30.f;
-    float spacing = width / 6.0f; // Gruplar arasý mesafe
-    float iconOffset = 40.0f;     // Ýkon ile yazý arasý mesafe
+    float spacing = width / 6.0f;
+    float iconOffset = 40.0f;
 
     auto placeGroup = [&](sf::Sprite& icon, sf::Text& text, int index) {
         float groupX = startX + (spacing * index);
-        icon.setPosition(groupX, 4); // Y=8 ortalamak için
+        icon.setPosition(groupX, 4);
         text.setPosition(groupX + iconOffset, 8);
-    };
+        };
     placeGroup(iconWood, woodText, 0);
     placeGroup(iconFood, foodText, 1);
     placeGroup(iconGold, goldText, 2);
@@ -109,14 +91,11 @@ void ResourceBar::setWidth(float width) {
 }
 
 void ResourceBar::updateResources(int wood, int food, int gold, int stone, Player player) {
-    // Yazý formatýný da güzelleþtirelim
-    // Örnek çýktý: "Wood: 150" yerine "[ Wood: 150 ]" gibi
     woodText.setString(std::to_string(wood));
     foodText.setString(std::to_string(food));
     goldText.setString(std::to_string(gold));
     stoneText.setString(std::to_string(stone));
     populationText.setString(std::to_string(player.getUnitCount()) + "  /  " + std::to_string(player.getUnitLimit()));
-    
 }
 
 void ResourceBar::draw(sf::RenderWindow& window) {
@@ -138,4 +117,3 @@ void ResourceBar::handleEvent(const sf::Event& event) {
 void ResourceBar::setSettingsCallback(std::function<void()> cb) {
     settingsButton.setCallback(cb);
 }
-

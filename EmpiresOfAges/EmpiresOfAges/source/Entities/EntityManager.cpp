@@ -1,5 +1,5 @@
 #include "Entity System/EntityManager.h"
-#include <algorithm> // std::remove_if için
+#include <algorithm> 
 
 void EntityManager::addEntity(std::shared_ptr<Entity> entity, sf::Vector2f& spawnpoint) {
     entity->setPosition(spawnpoint);
@@ -7,7 +7,6 @@ void EntityManager::addEntity(std::shared_ptr<Entity> entity, sf::Vector2f& spaw
 }
 
 void EntityManager::removeDeadEntities() {
-    // Lambda fonksiyonu kullanarak canlý olmayanlarý vektörden siliyoruz
     entities.erase(
         std::remove_if(
             entities.begin(),
@@ -19,5 +18,5 @@ void EntityManager::removeDeadEntities() {
 }
 
 void EntityManager::updateAll(float dt) {
-    // Gelecekte entity'lerin kendi update fonksiyonu olursa burasý kullanýlýr
+    // Placeholder for future global updates
 }

@@ -9,5 +9,5 @@ GameState GameStateManager::getState() const {
 }
 
 void GameStateManager::update() {
-    // Şimdilik boş kalabilir, ileride state geçiş efektleri buraya gelir.
+    // State transitions or animations could be handled here
 }

@@ -1,58 +1,64 @@
 ﻿#pragma once
-// NetClient.h - SFML UDP/Packet
-
-#pragma once
-
-#include <SFML/Network.hpp> // sf::UdpSocket ve sf::Packet i�in
+#include <SFML/Network.hpp>
 #include <functional>
 #include <string>
-#include <map>           // Map kullanmak için gerekli
+#include <map>
 #include "NetCommands.h"
-// Not: Eski yap�n�zdaki 'Packet.h' yerine, sf::Packet kullanaca��z.
 
+/**
+ * @brief Manages the client-side network communication using UDP.
+ */
 class NetClient {
 public:
-    // Callback fonksiyonu sf::Packet almal�d�r.
     using OnPacketFn = std::function<void(sf::Packet& packet)>;
 
     NetClient();
     ~NetClient();
 
-    // Ba�lant� adresi ve portu kaydedilir ve soket ba�lan�r (bind).
+    /**
+     * @brief Connects to a server given an IP and port.
+     */
     bool connect(const std::string& addr, unsigned short port);
+
+    /**
+     * @brief Disconnects and unbinds the socket.
+     */
     void disconnect();
 
-    // A� trafi�ini i�ler (gelen paketleri al�r).
+    /**
+     * @brief Polls incoming packets. Call this every frame.
+     */
     void update(float dt);
 
-    // Paketi sunucuya g�nderir.
+    /**
+     * @brief Sends an unreliable packet (fire-and-forget).
+     */
     bool send(sf::Packet& pkt);
+
+    /**
+     * @brief Sends a reliable packet ensuring delivery via ACKs.
+     */
     bool sendReliable(sf::Packet& pkt);
 
-    // --- Callback Ayarlay�c�lar ---
+    // --- Callbacks ---
     void setOnPacket(OnPacketFn cb);
-    // UDP'de connect callback'i, soket ba�ar�yla ba�land���nda (bind) �a�r�l�r.
     void setOnConnected(std::function<void()> cb);
-    // Sunucudan belirli bir s�re (timeout) yan�t al�namazsa �a�r�labilir (implementasyon detayd�r).
     void setOnDisconnected(std::function<void()> cb);
 
-    // Ba�lant� durumunu kontrol eder (UDP i�in: Soket ba�l� m� ve sunucu adresi kay�tl� m�?).
     bool isConnected() const;
 
 private:
     sf::UdpSocket m_socket;
     sf::IpAddress m_serverAddress;
     unsigned short m_serverPort;
-    bool m_connected; // Sunucu adresinin ba�ar�yla kaydedilip edilmedi�i
+    bool m_connected;
 
-    // --- Callback Fonksiyonlar� ---
     OnPacketFn m_onPacketCallback;
     std::function<void()> m_onConnectedCallback;
     std::function<void()> m_onDisconnectedCallback;
 
-    // Gelen bir paketi i�leyen metot
     void handleIncomingPacket(sf::Packet& packet);
 
-    uint32_t m_lastSequenceSent = 0; // Her paket için artan sayaç
-    std::map<uint32_t, PendingPacket> m_pendingPackets; // Onay bekleyenler listesi
+    uint32_t m_lastSequenceSent = 0;
+    std::map<uint32_t, PendingPacket> m_pendingPackets;
 };

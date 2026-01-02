@@ -11,7 +11,6 @@ void UIPanel::setTexture(const sf::Texture& texture) {
     backgroundSprite.setTexture(texture);
     backgroundSprite.setPosition(background.getPosition());
 
-    // Görseli panelin boyutuna sýðacak þekilde ölçekle
     sf::Vector2u texSize = texture.getSize();
     sf::Vector2f panelSize = background.getSize();
 
@@ -44,4 +43,3 @@ void UIPanel::draw(sf::RenderWindow& window) {
     for (auto& b : buttons)
         b.draw(window);
 }
-

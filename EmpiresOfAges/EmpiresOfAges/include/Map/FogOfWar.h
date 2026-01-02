@@ -3,23 +3,39 @@
 #include <vector>
 #include "Game/GameRules.h"
 
+/**
+ * @brief Represents the visibility state of a tile.
+ */
 enum class FogState {
-    Unexplored, // 0: Hiç keþfedilmemiþ (Tam Siyah)
-    Explored,   // 1: Keþfedilmiþ ama þu an görülmüyor (Yarý Saydam Siyah)
-    Visible     // 2: Þu an görüþ alanýnda (Þeffaf)
+    Unexplored, ///< Completely black, never seen before.
+    Explored,   ///< Seen previously but not currently visible (dimmed).
+    Visible     ///< Currently in line of sight (fully clear).
 };
 
+/**
+ * @brief Manages the Fog of War system.
+ * Handles visibility calculations, rendering of the fog overlay, and exploration state.
+ */
 class FogOfWar {
 public:
     FogOfWar(int width, int height, int tileSize);
 
+    /**
+     * @brief Updates fog based on the positions of the player's entities.
+     * @param myEntities List of entities owned by the player.
+     */
     void update(const std::vector<std::shared_ptr<class Entity>>& myEntities);
+
     void draw(sf::RenderWindow& window);
 
+    /**
+     * @brief Checks if a specific world coordinate is currently visible.
+     */
     bool isVisible(float x, float y) const;
 
-    // --- YENÝ EKLENEN FONKSÝYON ---
-    // Koordinattaki sis durumunu döndürür (Minimap için gerekli)
+    /**
+     * @brief Retrieves the fog state at grid coordinates (Used for Minimap).
+     */
     FogState getFogAt(int x, int y) const;
 
 private:

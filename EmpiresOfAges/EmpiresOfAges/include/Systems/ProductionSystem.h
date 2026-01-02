@@ -4,7 +4,6 @@
 #include "Entity System/Entity Type/types.h"
 #include "Game/Player.h"
 
-// MapManager sýnýfýný tanýmasý için
 class MapManager;
 
 enum class ProductionResult {
@@ -19,17 +18,17 @@ enum class ProductionResult {
     InvalidBuilding
 };
 
+/**
+ * @brief Handles the creation of units from buildings (Barracks, TownCenter).
+ * Manages costs, queues, and spawning logic.
+ */
 class ProductionSystem {
 public:
-    // Asker Üretimi
+    // --- Soldier Production ---
     static ProductionResult startProduction(Player& player, Barracks& barracks, SoldierTypes unitType);
-
-    // --- GÜNCELLEME: MapManager eklendi ---
     static void update(Player& player, Barracks& barracks, float dt, MapManager& mapManager);
 
-    // Köylü Üretimi
+    // --- Villager Production ---
     static ProductionResult startVillagerProduction(Player& player, TownCenter& tc);
-
-    // --- GÜNCELLEME: MapManager eklendi ---
     static void updateTC(Player& player, TownCenter& tc, float dt, MapManager& mapManager);
 };

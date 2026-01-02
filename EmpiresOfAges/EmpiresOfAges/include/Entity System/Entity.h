@@ -2,26 +2,28 @@
 #define ENTITY_H
 
 #include <string>
-#include <iostream>
 #include <memory>
+#include <vector>
 #include <SFML/Graphics.hpp>
 #include "Game/TeamColors.h"
 #include "UI/Ability.h"
 #include "UI/AssetManager.h"
-#include "Game/GameRules.h" // TileSize için gerekli
-#include "Map/Point.h"      // Point yapýsý için gerekli
+#include "Game/GameRules.h" 
+#include "Map/Point.h"      
 
+/**
+ * @brief Base class for all interactive objects in the game.
+ * Handles rendering, position, team ownership, and basic stats like health.
+ */
 class Entity {
 protected:
-    // 1. ASIL OYUNCU: Sprite (Resim varsa bu çizilecek)
     sf::Sprite sprite;
     bool hasTexture = false;
     std::vector<Ability> m_abilities;
 
-    // 2. YEDEK OYUNCU: Yuvarlak (Resim yoksa bu çizilecek)
+    // Fallback shape if no texture is present
     sf::CircleShape shape;
 
-    // TAKIM RENGÝ
     TeamColors m_team = TeamColors::Blue;
 
 public:
@@ -37,18 +39,17 @@ public:
         isSelected = false;
         hasTexture = false;
 
-        // Varsayýlan Yuvarlak Ayarlarý
         shape.setRadius(15.f);
         shape.setOrigin(15.f, 15.f);
         shape.setPointCount(30);
-        shape.setFillColor(sf::Color::White); // Varsayýlan renk
+        shape.setFillColor(sf::Color::White);
     }
 
     virtual int getMaxHealth() const = 0;
 
     virtual ~Entity() = default;
 
-    // --- HAREKET ---
+    // --- Movement & Position ---
     void move(const sf::Vector2f& offset) {
         if (hasTexture) sprite.move(offset);
         shape.move(offset);
@@ -64,12 +65,14 @@ public:
         shape.setScale(x, y);
     }
 
-    // UI Ýçin Gerekli Fonksiyonlar (Hata veren kýsýmlar)
-    virtual std::string getName() { return "Bilinmeyen"; }
+    // --- UI Helpers ---
+    virtual std::string getName() { return "Unknown"; }
     virtual sf::Texture* getIcon() { return nullptr; }
+
     void addAbility(const Ability& ability) {
         m_abilities.push_back(ability);
     }
+
     std::vector<Ability> getAbilities() const {
         return m_abilities;
     }
@@ -78,6 +81,9 @@ public:
         return hasTexture ? sprite.getPosition() : shape.getPosition();
     }
 
+    /**
+     * @brief Returns the grid coordinates of the entity based on tile size.
+     */
     Point getGridPoint() const {
         return {
             static_cast<int>(getPosition().x / GameRules::TileSize),
@@ -85,7 +91,7 @@ public:
         };
     }
 
-    // --- GÖRÜNÜM ---
+    // --- Appearance ---
     void setTexture(const sf::Texture& texture) {
         sprite.setTexture(texture);
         sf::Vector2u size = texture.getSize();
@@ -96,91 +102,76 @@ public:
     void setTeam(TeamColors newTeam) {
         m_team = newTeam;
 
-        // Rengi þekle de yansýt (Sprite yoksa yuvarlaðýn rengi deðiþsin)
         sf::Color c = sf::Color::White;
         if (m_team == TeamColors::Red) c = sf::Color::Red;
-        else if (m_team == TeamColors::Blue) c = sf::Color(0, 100, 255); // Güzel bir mavi
+        else if (m_team == TeamColors::Blue) c = sf::Color(0, 100, 255);
         else if (m_team == TeamColors::Green) c = sf::Color::Green;
         else if (m_team == TeamColors::Purple) c = sf::Color::Magenta;
 
         shape.setFillColor(c);
-        // Ýstersen sprite'ý da hafif boyayabilirsin:
-        if (hasTexture) sprite.setColor(c); 
+        if (hasTexture) sprite.setColor(c);
     }
 
     TeamColors getTeam() const { return m_team; }
-
-    // "getModel" hatasý için (Eski kodlar shape'e model diyordu)
     sf::CircleShape& getShape() { return shape; }
-
-    // "getRange" hatasý için
     float getRange() const { return range; }
 
-    // --- ÇÝZÝM (Render) ---
+    // --- Rendering ---
     virtual void render(sf::RenderWindow& window) {
-        // 1. SEÇÝM HALKASINI ÇÝZ (Seçiliyse)
+        // 1. Draw Selection Circle
         if (isSelected) {
-            float radius = 32.0f; // Varsayýlan bir boyut (Askerler için)
+            float radius = 32.0f;
 
-            // Eðer bir texture (görsel) varsa, onun boyutuna göre ayarla
             if (hasTexture) {
-                // Sprite'ýn ekranda kapladýðý alaný al (Ölçeklenmiþ hali)
                 sf::FloatRect bounds = sprite.getGlobalBounds();
-                // Yarýçapý geniþliðin yarýsý yap. Biraz taþmasý için 1.1 ile çarpabiliriz.
                 radius = (bounds.width / 2.0f) * 1.1f;
             }
 
             sf::CircleShape selectionCircle(radius);
-            selectionCircle.setPointCount(40); // Daha pürüzsüz bir daire
-
-            // Merkezi ayarla (Tam ayak bastýðý nokta)
-            selectionCircle.setOrigin(radius, radius-10);
+            selectionCircle.setPointCount(40);
+            selectionCircle.setOrigin(radius, radius - 10);
             selectionCircle.setPosition(getPosition());
 
-            // --- ÝZOMETRÝK GÖRÜNÜM ---
-            // Daireyi dikey olarak bastýrarak elips yapýyoruz.
-            // Yere yatýrýlmýþ gibi görünmesini saðlar.
+            // Isometric squish effect
             selectionCircle.setScale(1.0f, 0.6f);
 
-            // Renk ve þeffaflýk ayarlarý
-            selectionCircle.setFillColor(sf::Color(0, 255, 0, 50)); // Ýçi yarý saydam yeþil
-            selectionCircle.setOutlineColor(sf::Color::Green);      // Kenarý parlak yeþil
-            selectionCircle.setOutlineThickness(3.0f);            // Çizgi kalýnlýðý (Daha belirgin)
+            selectionCircle.setFillColor(sf::Color(0, 255, 0, 50));
+            selectionCircle.setOutlineColor(sf::Color::Green);
+            selectionCircle.setOutlineThickness(3.0f);
 
             window.draw(selectionCircle);
         }
 
-        // 2. ENTITY'NÝN KENDÝSÝNÝ ÇÝZ
+        // 2. Draw Entity
         if (hasTexture) {
             window.draw(sprite);
         }
         else {
-            // Texture yoksa þekli çiz (Failsafe)
             window.draw(shape);
         }
 
+        // 3. Draw Health Bar
         if (isAlive && (isSelected || health < getMaxHealth())) {
             float barWidth = 40.0f;
             float barHeight = 5.0f;
 
             sf::Vector2f pos = getPosition();
-            // Sprite'ýn tepesine koy
             if (hasTexture) pos.y -= sprite.getGlobalBounds().height / 2.0f + 10.0f;
             else pos.y -= 25.0f;
 
-            // Arka Plan (Kýrmýzý)
+            // Background
             sf::RectangleShape backBar(sf::Vector2f(barWidth, barHeight));
             backBar.setOrigin(barWidth / 2, barHeight / 2);
             backBar.setPosition(pos);
             backBar.setFillColor(sf::Color(100, 0, 0));
 
-            // Ön Plan (Yeþil/Sarý)
+            // Foreground
             float hpPercent = (float)health / getMaxHealth();
             if (hpPercent < 0) hpPercent = 0;
 
             sf::RectangleShape frontBar(sf::Vector2f(barWidth * hpPercent, barHeight));
             frontBar.setOrigin(barWidth / 2, barHeight / 2);
-            frontBar.setPosition(pos.x - (barWidth * (1 - hpPercent)) / 2.0f, pos.y); // Soldan hizala
+            frontBar.setPosition(pos.x - (barWidth * (1 - hpPercent)) / 2.0f, pos.y);
 
             if (hpPercent > 0.5f) frontBar.setFillColor(sf::Color::Green);
             else if (hpPercent > 0.25f) frontBar.setFillColor(sf::Color::Yellow);
@@ -193,8 +184,7 @@ public:
 
     virtual void renderEffects(sf::RenderWindow& window) {}
 
-    // --- DURUM YÖNETÝMÝ ---
-
+    // --- State Management ---
     bool getIsAlive() const { return isAlive; }
 
     void setSelected(bool status) { isSelected = status; }
@@ -204,7 +194,6 @@ public:
         if (health <= 0) isAlive = false;
     }
 
-    // Týklama Alaný
     sf::FloatRect getBounds() const {
         return hasTexture ? sprite.getGlobalBounds() : shape.getGlobalBounds();
     }

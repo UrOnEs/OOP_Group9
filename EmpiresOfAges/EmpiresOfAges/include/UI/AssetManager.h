@@ -3,9 +3,20 @@
 #include <map>
 #include <string>
 
-class AssetManager{
+/**
+ * @brief Static resource manager to load and store textures and fonts.
+ * Prevents loading the same asset multiple times.
+ */
+class AssetManager {
 public:
+    /**
+     * @brief Retrieves a texture by filename. Loads it if not already cached.
+     */
     static sf::Texture& getTexture(const std::string& filename);
+
+    /**
+     * @brief Retrieves a font by filename. Loads it if not already cached.
+     */
     static sf::Font& getFont(const std::string& filename);
 
 private:

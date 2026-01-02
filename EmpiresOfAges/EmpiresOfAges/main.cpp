@@ -1,12 +1,7 @@
-// main.cpp
 #include "Game/Game.h"
 #include <iostream>
-
-// main.cpp - RTS Network: Hizalanmýþ Scroll Butonlar
-
 #include <SFML/Graphics.hpp>
 #include <SFML/Network.hpp>
-#include <iostream>
 #include <vector>
 #include <string>
 #include <atomic>
@@ -14,7 +9,6 @@
 #include <chrono> 
 #include <thread>
 
-// --- Kendi Header Dosyalarýnýz ---
 #include "Network/NetworkManager.h"
 #include "Network/LobbyManager.h"
 #include "Network/NetServer.h"
@@ -23,31 +17,26 @@
 #include "UI/UIManager.h" 
 #include "game/Game.h"    
 
-// --- Global Sabitler ---
 const unsigned short GAME_PORT = 54000;
 const unsigned short DISCOVERY_PORT = 50000;
 const std::string SERVER_NAME = "RTS Host Lobby";
 
-// --- Global Deðiþkenler ---
 bool g_isEnteringIP = false;
 std::string g_ipInputString = "";
-bool g_isEnteringName = true; // Baþlangýçta true olsun ki isim sorsun
+bool g_isEnteringName = true;
 std::string g_nameInputString = "";
 std::string g_playerCurrentName = "Player";
 std::string g_targetIP = "127.0.0.1";
-//Uyarý mesajý ve süresi
+
 std::string g_lobbyWarningMsg = "";
 sf::Clock g_lobbyWarningClock;
 
-// --- Global Yöneticiler ---
 NetworkManager g_netManager;
 LobbyManager* g_lobbyManager = nullptr;
 bool g_isHost = false;
 GameState g_currentState = GameState::Menu;
 
 std::vector<LANDiscovery::ServerInfo> g_foundServers;
-
-// --- Yardýmcý Fonksiyonlar ---
 
 sf::Color getColorFromIndex(int index) {
     switch (index) {
@@ -68,9 +57,9 @@ bool isSelfReady() {
     return false;
 }
 
-// 1. HOST BAÞLATMA
+// 1. START HOST
 void startHost() {
-    std::cout << "[UI] Host baslatiliyor..." << std::endl;
+    std::cout << "[UI] Starting Host..." << std::endl;
     if (!g_netManager.startServer(GAME_PORT)) return;
 
     g_netManager.discovery()->startServer(GAME_PORT, DISCOVERY_PORT, SERVER_NAME);
@@ -90,7 +79,7 @@ void startHost() {
     g_currentState = GameState::LobbyRoom;
 }
 
-// 2. SUNUCUYA BAÐLANMA
+// 2. CONNECT TO SERVER
 void connectToServer(const LANDiscovery::ServerInfo& info) {
     g_targetIP = info.address.toString();
     g_netManager.discovery()->stop();
@@ -98,12 +87,11 @@ void connectToServer(const LANDiscovery::ServerInfo& info) {
     if (g_netManager.startClient(info.address.toString(), info.port)) {
         g_lobbyManager = new LobbyManager(&g_netManager, false);
 
-        // Ýsmi ayarlýysa onu kullan, deðilse rastgele yap
         if (g_playerCurrentName != "Player") {
             g_lobbyManager->start(0, g_playerCurrentName);
         }
         else {
-            std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
+            std::string randomName = "Player_" + std::to_string(rand() % 100);
             g_lobbyManager->start(0, randomName);
         }
 
@@ -121,7 +109,7 @@ void connectToServer(const LANDiscovery::ServerInfo& info) {
     }
 }
 
-// Main.cpp içine eklenen direct connect
+// DIRECT CONNECT
 void connectToDirectIP(const std::string& ipStr) {
     g_targetIP = ipStr;
     g_netManager.discovery()->stop();
@@ -133,7 +121,7 @@ void connectToDirectIP(const std::string& ipStr) {
             g_lobbyManager->start(0, g_playerCurrentName);
         }
         else {
-            std::string randomName = "Oyuncu_" + std::to_string(rand() % 100);
+            std::string randomName = "Player_" + std::to_string(rand() % 100);
             g_lobbyManager->start(0, randomName);
         }
 
@@ -150,11 +138,11 @@ void connectToDirectIP(const std::string& ipStr) {
         g_currentState = GameState::LobbyRoom;
     }
     else {
-        std::cerr << "Baglanti hatasi: IP adresi gecersiz veya sunucu kapali!" << std::endl;
+        std::cerr << "Connection Error: Invalid IP or Server Offline!" << std::endl;
     }
 }
 
-// 3. ARAMA MODU
+// 3. DISCOVERY MODE
 void startDiscoveryMode() {
     g_foundServers.clear();
     g_netManager.discovery()->stop();
@@ -170,7 +158,7 @@ void startDiscoveryMode() {
         });
 }
 
-// 4. AYRILMA
+// 4. LEAVE
 void leaveLobby() {
     g_netManager.discovery()->stop();
     if (!g_isHost && g_netManager.client() && g_netManager.client()->isConnected()) {
@@ -190,14 +178,12 @@ void leaveLobby() {
     g_currentState = GameState::Menu;
 }
 
-// YENÝ FONKSÝYON: Renk çakýþmasý var mý?
 bool hasColorConflict() {
     if (!g_lobbyManager) return false;
 
     uint64_t myId = g_lobbyManager->selfId();
     int myColor = -1;
 
-    // 1. Önce kendi rengimi bul
     for (const auto& p : g_lobbyManager->players()) {
         if (p.id == myId) {
             myColor = p.colorIndex;
@@ -205,42 +191,41 @@ bool hasColorConflict() {
         }
     }
 
-    // 2. Baþka birinde ayný renk var mý bak
     for (const auto& p : g_lobbyManager->players()) {
-        if (p.id != myId) { // Kendim hariç
+        if (p.id != myId) {
             if (p.colorIndex == myColor) {
-                return true; // Çakýþma var!
+                return true;
             }
         }
     }
-    return false; // Çakýþma yok
+    return false;
 }
 
 // --- MAIN ---
 int main() {
     srand(static_cast<unsigned int>(time(NULL)));
-    g_netManager.setLogger([](const std::string& msg) { /* std::cout << msg << std::endl; */ });
+    g_netManager.setLogger([](const std::string& msg) {});
 
     const int WIN_W = 900;
     const int WIN_H = 600;
 
-    sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "RTS Proje - Final UI", sf::Style::Titlebar | sf::Style::Close);
+    sf::RenderWindow window(sf::VideoMode(WIN_W, WIN_H), "Empire of Ages", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
 
-    // --- 1. Font Yükleme ---
+    // --- 1. Load Fonts ---
     sf::Font font;
     if (!font.loadFromFile("assets/MenuUI/arial.ttf")) {
-        std::cerr << "HATA: assets/arial.ttf yok." << std::endl;
+        std::cerr << "ERROR: assets/arial.ttf missing." << std::endl;
     }
     sf::Font menuFont;
     if (!menuFont.loadFromFile("assets/MenuUI/SuperPixel.ttf")) {
-        std::cerr << "HATA: SuperPixel.ttf bulunamadi" << std::endl;
+        std::cerr << "ERROR: SuperPixel.ttf missing" << std::endl;
     }
 
     // --- 2. Button Texture ---
     sf::Texture btnTexture;
     if (!btnTexture.loadFromFile("assets/MenuUI/button2.png")) {
-        std::cerr << "HATA: assets/button2.png bulunamadi!" << std::endl;
+        std::cerr << "ERROR: assets/button2.png missing!" << std::endl;
     }
 
     // --- 3. BACKGROUND ---
@@ -281,7 +266,6 @@ int main() {
         lobbyBgSprite.setScale((float)WIN_W / texSize.x, (float)WIN_H / texSize.y);
     }
 
-    // Oyun Ýsmi Logosu
     sf::Texture gameNameTexture;
     sf::Sprite gameNameSprite;
     if (gameNameTexture.loadFromFile("assets/MenuUI/Empire of Ages1.png")) {
@@ -291,7 +275,7 @@ int main() {
         gameNameSprite.setScale({ 0.25f, 0.25f });
     }
 
-    // --- UI Butonlar ---
+    // --- UI Buttons ---
     UIPanel mainMenu({ 400, 300 }, { 250, 250 });
 
     UIButton btnStart;
@@ -311,21 +295,21 @@ int main() {
     mainMenu.addButton(btnStart);
     mainMenu.addButton(btnExit);
 
-    // Lobi Seçim Ekraný
+    // Lobby Selection
     UIPanel selectionMenu({ 0, 0 }, { 50, 50 });
 
     UIButton btnCreate;
     btnCreate.setPosition(25, 120);
     btnCreate.setSize(280, 65);
     btnCreate.setTexture(btnTexture, 280, 65);
-    btnCreate.setText("Lobi Kur (Host)", menuFont);
+    btnCreate.setText("Create Lobby", menuFont);
     btnCreate.setCallback(startHost);
 
     UIButton btnSearch;
     btnSearch.setPosition(25, 200);
     btnSearch.setSize(280, 65);
     btnSearch.setTexture(btnTexture, 280, 65);
-    btnSearch.setText("Lobi Ara (Yenile)", menuFont);
+    btnSearch.setText("Search Lobby", menuFont);
     btnSearch.setCallback(startDiscoveryMode);
 
     UIButton btnBack;
@@ -342,7 +326,7 @@ int main() {
     btnDirectConnect.setPosition(25, 360);
     btnDirectConnect.setSize(280, 65);
     btnDirectConnect.setTexture(btnTexture, 280, 65);
-    btnDirectConnect.setText("IP ile Baglan", menuFont);
+    btnDirectConnect.setText("Connect via IP", menuFont);
     btnDirectConnect.setCallback([&]() {
         g_isEnteringIP = true;
         g_ipInputString = "";
@@ -353,7 +337,7 @@ int main() {
     selectionMenu.addButton(btnBack);
     selectionMenu.addButton(btnDirectConnect);
 
-    // Lobi Odasý Butonlarý
+    // Lobby Room Buttons
     UIButton btnReady;
     btnReady.setPosition(350, 500);
     btnReady.setSize(200, 60);
@@ -361,18 +345,15 @@ int main() {
     btnReady.setText("Ready", menuFont);
     btnReady.setCallback([]() {
         if (g_lobbyManager) {
-            // Eðer zaten Hazýr durumdaysak iptal etmek (unready) serbest olsun.
-            // Ama Hazýr deðilsek ve Hazýr olmaya çalýþýyorsak renk kontrolü yap.
             bool currentlyReady = isSelfReady();
 
             if (!currentlyReady && hasColorConflict()) {
-                g_lobbyWarningMsg = "Bu renk dolu! Rengi degistir.";
+                g_lobbyWarningMsg = "Color Taken! Change Color.";
                 g_lobbyWarningClock.restart();
             }
             else {
-                // Sorun yok, iþlemi yap
                 g_lobbyManager->toggleReady(!currentlyReady);
-                g_lobbyWarningMsg = ""; // Varsa uyarýyý sil
+                g_lobbyWarningMsg = "";
             }
         }
         });
@@ -392,7 +373,7 @@ int main() {
     btnLeave.setCallback(leaveLobby);
 
 
-    // --- OYUN DÖNGÜSÜ ---
+    // --- GAME LOOP ---
     sf::Clock dtClock;
     sf::Clock discoveryTimer;
 
@@ -400,7 +381,6 @@ int main() {
         float dt = dtClock.restart().asSeconds();
         g_netManager.update(dt);
 
-        // Ping Atma
         if (!g_isHost && g_lobbyManager == nullptr && g_currentState == GameState::LobbySelection) {
             if (discoveryTimer.getElapsedTime().asSeconds() > 1.0f) {
                 g_netManager.discovery()->sendDiscoveryRequest();
@@ -408,12 +388,10 @@ int main() {
             }
         }
 
-        // Görsel Update
         if (g_currentState == GameState::LobbyRoom) {
             btnReady.setText(isSelfReady() ? "Readyn't" : "Ready", menuFont);
         }
 
-        // Event
         sf::Event event;
         while (window.pollEvent(event)) {
             // NAME Input
@@ -426,7 +404,7 @@ int main() {
                         if (!g_nameInputString.empty()) {
                             g_playerCurrentName = g_nameInputString;
                             g_isEnteringName = false;
-                            std::cout << "[UI] Isim ayarlandi: " << g_playerCurrentName << std::endl;
+                            std::cout << "[UI] Name set: " << g_playerCurrentName << std::endl;
                         }
                     }
                     else if (event.text.unicode < 128) {
@@ -468,7 +446,7 @@ int main() {
                     int mouseX = event.mouseButton.x;
                     int mouseY = event.mouseButton.y;
 
-                    int y = 150; // Listedeki y ile ayný olmalý
+                    int y = 150;
                     for (const auto& server : g_foundServers) {
                         sf::FloatRect btnRect(475, (float)y, 300, 40);
                         if (btnRect.contains((float)mouseX, (float)mouseY)) {
@@ -505,7 +483,7 @@ int main() {
             }
         }
 
-        // --- DRAW (ÇÝZÝM) ---
+        // --- DRAW ---
         window.clear(sf::Color(40, 40, 50));
 
         if (g_currentState == GameState::Menu && hasBg) {
@@ -519,7 +497,6 @@ int main() {
             window.draw(lobbyBgSprite);
         }
 
-        // UI ÇÝZÝMÝ
         if (g_currentState == GameState::Menu) {
             mainMenu.draw(window);
 
@@ -529,7 +506,7 @@ int main() {
                 overlay.setFillColor(sf::Color(0, 0, 0, 220));
                 window.draw(overlay);
 
-                sf::Text prompt("Kullanici Adinizi Girin:\n(Enter ile onayla)", font, 24);
+                sf::Text prompt("Enter Username:\n(Press Enter)", font, 24);
                 sf::FloatRect textRect = prompt.getLocalBounds();
                 prompt.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
                 prompt.setPosition(WIN_W / 2.0f, WIN_H / 2.0f - 50);
@@ -546,14 +523,14 @@ int main() {
         else if (g_currentState == GameState::LobbySelection) {
             selectionMenu.draw(window);
 
-            sf::Text header("BULUNAN LOBILER", font, 24);
+            sf::Text header("FOUND LOBBIES", font, 24);
             header.setPosition(475, 75);
             header.setStyle(sf::Text::Bold | sf::Text::Underlined);
             header.setFillColor(sf::Color(240, 240, 240));
             window.draw(header);
 
             if (g_foundServers.empty()) {
-                sf::Text info("Sunucu araniyor veya yok...\n'Lobi Ara' butonuna basin.", font, 18);
+                sf::Text info("Searching for servers...\nClick 'Search Lobby' to refresh.", font, 18);
                 info.setPosition(480, 130);
                 info.setFillColor(sf::Color(200, 200, 200));
                 window.draw(info);
@@ -591,7 +568,7 @@ int main() {
                 overlay.setFillColor(sf::Color(0, 0, 0, 180));
                 window.draw(overlay);
 
-                sf::Text prompt("Baglanilacak IP Girin:\n(Enter ile onayla)", font, 24);
+                sf::Text prompt("Enter IP Address:\n(Press Enter)", font, 24);
                 prompt.setPosition(WIN_W / 2.0f - 150, WIN_H / 2.0f - 50);
                 window.draw(prompt);
 
@@ -602,7 +579,7 @@ int main() {
             }
         }
         else if (g_currentState == GameState::LobbyRoom) {
-            sf::Text title(g_isHost ? "Lobi (HOST)" : "Lobi (CLIENT)", font, 30);
+            sf::Text title(g_isHost ? "Lobby (HOST)" : "Lobby (CLIENT)", font, 30);
             title.setPosition(50, 50);
             title.setFillColor(sf::Color::White);
             window.draw(title);
@@ -624,14 +601,14 @@ int main() {
                     }
                     window.draw(colorBox);
 
-                    std::string line = std::to_string(p.id) + " | " + p.name + (p.ready ? " [HAZIR]" : " [Bekliyor]");
+                    std::string line = std::to_string(p.id) + " | " + p.name + (p.ready ? " [READY]" : " [Waiting]");
                     sf::Text pt(line, font, 24);
                     pt.setPosition(90, (float)y + 2);
                     pt.setFillColor(p.ready ? sf::Color::Green : sf::Color::White);
                     window.draw(pt);
 
                     if (p.id == g_lobbyManager->selfId()) {
-                        sf::Text hint("(Tikla -> Renk Degis)", font, 14);
+                        sf::Text hint("(Click -> Change Color)", font, 14);
                         hint.setPosition(450, (float)y + 10);
                         hint.setFillColor(sf::Color(200, 200, 200));
                         window.draw(hint);
@@ -641,7 +618,7 @@ int main() {
             }
             if (g_isHost) {
                 sf::IpAddress localIP = sf::IpAddress::getLocalAddress();
-                sf::Text ipText("Sunucu IP: " + localIP.toString(), font, 20);
+                sf::Text ipText("Server IP: " + localIP.toString(), font, 20);
                 sf::FloatRect textRect = ipText.getLocalBounds();
                 float xPos = window.getSize().x - textRect.width - 60;
                 float yPos = 450;
@@ -654,17 +631,14 @@ int main() {
             if (g_isHost) btnStartGame.draw(window);
 
             if (!g_lobbyWarningMsg.empty()) {
-                // Mesaj sadece 3 saniye ekranda kalsýn
                 if (g_lobbyWarningClock.getElapsedTime().asSeconds() < 3.0f) {
                     sf::Text warnText(g_lobbyWarningMsg, font, 18);
                     warnText.setFillColor(sf::Color::Red);
 
-                    // Metni Ready butonunun altýna ortala
                     sf::FloatRect textRect = warnText.getLocalBounds();
                     warnText.setOrigin(textRect.left + textRect.width / 2.0f, 0);
-                    warnText.setPosition(450, 570); // Butonun (y=500) biraz altý
+                    warnText.setPosition(450, 570);
 
-                    // Arka planý biraz karart ki okunsun (Opsiyonel)
                     sf::RectangleShape bg(sf::Vector2f(textRect.width + 10, textRect.height + 10));
                     bg.setFillColor(sf::Color(0, 0, 0, 150));
                     bg.setPosition(warnText.getPosition().x - textRect.width / 2 - 5, warnText.getPosition().y - 2);
@@ -673,24 +647,24 @@ int main() {
                     window.draw(warnText);
                 }
                 else {
-                    g_lobbyWarningMsg = ""; // Süre doldu, temizle
+                    g_lobbyWarningMsg = "";
                 }
             }
         }
 
-        // --- OYUN BAÞLATMA ---
+        // --- GAME START ---
         else if (g_currentState == GameState::Playing) {
             window.close();
 
             try {
-                std::cout << "[MAIN] Oyun baslatiliyor..." << std::endl;
+                std::cout << "[MAIN] Starting Game..." << std::endl;
 
                 int myPlayerIndex = 0;
-                int totalPlayers = 1; // Varsayýlan 1
+                int totalPlayers = 1;
 
                 if (g_lobbyManager) {
                     uint64_t myId = g_lobbyManager->selfId();
-                    totalPlayers = g_lobbyManager->players().size(); // LOBÝDEKÝ SAYIYI AL
+                    totalPlayers = g_lobbyManager->players().size();
 
                     for (const auto& p : g_lobbyManager->players()) {
                         if (p.id == myId) {
@@ -700,25 +674,23 @@ int main() {
                     }
                 }
 
-                // 1. Önceki að servislerini durdur
+                // Clean up network services
                 g_netManager.discovery()->stop();
                 g_netManager.stop();
                 if (g_lobbyManager) { delete g_lobbyManager; g_lobbyManager = nullptr; }
 
-                // --- ÝÞTE ÇÖZÜM BURASI ---
-                std::cout << "[MAIN] Portun bosa cikmasi bekleniyor..." << std::endl;
-                // Portun tamamen boþa düþmesi için yarým saniye bekle
+                std::cout << "[MAIN] Waiting for port release..." << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
                 Game game(g_isHost, g_targetIP, myPlayerIndex, totalPlayers);
                 game.run();
             }
             catch (const std::exception& e) {
-                std::cerr << "KRITIK HATA: " << e.what() << std::endl;
+                std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
                 return -1;
             }
             return 0;
-}
+        }
 
         window.display();
     }

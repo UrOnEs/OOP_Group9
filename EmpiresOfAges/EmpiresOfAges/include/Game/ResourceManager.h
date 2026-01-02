@@ -1,58 +1,51 @@
 #pragma once
-
 #include <string>
-#include <iostream>
-#include <memory>
-#include <SFML/System/Vector2.hpp>
-#include "Game/TeamColors.h"
+#include <map>
 #include <SFML/Graphics.hpp>
 #include "Game/GameRules.h"
 
 enum class ResourceType {
-	Wood,
-	Food,
-	Gold,
-	Stone
+    Wood,
+    Food,
+    Gold,
+    Stone
 };
 
-
+/**
+ * @brief Manages resource inventory for a player.
+ */
 class ResourceManager {
 private:
-	int Wood = 0;
-	int Gold = 0;
-	int Stone = 0;
-	int Food = 0;
+    int Wood = 0;
+    int Gold = 0;
+    int Stone = 0;
+    int Food = 0;
 
-	std::map<std::string, sf::Texture> textures;
+    std::map<std::string, sf::Texture> textures;
+
 public:
-	ResourceManager();
-	~ResourceManager();
+    ResourceManager();
+    ~ResourceManager();
 
-	//getter fonksiyonu
-	int getAmount(ResourceType type) const;
+    int getAmount(ResourceType type) const;
+    void add(ResourceType type, int amount);
+    bool spend(ResourceType type, int amount);
 
-	//Yükseltme fonksiyonu
-	void add(ResourceType type, int amount);
+    bool canAfford(const GameRules::Cost& cost) const {
+        if (Wood < cost.wood) return false;
+        if (Food < cost.food) return false;
+        if (Gold < cost.gold) return false;
+        if (Stone < cost.stone) return false;
+        return true;
+    }
 
-	//Eksiltme Fonksiyonu
-	bool spend(ResourceType type, int amount);
+    void pay(const GameRules::Cost& cost) {
+        Wood -= cost.wood;
+        Food -= cost.food;
+        Gold -= cost.gold;
+        Stone -= cost.stone;
+    }
 
-	bool canAfford(const GameRules::Cost& cost) const {
-		if (Wood < cost.wood) return false;
-		if (Food < cost.food) return false;
-		if (Gold < cost.gold) return false;
-		if (Stone < cost.stone) return false;
-		return true;
-	}
-
-	void pay(const GameRules::Cost& cost) {
-		Wood -= cost.wood;
-		Food -= cost.food;
-		Gold -= cost.gold;
-		Stone -= cost.stone;
-	}
-
-	void loadTexture(const std::string& name, const std::string& fileName);
-
-	sf::Texture& getTexture(const std::string& name);
+    void loadTexture(const std::string& name, const std::string& fileName);
+    sf::Texture& getTexture(const std::string& name);
 };

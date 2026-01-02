@@ -1,6 +1,5 @@
 #include "Game/ResourceManager.h"
 
-// Constructor
 ResourceManager::ResourceManager() {
     Wood = 0;
     Gold = 0;
@@ -8,12 +7,10 @@ ResourceManager::ResourceManager() {
     Food = 0;
 }
 
-// Destructor
 ResourceManager::~ResourceManager() {
     textures.clear();
 }
 
-// Getter
 int ResourceManager::getAmount(ResourceType type) const {
     switch (type) {
     case ResourceType::Wood: return Wood;
@@ -24,7 +21,6 @@ int ResourceManager::getAmount(ResourceType type) const {
     }
 }
 
-// Ekleme (Add)
 void ResourceManager::add(ResourceType type, int amount) {
     switch (type) {
     case ResourceType::Wood:  Wood += amount; break;
@@ -34,7 +30,6 @@ void ResourceManager::add(ResourceType type, int amount) {
     }
 }
 
-// Harcama (Spend)
 bool ResourceManager::spend(ResourceType type, int amount) {
     switch (type) {
     case ResourceType::Wood:
@@ -53,7 +48,6 @@ bool ResourceManager::spend(ResourceType type, int amount) {
     return false;
 }
 
-// Texture Yönetimi
 void ResourceManager::loadTexture(const std::string& name, const std::string& fileName) {
     sf::Texture tex;
     if (tex.loadFromFile(fileName)) {

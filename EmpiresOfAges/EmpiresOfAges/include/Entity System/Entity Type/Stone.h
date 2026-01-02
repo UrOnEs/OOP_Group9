@@ -7,16 +7,11 @@ public:
     Stone() {
         buildingType = BuildTypes::Stone;
         health = GameRules::HP_Stone;
-
-        // Toplama hýzý
         interval = GameRules::Time_Harvest_Tick;
         amountPerTick = GameRules::Stone_Per_Tick;
-
-        // Taþýn içindeki toplam kaynak
         setTotalResources(GameRules::Resources_Per_Stone);
     }
 
     int getMaxHealth() const override { return (int)GameRules::HP_Stone; }
-
-    std::string getInfo() override { return "Stone: Tas Kaynagi"; }
+    std::string getInfo() override { return "Stone: Stone Source"; }
 };
