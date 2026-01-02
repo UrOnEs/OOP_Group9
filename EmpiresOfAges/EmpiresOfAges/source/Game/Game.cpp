@@ -638,6 +638,8 @@ void Game::onLeftClick(const sf::Vector2f& worldPos, const sf::Vector2i& pixelPo
                 placed->health = 1.0f;         // Canı 1 ile başlasın (Temel atıldı)
                 // ---------------------------------
 
+                placed->setTeam(localPlayer.getTeamColor());
+
                 localPlayer.addEntity(placed);
 
                 localPlayer.addWood(-cost.wood);
